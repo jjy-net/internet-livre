@@ -1,0 +1,194 @@
+================================================================================
+           GERADOR DE QR CODE OFFLINE - SOLUÇÃO PORTABLE
+           Sem Antivírus, Sem Permissões, Leve e Seguro
+================================================================================
+
+PROBLEMA RESOLVIDO:
+-------------------
+O Electron cria executáveis de 80-120MB que disparam antivírus.
+Esta solução usa alternativas leves e seguras!
+
+
+================================================================================
+OPÇÃO 1: HTML STANDALONE (MAIS SIMPLES - RECOMENDADO)
+================================================================================
+
+O arquivo HTML funciona 100% offline e abre em qualquer navegador.
+
+ARQUIVO: public\qr-generator-standalone.html
+
+COMO USAR:
+1. Copie o arquivo para qualquer lugar
+2. Dê duplo clique para abrir no navegador (Edge/Chrome)
+3. Funciona 100% offline!
+4. Não precisa instalar nada
+
+VANTAGENS:
+✓ Zero instalação
+✓ Não dispara antivírus
+✓ Funciona em qualquer Windows
+✓ Pode copiar para pendrive
+✓ Abre instantaneamente
+✓ ~100KB de tamanho
+
+DICA: Crie um atalho na área de trabalho:
+1. Botão direito no arquivo HTML
+2. "Enviar para" → "Área de trabalho (criar atalho)"
+
+
+================================================================================
+OPÇÃO 2: PAKE (EXECUTÁVEL LEVE - ~2-5MB)
+================================================================================
+
+Pake usa a WebView2 NATIVA do Windows 11 (já vem instalada!).
+Cria executáveis de apenas 2-5MB que NÃO disparam antivírus.
+
+COMO CRIAR O EXECUTÁVEL:
+
+MÉTODO AUTOMÁTICO:
+1. Instale Node.js: https://nodejs.org/
+2. Clique duas vezes em: criar-exe-pake.bat
+3. Aguarde 1-2 minutos
+4. O .exe estará na pasta: release-pake\
+
+MÉTODO MANUAL (PowerShell):
+1. Abra PowerShell como Administrador
+2. Execute:
+   npm install -g pake-cli
+   pake public\qr-generator-standalone.html --name "QR-Code" --width 1200 --height 800 --output release-pake
+
+VANTAGENS DO PAKE:
+✓ Executável muito leve (~2-5 MB)
+✓ Usa WebView2 nativa do Windows
+✓ NÃO dispara antivírus
+✓ Não precisa de permissões especiais
+✓ Funciona 100% offline
+✓ Pode copiar para pendrive
+✓ Baseado em Tauri (Rust) - muito seguro
+
+
+================================================================================
+OPÇÃO 3: WEBCATALOG (SEM PROGRAMAR)
+================================================================================
+
+Se não quiser usar linha de comando:
+
+1. Acesse: https://webcatalog.io
+2. Baixe e instale o WebCatalog
+3. Clique em "Create App"
+4. Escolha "Local file" ou "Local folder"
+5. Selecione o arquivo: public\qr-generator-standalone.html
+6. Configure o nome e ícone
+7. Clique em "Create"
+8. Pronto! Você terá um .exe
+
+VANTAGENS:
+✓ Interface gráfica (sem linha de comando)
+✓ Executável leve
+✓ Não dispara antivírus
+
+
+================================================================================
+OPÇÃO 4: NATIVEFIER (ALTERNATIVA)
+================================================================================
+
+Outra opção para criar .exe:
+
+1. Instale: npm install -g nativefier
+2. Execute:
+   nativefier --name "QR Code" "file:///C:/caminho/para/qr-generator-standalone.html" --platform windows
+3. O .exe estará na pasta gerada
+
+
+================================================================================
+COMPARAÇÃO DAS OPÇÕES
+================================================================================
+
+┌─────────────────┬──────────┬──────────┬────────────┬──────────────┐
+│ Método          │ Tamanho  │ Antivírus│ Instalação │ Complexidade │
+├─────────────────┼──────────┼──────────┼────────────┼──────────────┤
+│ HTML Standalone │ ~100KB   │ ✓ Não    │ Nenhuma    │ Nenhuma      │
+│ Pake            │ ~2-5MB   │ ✓ Não    │ Nenhuma    │ Média        │
+│ WebCatalog      │ ~5-10MB  │ ✓ Não    │ Nenhuma    │ Fácil        │
+│ Electron        │ ~80-120MB│ ✗ Sim    │ Nenhuma    │ Alta         │
+└─────────────────┴──────────┴──────────┴────────────┴──────────────┘
+
+
+================================================================================
+RECOMENDAÇÃO
+================================================================================
+
+PARA USO PESSOAL:
+→ Use o HTML Standalone (Opção 1)
+→ Simples, rápido, funciona em qualquer navegador
+
+PARA DISTRIBUIR COMO PROGRAMA:
+→ Use Pake (Opção 2)
+→ Executável leve, profissional, sem antivírus
+
+PARA QUEM NÃO QUER LINHA DE COMANDO:
+→ Use WebCatalog (Opção 3)
+→ Interface gráfica, fácil de usar
+
+
+================================================================================
+NOTAS IMPORTANTES
+================================================================================
+
+SOBRE O HTML STANDALONE:
+- É um arquivo único com tudo embutido
+- Usa a biblioteca qrcode-generator (Kazuhiko Arase)
+- Funciona em Edge, Chrome, Firefox
+- Pode ser aberto diretamente do pendrive
+- Não precisa de internet NUNCA
+
+SOBRE O PAKE:
+- Usa WebView2 (componente nativo do Windows 11)
+- Baseado em Tauri (framework Rust)
+- Muito mais seguro que Electron
+- Não empacota navegador inteiro
+- Usa o que já está no sistema
+
+SOBRE WEBVIEW2:
+- Já vem pré-instalada no Windows 11
+- É o motor do Microsoft Edge
+- Componente oficial da Microsoft
+- Atualizações automáticas pelo Windows Update
+- Se não tiver, o Windows instala automaticamente
+
+
+================================================================================
+SOLUÇÃO DE PROBLEMAS
+================================================================================
+
+HTML não abre?
+→ Clique com botão direito → "Abrir com" → Edge ou Chrome
+
+Pake dá erro?
+→ Execute como Administrador
+→ Verifique se Node.js está instalado
+
+WebView2 não encontrada?
+→ Atualize o Windows
+→ Ou baixe: https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+
+Antivírus ainda bloqueia?
+→ Use o HTML standalone (nunca dispara antivírus)
+→ Ou adicione exceção no antivírus
+
+
+================================================================================
+SEGURANÇA
+================================================================================
+
+✓ Todo o código é aberto e auditável
+✓ Nenhum dado é enviado para servidores
+✓ Processamento 100% local
+✓ Sem rastreamento ou analytics
+✓ Sem cookies ou armazenamento externo
+✓ Funciona em rede isolada/air-gapped
+
+
+================================================================================
+                    Feito com ❤️ para Windows 11
+================================================================================
