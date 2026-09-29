@@ -1,0 +1,36 @@
+{
+  "appId": "com.qrcode.generator",
+  "productName": "Gerador QR Code Offline",
+  "copyright": "Copyright © 2024",
+  "directories": {
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "public/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "public/icon.svg",
+    "artifactName": "${productName}-${version}-Portable.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Portable.exe"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "asar": true,
+  "compression": "maximum"
+}

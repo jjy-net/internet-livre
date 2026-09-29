@@ -1,0 +1,162 @@
+================================================================================
+                    GERADOR DE QR CODE OFFLINE
+                    Guia Rápido - Windows 11
+================================================================================
+
+O QUE É ISSO?
+-------------
+Um aplicativo que gera QR Codes e funciona 100% offline como um programa
+executável (.exe) no Windows. Você pode copiar para pendrive e usar em
+qualquer computador sem instalação!
+
+
+COMO CRIAR O EXECUTÁVEL (PRIMEIRA VEZ)
+---------------------------------------
+
+MÉTODO FÁCIL (Recomendado):
+
+1. Instale o Node.js (se ainda não tiver):
+   - Acesse: https://nodejs.org/
+   - Baixe a versão LTS
+   - Instale normalmente
+
+2. Execute o instalador automático:
+   - Clique duas vezes em: instalar-e-criar-exe.bat
+   - Aguarde o processo (2-5 minutos)
+   - O executável será criado na pasta "release"
+
+3. Pronto! O arquivo estará em:
+   release\Gerador QR Code Offline-Portable.exe
+
+
+MÉTODO MANUAL (Alternativo):
+
+1. Abra o Prompt de Comando na pasta do projeto
+2. Execute os comandos:
+
+   node setup-electron.js
+   npm install
+   npm run build
+   npx electron-builder --win portable
+
+3. O executável estará na pasta "release"
+
+
+COMO USAR O EXECUTÁVEL
+-----------------------
+
+1. Localize o arquivo: Gerador QR Code Offline-Portable.exe
+2. Clique duas vezes para executar
+3. O app abrirá em uma janela própria
+4. Use normalmente para gerar QR Codes!
+
+
+USAR COMO PORTABLE (PENDRIVE)
+------------------------------
+
+1. Copie o arquivo .exe para um pendrive
+2. Conecte o pendrive em qualquer computador Windows
+3. Execute o .exe diretamente
+4. Não precisa instalar nada!
+
+
+CRIAR ATALHO NA ÁREA DE TRABALHO
+---------------------------------
+
+1. Clique com o botão direito no arquivo .exe
+2. Selecione: "Enviar para" → "Área de trabalho (criar atalho)"
+3. Pronto! Agora você tem um atalho na área de trabalho
+
+
+FUNCIONALIDADES
+---------------
+
+✓ Gerar QR Codes de qualquer texto, link, senha, etc.
+✓ Ajustar correção de erro (L, M, Q, H)
+✓ Personalizar cores, tamanho e margem
+✓ Modelos prontos (Wi-Fi, E-mail, Telefone, etc.)
+✓ Download em PNG ou SVG
+✓ Copiar imagem para área de transferência
+✓ Histórico dos últimos QR Codes
+✓ 100% offline - sem internet necessária
+
+
+REQUISITOS
+----------
+
+Para CRIAR o executável:
+- Node.js 16 ou superior (https://nodejs.org/)
+- Windows 10 ou 11
+- Espaço em disco: ~500 MB (temporário)
+
+Para USAR o executável:
+- Windows 10 ou 11
+- Nenhum outro requisito!
+
+
+TAMANHO DO EXECUTÁVEL
+---------------------
+
+O arquivo .exe terá aproximadamente 80-120 MB.
+Isso é normal para aplicativos Electron (inclui o navegador Chromium).
+
+
+PRIMEIRA EXECUÇÃO
+-----------------
+
+O app pode demorar alguns segundos para abrir na primeira vez.
+Isso é normal! Nas próximas vezes abrirá mais rápido.
+
+
+ANTIVÍRUS
+---------
+
+Alguns antivírus podem alertar sobre o .exe.
+Isso é normal para apps não assinados digitalmente.
+
+Se isso acontecer:
+1. Clique em "Mais informações"
+2. Selecione "Executar mesmo assim"
+3. Ou adicione uma exceção no antivírus
+
+
+SOLUÇÃO DE PROBLEMAS
+--------------------
+
+PROBLEMA: O script não funciona
+SOLUÇÃO: Verifique se o Node.js está instalado (node --version)
+
+PROBLEMA: O executável não abre
+SOLUÇÃO: Execute como Administrador ou desative temporariamente o antivírus
+
+PROBLEMA: O app está lento
+SOLUÇÃO: Feche outros aplicativos pesados (normal para apps Electron)
+
+PROBLEMA: Erro ao gerar executável
+SOLUÇÃO: Execute o Prompt de Comando como Administrador
+
+
+COMANDOS ÚTEIS
+--------------
+
+Rodar em modo desenvolvimento:
+  rodar-app.bat
+
+Criar executável novamente:
+  criar-executavel.bat
+
+Instalação completa do zero:
+  instalar-e-criar-exe.bat
+
+
+SUPORTE
+-------
+
+Para mais informações, consulte:
+- README_PORTABLE.md (guia completo)
+- INSTRUCOES_INSTALACAO.md (instruções detalhadas)
+
+
+================================================================================
+                    Feito com ❤️ para Windows 11
+================================================================================
