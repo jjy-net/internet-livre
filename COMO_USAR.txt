@@ -1,0 +1,134 @@
+================================================================================
+                    COMO USAR O GERADOR DE QR CODE
+                    Guia Super Simples para Iniciantes
+================================================================================
+
+🎯 PASSO 1: ENCONTRAR O ARQUIVO
+--------------------------------
+
+Procure o arquivo chamado:
+
+    QR-Code.hta
+
+Ele tem um ícone preto e branco quadrado.
+
+
+🎯 PASSO 2: ABRIR O PROGRAMA
+------------------------------
+
+Dê UM CLIQUE DUPLO no arquivo QR-Code.hta
+
+(Dois cliques rápidos com o botão esquerdo do mouse)
+
+O programa vai abrir em uma janela bonita com fundo roxo.
+
+
+🎯 PASSO 3: USAR O PROGRAMA
+-----------------------------
+
+Na janela que abriu:
+
+1. DIGITE ou COLE o que você quer no QR Code
+   - Exemplo: https://meusite.com
+   - Exemplo: MinhaSenha123
+   - Exemplo: texto qualquer
+
+2. CLIQUE no botão roxo "⚡ Gerar QR Code"
+
+3. O QR Code aparece na direita!
+
+
+🎯 PASSO 4: SALVAR O QR CODE
+------------------------------
+
+Clique no botão "💾 Salvar Imagem"
+
+Escolha onde salvar (ex: Área de Trabalho)
+
+Pronto! Você tem seu QR Code salvo!
+
+
+================================================================================
+                    DICAS IMPORTANTES
+================================================================================
+
+✓ O programa funciona SEM INTERNET
+✓ Não precisa instalar nada
+✓ Não precisa de senha ou login
+✓ Seus dados ficam só no seu computador
+✓ Pode usar quantas vezes quiser
+
+
+================================================================================
+                    ATALHOS ÚTEIS
+================================================================================
+
+Para COLAR texto que você copiou:
+→ Pressione Ctrl + V no teclado
+
+Para LIMPAR e começar de novo:
+→ Clique no botão "🗑️ Limpar"
+
+Para MUDAR AS CORES do QR Code:
+→ Clique nas bolinhas coloridas
+
+
+================================================================================
+                    SE DER ALGUM PROBLEMA
+================================================================================
+
+PROBLEMA: O arquivo não abre
+SOLUÇÃO: Clique com botão direito → "Abrir com" → "Microsoft HTML Application"
+
+PROBLEMA: O QR Code não aparece
+SOLUÇÃO: Verifique se digitou algo na caixa de texto
+
+PROBLEMA: Não consigo salvar
+SOLUÇÃO: Tente salvar na Área de Trabalho (é mais fácil de encontrar depois)
+
+
+================================================================================
+                    EXEMPLOS DE USO
+================================================================================
+
+1. CRIAR QR CODE PARA UM SITE:
+   Digite: https://www.google.com
+   Clique em "Gerar QR Code"
+   Salve a imagem
+
+2. CRIAR QR CODE PARA WI-FI:
+   Clique no botão "📶 Wi-Fi"
+   Mude "NomeDaRede" para o nome do seu Wi-Fi
+   Mude "Senha" para a senha do seu Wi-Fi
+   Clique em "Gerar QR Code"
+
+3. CRIAR QR CODE COM SEU TELEFONE:
+   Clique no botão "📱 Telefone"
+   Mude o número para o seu
+   Clique em "Gerar QR Code"
+
+
+================================================================================
+                    PRECISA DE AJUDA?
+================================================================================
+
+Se precisar de ajuda:
+1. Ligue para um familiar
+2. Mostre este guia para ele
+3. Ele vai te ajudar!
+
+
+================================================================================
+                    RESUMO RÁPIDO
+================================================================================
+
+1. Dê duplo clique em QR-Code.hta
+2. Digite o que você quer
+3. Clique em "Gerar QR Code"
+4. Clique em "Salvar Imagem"
+5. Pronto!
+
+
+================================================================================
+                    Feito com ❤️ para facilitar sua vida
+================================================================================
