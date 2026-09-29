@@ -3,6 +3,12 @@ import QRCode from 'qrcode';
 
 type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
 
+// PWA Install types
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 interface QRSettings {
   errorCorrectionLevel: ErrorCorrectionLevel;
   size: number;
@@ -25,6 +31,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(true);
   const [history, setHistory] = useState<{ content: string; settings: QRSettings; timestamp: number }[]>([]);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -95,6 +105,49 @@ function App() {
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
   }, []);
+
+  // PWA Install handling
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setIsInstallable(true);
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+      setIsInstalled(true);
+    };
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) {
+      setShowInstallGuide(true);
+      return;
+    }
+
+    await deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+      setIsInstalled(true);
+    }
+  };
 
   const downloadQR = (format: 'png' | 'svg') => {
     if (!qrDataUrl) return;
@@ -172,6 +225,28 @@ function App() {
             <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
               ● Offline
             </span>
+            {isInstalled ? (
+              <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/30">
+                ✓ Instalado
+              </span>
+            ) : isInstallable ? (
+              <button
+                onClick={handleInstall}
+                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-full border border-purple-500/50 transition-all flex items-center gap-1.5 shadow-lg shadow-purple-500/20"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Instalar App
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowInstallGuide(true)}
+                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 text-xs rounded-full border border-white/10 transition-all"
+              >
+                📥 Como Instalar
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -584,10 +659,101 @@ function App() {
           </div>
         </div>
 
+        {/* Install Guide Modal */}
+        {showInstallGuide && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInstallGuide(false)}>
+            <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <span className="text-2xl">💻</span>
+                  Instalar no Windows 11
+                </h2>
+                <button
+                  onClick={() => setShowInstallGuide(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                  <p className="text-sm text-purple-300">
+                    <strong>💡 Dica rápida:</strong> Este app pode ser instalado como um programa no seu Windows 11! 
+                    Ele terá ícone na área de trabalho e abrirá em janela própria, funcionando 100% offline.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-gray-200">Como instalar:</h3>
+                  
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <div className="flex items-start gap-3">
+                      <span className="w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0">1</span>
+                      <div>
+                        <p className="font-medium text-gray-200">Usando Microsoft Edge</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Clique no ícone de <strong>"..."</strong> no canto superior direito → <strong>"Apps"</strong> → <strong>"Instalar este site como aplicativo"</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <div className="flex items-start gap-3">
+                      <span className="w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0">2</span>
+                      <div>
+                        <p className="font-medium text-gray-200">Usando Google Chrome</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Clique no ícone de <strong>instalação</strong> (⊕) na barra de endereço → <strong>"Instalar"</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <div className="flex items-start gap-3">
+                      <span className="w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0">3</span>
+                      <div>
+                        <p className="font-medium text-gray-200">Botão de Instalação</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Se disponível, clique no botão <strong>"Instalar App"</strong> que aparece no topo da página
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mt-4">
+                  <p className="text-sm text-green-300">
+                    <strong>✅ Após instalar:</strong> O app aparecerá no Menu Iniciar e na Área de Trabalho. 
+                    Funciona 100% offline, sem necessidade de internet!
+                  </p>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                  <p className="text-sm text-blue-300">
+                    <strong>📝 Nota:</strong> Para usar offline, acesse o app pelo menos uma vez com internet. 
+                    Depois disso, funcionará mesmo sem conexão.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowInstallGuide(false)}
+                className="w-full mt-6 px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-medium transition-all"
+              >
+                Entendi!
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <footer className="mt-12 text-center text-gray-500 text-sm border-t border-white/5 pt-8">
           <p>🔒 Seus dados nunca saem do seu dispositivo. Tudo é processado localmente.</p>
           <p className="mt-1 text-xs text-gray-600">Funciona 100% offline • Sem rastreamento • Sem servidor</p>
+          <p className="mt-2 text-xs text-gray-600">💡 Instale como app no Windows 11 para ter um "executável" offline</p>
         </footer>
       </main>
     </div>
