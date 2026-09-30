@@ -76,6 +76,25 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:6
 input,select,textarea{font-size:12px;padding:8px}
 .message-text{font-size:11px}
 }
+
+#password-strength {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 5px;
+}
+
+#str-text {
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+#str-criteria {
+    line-height: 1.6;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
 </style>
 </head>
 <body>
@@ -98,10 +117,22 @@ input,select,textarea{font-size:12px;padding:8px}
 <input type="text" id="setup-username" placeholder="Ex: João" maxlength="20">
 
 <label>🔐 Senha de Criptografia:</label>
-<input type="password" id="setup-password" placeholder="Mínimo 8 caracteres">
+<input type="password" id="setup-password" placeholder="Mínimo 8 caracteres" oninput="checkPasswordStrength()">
+
+<div id="password-strength" style="margin-bottom:10px">
+<div style="display:flex;gap:3px;margin-bottom:5px">
+<div id="str-bar-1" style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;transition:all 0.3s"></div>
+<div id="str-bar-2" style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;transition:all 0.3s"></div>
+<div id="str-bar-3" style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;transition:all 0.3s"></div>
+<div id="str-bar-4" style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;transition:all 0.3s"></div>
+</div>
+<div id="str-text" style="font-size:11px;color:#94a3b8;text-align:center">Digite uma senha</div>
+<div id="str-criteria" style="font-size:9px;color:#64748b;margin-top:5px"></div>
+</div>
 
 <label>🔐 Confirmar Senha:</label>
-<input type="password" id="setup-password-confirm" placeholder="Repita a senha">
+<input type="password" id="setup-password-confirm" placeholder="Repita a senha" oninput="checkPasswordMatch()">
+<div id="password-match" style="font-size:11px;margin-top:3px"></div>
 
 <button class="btn btn-primary" onclick="completeSetup()" style="width:100%;margin-top:10px">🚀 Iniciar DataLink Mesh</button>
 
@@ -352,6 +383,20 @@ function completeSetup() {
         return;
     }
     
+    // Verificar força mínima da senha
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    if (score < 3) {
+        showSetupError('Senha muito fraca! Use pelo menos: 8 caracteres, maiúscula, minúscula e número');
+        return;
+    }
+    
     if (password !== passwordConfirm) {
         showSetupError('Senhas não coincidem');
         return;
@@ -394,6 +439,145 @@ function showSetupError(msg) {
     errorDiv.textContent = '⚠️ ' + msg;
     errorDiv.classList.remove('hidden');
     setTimeout(() => errorDiv.classList.add('hidden'), 3000);
+}
+
+// ============================================
+// VERIFICAÇÃO DE FORÇA DA SENHA
+// ============================================
+
+function checkPasswordStrength() {
+    const password = document.getElementById('setup-password').value;
+    const bars = [
+        document.getElementById('str-bar-1'),
+        document.getElementById('str-bar-2'),
+        document.getElementById('str-bar-3'),
+        document.getElementById('str-bar-4')
+    ];
+    const textEl = document.getElementById('str-text');
+    const criteriaEl = document.getElementById('str-criteria');
+    
+    if (!password) {
+        bars.forEach(bar => bar.style.background = 'rgba(255,255,255,0.1)');
+        textEl.textContent = 'Digite uma senha';
+        textEl.style.color = '#94a3b8';
+        criteriaEl.textContent = '';
+        return;
+    }
+    
+    // Calcular pontuação
+    let score = 0;
+    let criteria = [];
+    
+    // Comprimento
+    if (password.length >= 8) {
+        score += 1;
+        criteria.push('✅ 8+ caracteres');
+    } else {
+        criteria.push('❌ Mínimo 8 caracteres');
+    }
+    
+    if (password.length >= 12) {
+        score += 1;
+        criteria.push('✅ 12+ caracteres (ideal)');
+    }
+    
+    // Letras maiúsculas
+    if (/[A-Z]/.test(password)) {
+        score += 1;
+        criteria.push('✅ Letra maiúscula');
+    } else {
+        criteria.push('❌ Sem letra maiúscula');
+    }
+    
+    // Letras minúsculas
+    if (/[a-z]/.test(password)) {
+        score += 1;
+        criteria.push('✅ Letra minúscula');
+    } else {
+        criteria.push('❌ Sem letra minúscula');
+    }
+    
+    // Números
+    if (/[0-9]/.test(password)) {
+        score += 1;
+        criteria.push('✅ Número');
+    } else {
+        criteria.push('❌ Sem número');
+    }
+    
+    // Símbolos
+    if (/[^A-Za-z0-9]/.test(password)) {
+        score += 1;
+        criteria.push('✅ Símbolo especial');
+    } else {
+        criteria.push('❌ Sem símbolo especial');
+    }
+    
+    // Penalidades
+    if (password.length < 8) score = 0;
+    if (/^[a-z]+$/.test(password) || /^[A-Z]+$/.test(password)) score = Math.min(score, 1);
+    if (/^[0-9]+$/.test(password)) score = Math.min(score, 1);
+    
+    // Determinar nível
+    let level, color, text;
+    
+    if (score <= 2) {
+        level = 1;
+        color = '#ef4444';
+        text = '🔴 MUITO FRACA';
+    } else if (score === 3) {
+        level = 2;
+        color = '#f59e0b';
+        text = '🟡 FRACA';
+    } else if (score === 4) {
+        level = 3;
+        color = '#84cc16';
+        text = '🟢 MÉDIA';
+    } else if (score === 5) {
+        level = 4;
+        color = '#10b981';
+        text = '🟢 FORTE';
+    } else {
+        level = 4;
+        color = '#059669';
+        text = '🟢 MUITO FORTE';
+    }
+    
+    // Atualizar barras
+    bars.forEach((bar, index) => {
+        if (index < level) {
+            bar.style.background = color;
+        } else {
+            bar.style.background = 'rgba(255,255,255,0.1)';
+        }
+    });
+    
+    // Atualizar texto
+    textEl.textContent = text;
+    textEl.style.color = color;
+    textEl.style.fontWeight = '600';
+    
+    // Atualizar critérios
+    criteriaEl.innerHTML = criteria.join(' • ');
+}
+
+function checkPasswordMatch() {
+    const password = document.getElementById('setup-password').value;
+    const confirm = document.getElementById('setup-password-confirm').value;
+    const matchEl = document.getElementById('password-match');
+    
+    if (!confirm) {
+        matchEl.textContent = '';
+        return;
+    }
+    
+    if (password === confirm) {
+        matchEl.textContent = '✅ Senhas coincidem';
+        matchEl.style.color = '#10b981';
+    } else {
+        matchEl.textContent = '❌ Senhas não coincidem';
+        matchEl.style.color = '#ef4444';
+    }
 }
 
 // ============================================
