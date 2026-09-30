@@ -144,7 +144,7 @@ Ideal para dispositivos compartilhados. Todos os dados serão apagados ao sair.
 </p>
 </div>
 
-<button class="btn btn-primary" onclick="completeSetup()" style="width:100%;margin-top:10px">🚀 Iniciar DataLink Mesh</button>
+<button class="btn btn-primary" onclick="handleSetup()" style="width:100%;margin-top:10px">🚀 Iniciar DataLink Mesh</button>
 
 <div id="setup-error" class="alert alert-warning hidden" style="margin-top:10px"></div>
 </div>
@@ -390,7 +390,15 @@ const state = {
 // CONFIGURAÇÃO INICIAL
 // ============================================
 
-function completeSetup() {
+// Wrapper para lidar com async/await no onclick
+function handleSetup() {
+    completeSetup().catch(error => {
+        console.error('❌ Erro no setup:', error);
+        showSetupError('Erro ao iniciar: ' + error.message);
+    });
+}
+
+async function completeSetup() {
     const username = document.getElementById('setup-username').value.trim();
     const password = document.getElementById('setup-password').value;
     const passwordConfirm = document.getElementById('setup-password-confirm').value;
@@ -438,15 +446,23 @@ function completeSetup() {
         console.log('🕐 Modo Temporário ativado - dados serão apagados ao sair');
     }
     
-    // Inicializar criptografia
-    initEncryption(password);
+    // Inicializar criptografia (AGORA COM AWAIT!)
+    try {
+        await initEncryption(password);
+        console.log('✅ Criptografia inicializada com sucesso');
+    } catch(e) {
+        console.error('❌ Erro ao inicializar criptografia:', e);
+        showSetupError('Erro ao inicializar criptografia: ' + e.message);
+        return;
+    }
     
     // Inicializar BroadcastChannel
     try {
         state.broadcastChannel = new BroadcastChannel('datalink_mesh');
         state.broadcastChannel.onmessage = handleIncomingMessage;
+        console.log('✅ BroadcastChannel inicializado');
     } catch(e) {
-        console.log('BroadcastChannel não suportado');
+        console.log('⚠️ BroadcastChannel não suportado');
     }
     
     // Mostrar interface principal
@@ -455,12 +471,22 @@ function completeSetup() {
     document.getElementById('user-display').textContent = username;
     document.getElementById('config-username').value = username;
     
+    // Mostrar indicador de modo temporário se ativo
+    if (isTemporary) {
+        const tempIndicator = document.getElementById('temporary-mode-indicator');
+        const tempBanner = document.getElementById('temporary-banner');
+        if (tempIndicator) tempIndicator.classList.remove('hidden');
+        if (tempBanner) tempBanner.classList.remove('hidden');
+    }
+    
     // Detectar canais
     setTimeout(detectChannels, 500);
     
     // Carregar mensagens
     loadMessages();
     loadQueue();
+    
+    console.log('✅ Setup completo! Usuário:', username);
 }
 
 function showSetupError(msg) {
