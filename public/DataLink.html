@@ -3,357 +3,364 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DataLink - Transmissão Universal de Dados</title>
+<title>DataLink - Transmissão de Dados Multi-Canal</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:100vh;overflow-x:hidden}
-.app{display:flex;flex-direction:column;height:100vh}
-.header{background:linear-gradient(135deg,#1a1a3e,#2d1b69);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1)}
-.logo{display:flex;align-items:center;gap:12px}
-.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-.logo h1{font-size:18px;background:linear-gradient(135deg,#a78bfa,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.logo p{font-size:10px;color:#888}
-.tabs{display:flex;gap:4px;background:rgba(0,0,0,0.3);padding:4px;border-radius:12px;margin:10px 20px;overflow-x:auto}
-.tab{padding:10px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap;transition:all .2s;border:1px solid transparent;color:#888}
-.tab:hover{background:rgba(255,255,255,0.05);color:#fff}
-.tab.active{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;border-color:transparent}
-.content{flex:1;overflow-y:auto;padding:20px}
-.panel{display:none}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0a1a;color:#fff;min-height:100vh;overflow-x:hidden}
+.app{max-width:1200px;margin:0 auto;padding:15px}
+.header{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:15px;padding:20px;margin-bottom:15px;text-align:center}
+.header h1{font-size:24px;margin-bottom:5px}
+.header p{font-size:12px;opacity:.8}
+.tabs{display:flex;gap:5px;margin-bottom:15px;flex-wrap:wrap}
+.tab{padding:10px 15px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;color:#aaa}
+.tab:hover{background:rgba(255,255,255,.1)}
+.tab.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent}
+.panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:15px;padding:20px;margin-bottom:15px;display:none}
 .panel.active{display:block}
-.card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:16px}
-.card-title{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.card-title .icon{font-size:20px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:768px){.grid-2{grid-template-columns:1fr}}
-textarea,input[type="text"],input[type="number"],select{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;color:#fff;font-size:13px;outline:none;font-family:inherit}
-textarea:focus,input:focus{border-color:#7c3aed}
-textarea{resize:vertical;min-height:80px;font-family:'Courier New',monospace}
-.btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(124,58,237,0.4)}
-.btn-secondary{background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15)}
-.btn-secondary:hover{background:rgba(255,255,255,0.12)}
-.btn-danger{background:#dc2626;color:#fff}
-.btn-success{background:#16a34a;color:#fff}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-label{display:block;font-size:12px;color:#888;margin-bottom:4px;font-weight:500}
-.hash-output{background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:11px;word-break:break-all;color:#a78bfa;max-height:120px;overflow-y:auto}
-.progress-bar{width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin:10px 0}
-.progress-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#ec4899);border-radius:4px;transition:width .3s;width:0%}
-.status{padding:8px 12px;border-radius:8px;font-size:12px;margin:8px 0}
-.status-info{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:#60a5fa}
-.status-success{background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.3);color:#4ade80}
-.status-error{background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#f87171}
-.status-warning{background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);color:#fbbf24}
-.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px;max-height:400px;overflow-y:auto;padding:10px}
-.qr-item{background:rgba(255,255,255,0.05);border-radius:8px;padding:8px;text-align:center}
-.qr-item canvas{width:100%;height:auto;border-radius:4px}
-.qr-item .label{font-size:10px;color:#888;margin-top:4px}
-.file-drop{border:2px dashed rgba(255,255,255,0.2);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s}
-.file-drop:hover{border-color:#7c3aed;background:rgba(124,58,237,0.05)}
-.file-drop.dragover{border-color:#7c3aed;background:rgba(124,58,237,0.1)}
-.file-info{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;margin-top:10px}
-.file-info .icon{font-size:24px}
-.file-info .details{flex:1}
-.file-info .name{font-size:13px;font-weight:500}
-.file-info .size{font-size:11px;color:#888}
-video,canvas.preview{width:100%;max-width:400px;border-radius:8px;background:#000}
-.camera-view{position:relative;border-radius:12px;overflow:hidden;background:#000}
-.camera-view video{width:100%;display:block}
-.transmit-visual{width:200px;height:200px;border-radius:12px;margin:10px auto;display:flex;align-items:center;justify-content:center;font-size:40px;transition:background .05s}
-.log{background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-family:'Courier New',monospace;font-size:11px;max-height:200px;overflow-y:auto;color:#888}
+.section-title{font-size:16px;font-weight:600;color:#a78bfa;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+textarea,input[type="text"],input[type="number"]{width:100%;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px;color:#fff;font-size:13px;outline:none;font-family:inherit}
+textarea{height:100px;resize:none;font-family:'Courier New',monospace}
+textarea:focus,input:focus{border-color:#667eea}
+.btn{padding:10px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;margin:4px}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,.4)}
+.btn-secondary{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-success{background:#10b981;color:#fff}
+.btn:hover{transform:translateY(-1px)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}}
+.stat-box{background:rgba(0,0,0,.3);border-radius:10px;padding:12px;text-align:center}
+.stat-box .label{font-size:10px;color:#888;text-transform:uppercase}
+.stat-box .value{font-size:18px;font-weight:700;color:#a78bfa;margin-top:4px}
+.hash-output{background:rgba(0,0,0,.5);border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:11px;word-break:break-all;color:#4ade80;margin-top:10px;min-height:60px;border:1px solid rgba(74,222,128,.2)}
+.file-drop{border:2px dashed rgba(255,255,255,.2);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s}
+.file-drop:hover{border-color:#667eea;background:rgba(102,126,234,.05)}
+.file-drop.dragover{border-color:#667eea;background:rgba(102,126,234,.1)}
+.progress-bar{width:100%;height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .3s;border-radius:4px}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:15px}
+.qr-item{background:rgba(255,255,255,.05);border-radius:8px;padding:10px;text-align:center}
+.qr-item canvas{width:100%!important;height:auto!important;border-radius:4px}
+.qr-item .info{font-size:10px;color:#888;margin-top:5px}
+.transmit-area{display:flex;flex-direction:column;align-items:center;gap:15px}
+.light-display{width:300px;height:300px;border-radius:15px;border:2px solid rgba(255,255,255,.2);transition:background-color .05s}
+.status{padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block}
+.status-idle{background:rgba(255,255,255,.1);color:#888}
+.status-active{background:rgba(16,185,129,.2);color:#4ade80;animation:pulse 1s infinite}
+.status-error{background:rgba(239,68,68,.2);color:#f87171}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.log{background:rgba(0,0,0,.5);border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:11px;max-height:200px;overflow-y:auto;color:#888;border:1px solid rgba(255,255,255,.05)}
 .log .info{color:#60a5fa}
 .log .success{color:#4ade80}
 .log .error{color:#f87171}
 .log .warn{color:#fbbf24}
-.ec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
-.ec-btn{padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:center;font-size:11px;transition:all .2s}
-.ec-btn:hover{background:rgba(255,255,255,0.1)}
-.ec-btn.active{background:rgba(124,58,237,0.3);border-color:#7c3aed}
+select{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#fff;font-size:13px;outline:none;width:100%}
+label{display:block;font-size:12px;color:#888;margin-bottom:5px;margin-top:10px}
+.camera-view{width:100%;max-width:400px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:#000}
+.ec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.ec-btn{padding:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;cursor:pointer;text-align:center;font-size:11px;transition:all .2s;color:#ccc}
+.ec-btn:hover{border-color:#667eea}
+.ec-btn.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent}
 .templates{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-.template-btn{padding:12px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;text-align:center;transition:all .2s}
-.template-btn:hover{background:rgba(255,255,255,0.1);border-color:#7c3aed}
+.template-btn{padding:12px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;text-align:center;transition:all .2s;color:#fff}
+.template-btn:hover{border-color:#667eea;background:rgba(102,126,234,.1)}
 .template-btn .icon{font-size:20px}
-.template-btn .label{font-size:10px;color:#888;margin-top:4px}
-.qr-display{display:flex;flex-direction:column;align-items:center;padding:20px}
-.qr-container{background:#fff;border-radius:12px;padding:20px;display:inline-block}
-.mode-selector{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-.mode-btn{padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;cursor:pointer;font-size:11px;transition:all .2s}
-.mode-btn:hover{background:rgba(255,255,255,0.1)}
-.mode-btn.active{background:linear-gradient(135deg,#7c3aed,#ec4899);border-color:transparent}
+.template-btn .label{font-size:10px;color:#888;margin-top:3px}
+.color-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.color-input{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px}
+input[type="color"]{width:30px;height:30px;border:none;background:transparent;cursor:pointer;border-radius:4px}
+input[type="range"]{width:100%;height:4px;background:rgba(255,255,255,.1);border-radius:2px;outline:none;-webkit-appearance:none}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:#667eea;border-radius:50%;cursor:pointer}
+.themes{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.theme-btn{padding:4px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;cursor:pointer;font-size:10px;color:#aaa;display:flex;align-items:center;gap:4px}
+.theme-btn:hover{border-color:#667eea}
+.theme-preview{width:14px;height:14px;border-radius:2px;border:1px solid rgba(255,255,255,.2)}
 </style>
 </head>
 <body>
 <div class="app">
 <div class="header">
-<div class="logo">
-<div class="logo-icon">📡</div>
-<div>
-<h1>DataLink</h1>
-<p>Transmissão Universal de Dados</p>
-</div>
-</div>
-<div style="font-size:11px;color:#666">v2.0 • Offline</div>
+<h1>🔗 DataLink - Transmissão Multi-Canal</h1>
+<p>QR Code • Hash • Som • Luz • Câmera • Arquivos</p>
 </div>
 
 <div class="tabs">
-<div class="tab active" onclick="switchTab('qr')">🔲 QR Code</div>
-<div class="tab" onclick="switchTab('hash')">🔐 Hash</div>
-<div class="tab" onclick="switchTab('transmit')">📤 Transmitir</div>
-<div class="tab" onclick="switchTab('receive')">📥 Receber</div>
-<div class="tab" onclick="switchTab('light')">💡 Luz</div>
-<div class="tab" onclick="switchTab('sound')">🔊 Som</div>
+<div class="tab active" onclick="showTab('qr')">📱 QR Code</div>
+<div class="tab" onclick="showTab('hash')">🔐 Hash SHA</div>
+<div class="tab" onclick="showTab('file')">📁 Arquivo→QR</div>
+<div class="tab" onclick="showTab('sound')">🔊 Som</div>
+<div class="tab" onclick="showTab('light')">💡 Luz</div>
+<div class="tab" onclick="showTab('camera')">📷 Câmera</div>
 </div>
 
-<div class="content">
-
-<!-- ============ QR CODE ============ -->
+<!-- ========== ABA: QR CODE ========== -->
 <div class="panel active" id="panel-qr">
 <div class="grid-2">
 <div>
-<div class="card">
-<div class="card-title"><span class="icon">📝</span> Conteúdo</div>
-<textarea id="qr-content" placeholder="Digite ou cole: texto, link, senha, Wi-Fi..."></textarea>
-<div class="btn-row">
-<button class="btn btn-primary" onclick="generateQR()">⚡ Gerar QR Code</button>
+<div class="section-title">📝 Conteúdo</div>
+<textarea id="qr-content" placeholder="Digite ou cole: texto, link, senha..."></textarea>
+<div style="margin-top:10px">
+<button class="btn btn-primary" onclick="gerarQR()">⚡ Gerar QR Code</button>
 <button class="btn btn-secondary" onclick="document.getElementById('qr-content').value=''">🗑️ Limpar</button>
 </div>
-</div>
-<div class="card">
-<div class="card-title"><span class="icon">⚙️</span> Configurações</div>
+
+<div class="section-title" style="margin-top:15px">⚙️ Configurações</div>
 <label>Correção de Erro</label>
 <div class="ec-grid">
-<div class="ec-btn" data-level="L" onclick="setECLevel('L')">L<br><small>7%</small></div>
-<div class="ec-btn active" data-level="M" onclick="setECLevel('M')">M<br><small>15%</small></div>
-<div class="ec-btn" data-level="Q" onclick="setECLevel('Q')">Q<br><small>25%</small></div>
-<div class="ec-btn" data-level="H" onclick="setECLevel('H')">H<br><small>30%</small></div>
+<div class="ec-btn" data-level="L" onclick="setEC('L')">L<br><small>7%</small></div>
+<div class="ec-btn active" data-level="M" onclick="setEC('M')">M<br><small>15%</small></div>
+<div class="ec-btn" data-level="Q" onclick="setEC('Q')">Q<br><small>25%</small></div>
+<div class="ec-btn" data-level="H" onclick="setEC('H')">H<br><small>30%</small></div>
 </div>
+
 <label>Tamanho: <span id="size-val">300</span>px</label>
-<input type="range" id="qr-size" min="150" max="600" value="300" step="25" oninput="document.getElementById('size-val').textContent=this.value" style="width:100%">
-<div style="margin-top:10px">
-<label>Cores</label>
-<div style="display:flex;gap:8px">
-<input type="color" id="qr-dark" value="#000000" style="width:40px;height:32px;border:none;background:transparent;cursor:pointer">
-<input type="color" id="qr-light" value="#ffffff" style="width:40px;height:32px;border:none;background:transparent;cursor:pointer">
+<input type="range" id="qr-size" min="150" max="600" value="300" step="25" oninput="document.getElementById('size-val').textContent=this.value">
+
+<label>Margem: <span id="margin-val">4</span></label>
+<input type="range" id="qr-margin" min="0" max="10" value="4" step="1" oninput="document.getElementById('margin-val').textContent=this.value">
+
+<div class="color-row">
+<div class="color-input"><input type="color" id="qr-dark" value="#000000"><span style="font-size:10px;color:#888">QR</span></div>
+<div class="color-input"><input type="color" id="qr-light" value="#ffffff"><span style="font-size:10px;color:#888">Fundo</span></div>
 </div>
+<div class="themes">
+<div class="theme-btn" onclick="applyTheme('#000','#fff')"><div class="theme-preview" style="background:linear-gradient(135deg,#000 50%,#fff 50%)"></div>Clássico</div>
+<div class="theme-btn" onclick="applyTheme('#2d1b69','#f0e6ff')"><div class="theme-preview" style="background:linear-gradient(135deg,#2d1b69 50%,#f0e6ff 50%)"></div>Roxo</div>
+<div class="theme-btn" onclick="applyTheme('#004d40','#e0f2f1')"><div class="theme-preview" style="background:linear-gradient(135deg,#004d40 50%,#e0f2f1 50%)"></div>Verde</div>
+<div class="theme-btn" onclick="applyTheme('#b71c1c','#ffebee')"><div class="theme-preview" style="background:linear-gradient(135deg,#b71c1c 50%,#ffebee 50%)"></div>Vermelho</div>
+<div class="theme-btn" onclick="applyTheme('#0d47a1','#e3f2fd')"><div class="theme-preview" style="background:linear-gradient(135deg,#0d47a1 50%,#e3f2fd 50%)"></div>Azul</div>
+<div class="theme-btn" onclick="applyTheme('#fff','#1a1a1a')"><div class="theme-preview" style="background:linear-gradient(135deg,#fff 50%,#1a1a1a 50%)"></div>Invertido</div>
 </div>
-</div>
-<div class="card">
-<div class="card-title"><span class="icon">📋</span> Modelos</div>
+
+<div class="section-title" style="margin-top:15px">📋 Modelos</div>
 <div class="templates">
-<div class="template-btn" onclick="applyQRTemplate('url')"><div class="icon">🔗</div><div class="label">Link</div></div>
-<div class="template-btn" onclick="applyQRTemplate('wifi')"><div class="icon">📶</div><div class="label">Wi-Fi</div></div>
-<div class="template-btn" onclick="applyQRTemplate('email')"><div class="icon">📧</div><div class="label">E-mail</div></div>
-<div class="template-btn" onclick="applyQRTemplate('phone')"><div class="icon">📱</div><div class="label">Telefone</div></div>
-<div class="template-btn" onclick="applyQRTemplate('vcard')"><div class="icon">👤</div><div class="label">Contato</div></div>
-<div class="template-btn" onclick="applyQRTemplate('sms')"><div class="icon">💬</div><div class="label">SMS</div></div>
+<div class="template-btn" onclick="applyTpl('url')"><div class="icon">🔗</div><div class="label">Link</div></div>
+<div class="template-btn" onclick="applyTpl('wifi')"><div class="icon">📶</div><div class="label">Wi-Fi</div></div>
+<div class="template-btn" onclick="applyTpl('email')"><div class="icon">📧</div><div class="label">E-mail</div></div>
+<div class="template-btn" onclick="applyTpl('phone')"><div class="icon">📱</div><div class="label">Telefone</div></div>
+<div class="template-btn" onclick="applyTpl('vcard')"><div class="icon">👤</div><div class="label">Contato</div></div>
+<div class="template-btn" onclick="applyTpl('sms')"><div class="icon">💬</div><div class="label">SMS</div></div>
 </div>
 </div>
-</div>
+
 <div>
-<div class="card">
-<div class="card-title"><span class="icon">📱</span> QR Code</div>
-<div class="qr-display" id="qr-area">
-<div style="text-align:center;color:#666;padding:60px 20px">
-<div style="font-size:60px;opacity:0.3;margin-bottom:15px">🔲</div>
-<p>Digite algo e clique em "Gerar QR Code"</p>
+<div class="section-title">📱 QR Code</div>
+<div id="qr-display" style="text-align:center;min-height:300px;display:flex;align-items:center;justify-content:center">
+<div style="color:#555"><div style="font-size:60px;opacity:.3">🔲</div><p style="margin-top:10px">Digite e gere o QR Code</p></div>
 </div>
-</div>
-<div class="btn-row" id="qr-actions" style="display:none;justify-content:center">
-<button class="btn btn-primary" onclick="downloadQR()">💾 Salvar PNG</button>
-</div>
+<div id="qr-actions" style="display:none;text-align:center;margin-top:15px">
+<button class="btn btn-primary" onclick="salvarQR()">💾 Salvar PNG</button>
 </div>
 </div>
 </div>
 </div>
 
-<!-- ============ HASH ============ -->
+<!-- ========== ABA: HASH ========== -->
 <div class="panel" id="panel-hash">
+<div class="section-title">🔐 Gerador e Verificador SHA-256 / SHA-512</div>
 <div class="grid-2">
 <div>
-<div class="card">
-<div class="card-title"><span class="icon">🔐</span> Gerar Hash</div>
-<label>Texto ou dados para gerar hash</label>
-<textarea id="hash-input" placeholder="Digite o texto ou cole os dados aqui..." style="min-height:120px"></textarea>
-<div class="btn-row">
-<button class="btn btn-primary" onclick="generateHash('SHA-256')">🔒 SHA-256</button>
-<button class="btn btn-primary" onclick="generateHash('SHA-512')">🔐 SHA-512</button>
-<button class="btn btn-secondary" onclick="generateHash('SHA-1')">SHA-1</button>
+<label>Texto para calcular hash:</label>
+<textarea id="hash-input" placeholder="Digite o texto ou cole aqui..." style="height:120px"></textarea>
+<div style="margin-top:10px">
+<button class="btn btn-primary" onclick="calcularHash()">🔐 Calcular Hash</button>
+<button class="btn btn-secondary" onclick="document.getElementById('hash-input').value=''">🗑️ Limpar</button>
 </div>
-<div style="margin-top:12px">
-<label>Ou selecione um arquivo:</label>
-<input type="file" id="hash-file" onchange="hashFile()" style="margin-top:6px;color:#888;font-size:12px">
-</div>
-</div>
-</div>
-<div>
-<div class="card">
-<div class="card-title"><span class="icon">📋</span> Resultado</div>
-<div id="hash-result" style="color:#666;font-size:13px">Os hashes aparecerão aqui...</div>
-</div>
-<div class="card">
-<div class="card-title"><span class="icon">✅</span> Verificar Hash</div>
-<label>Cole o hash para verificar</label>
-<input type="text" id="verify-hash" placeholder="Cole o hash aqui...">
-<label style="margin-top:8px">Texto original</label>
-<textarea id="verify-text" placeholder="Texto para comparar..." style="min-height:60px"></textarea>
-<div class="btn-row">
-<button class="btn btn-success" onclick="verifyHash('SHA-256')">✓ Verificar SHA-256</button>
-<button class="btn btn-success" onclick="verifyHash('SHA-512')">✓ Verificar SHA-512</button>
-</div>
-<div id="verify-result" style="margin-top:10px"></div>
-</div>
-</div>
+
+<label style="margin-top:15px">Ou selecione um arquivo:</label>
+<div class="file-drop" onclick="document.getElementById('hash-file').click()" id="hash-drop">
+📁 Clique ou arraste um arquivo aqui
+<input type="file" id="hash-file" style="display:none" onchange="hashArquivo(this.files[0])">
 </div>
 </div>
 
-<!-- ============ TRANSMITIR ============ -->
-<div class="panel" id="panel-transmit">
-<div class="card">
-<div class="card-title"><span class="icon">📤</span> Transmitir Arquivo por QR Code</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Divide o arquivo em múltiplos QR Codes. O receptor escaneia todos para reconstruir o arquivo.</p>
-<div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
-<div style="font-size:40px;margin-bottom:10px">📁</div>
-<p style="color:#888">Clique ou arraste um arquivo aqui</p>
-<p style="font-size:11px;color:#666;margin-top:5px">Imagens, músicas, vídeos, documentos...</p>
-<input type="file" id="file-input" style="display:none" onchange="handleFileSelect(event)">
+<div>
+<label>SHA-256:</label>
+<div class="hash-output" id="hash-256">Aguardando...</div>
+
+<label>SHA-512:</label>
+<div class="hash-output" id="hash-512">Aguardando...</div>
+
+<div style="margin-top:15px">
+<button class="btn btn-secondary" onclick="copiarHash('hash-256')">📋 Copiar SHA-256</button>
+<button class="btn btn-secondary" onclick="copiarHash('hash-512')">📋 Copiar SHA-512</button>
 </div>
-<div id="file-info-area"></div>
-<div id="transmit-controls" style="display:none">
-<div class="btn-row">
-<button class="btn btn-primary" onclick="startQRTransmit()">📤 Gerar QR Codes</button>
-<button class="btn btn-secondary" onclick="startSoundTransmit()">🔊 Transmitir por Som</button>
-</div>
-<div class="progress-bar"><div class="progress-fill" id="transmit-progress"></div></div>
-<div id="transmit-status" class="status status-info" style="display:none"></div>
+
+<label style="margin-top:15px">Verificar hash (cole o hash esperado):</label>
+<input type="text" id="hash-verify" placeholder="Cole o hash para comparar...">
+<button class="btn btn-success" onclick="verificarHash()" style="margin-top:8px">✅ Verificar</button>
+<div id="hash-result" style="margin-top:8px"></div>
 </div>
 </div>
-<div class="card" id="qr-transmit-area" style="display:none">
-<div class="card-title"><span class="icon">🔲</span> QR Codes Gerados (<span id="qr-count">0</span> códigos)</div>
-<p style="font-size:11px;color:#888;margin-bottom:10px">O receptor deve escanear todos os QR codes na ordem. Cada código contém um pedaço do arquivo.</p>
+
+<div class="grid-3" style="margin-top:15px">
+<div class="stat-box"><div class="label">Caracteres</div><div class="value" id="hash-chars">0</div></div>
+<div class="stat-box"><div class="label">Bytes</div><div class="value" id="hash-bytes">0</div></div>
+<div class="stat-box"><div class="label">Tempo</div><div class="value" id="hash-time">0ms</div></div>
+</div>
+</div>
+
+<!-- ========== ABA: ARQUIVO → QR ========== -->
+<div class="panel" id="panel-file">
+<div class="section-title">📁 Transmitir Arquivo via QR Code</div>
+<p style="font-size:12px;color:#888;margin-bottom:15px">Divide o arquivo em múltiplos QR Codes. O receptor escaneia cada um para reconstruir o arquivo.</p>
+
+<div class="grid-2">
+<div>
+<div class="file-drop" onclick="document.getElementById('file-input').click()" id="file-drop">
+📁 Clique ou arraste um arquivo aqui<br>
+<small style="color:#888">Imagens, músicas, vídeos, documentos (até ~2KB por QR)</small>
+<input type="file" id="file-input" style="display:none" onchange="processarArquivo(this.files[0])">
+</div>
+
+<div id="file-info" style="display:none;margin-top:15px">
+<div class="stat-box"><div class="label">Arquivo</div><div class="value" id="file-name" style="font-size:12px">-</div></div>
+<div class="stat-box" style="margin-top:8px"><div class="label">Tamanho</div><div class="value" id="file-size">-</div></div>
+<div class="stat-box" style="margin-top:8px"><div class="label">QR Codes necessários</div><div class="value" id="file-qrs">-</div></div>
+<div class="progress-bar"><div class="progress-fill" id="file-progress" style="width:0%"></div></div>
+</div>
+
+<div style="margin-top:15px">
+<button class="btn btn-primary" onclick="gerarQRsArquivo()" id="btn-gerar-qrs" disabled>⚡ Gerar QR Codes</button>
+<button class="btn btn-success" onclick="descarregarTodos()" id="btn-descarregar" disabled>💾 Salvar Todos</button>
+</div>
+</div>
+
+<div>
+<div class="section-title">📱 QR Codes Gerados</div>
 <div class="qr-grid" id="qr-grid"></div>
-<div class="btn-row" style="margin-top:12px">
-<button class="btn btn-secondary" onclick="downloadAllQR()">💾 Baixar Todos</button>
-<button class="btn btn-primary" onclick="playQRSequence()">▶️ Reproduzir Sequência</button>
 </div>
 </div>
 </div>
 
-<!-- ============ RECEBER ============ -->
-<div class="panel" id="panel-receive">
-<div class="card">
-<div class="card-title"><span class="icon">📷</span> Receber por Câmera (QR Code)</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Escaneia múltiplos QR Codes para reconstruir o arquivo transmitido.</p>
-<div class="camera-view" id="camera-container" style="display:none">
-<video id="camera-video" autoplay playsinline></video>
-<canvas id="camera-canvas" style="display:none"></canvas>
-</div>
-<div class="btn-row">
-<button class="btn btn-primary" onclick="startCamera()">📷 Iniciar Câmera</button>
-<button class="btn btn-danger" onclick="stopCamera()">⏹️ Parar</button>
-</div>
-<div id="receive-status" class="status status-info" style="display:none;margin-top:10px"></div>
-<div class="progress-bar"><div class="progress-fill" id="receive-progress"></div></div>
-<div id="receive-log" class="log" style="margin-top:10px;display:none"></div>
-<div id="received-file" style="display:none;margin-top:12px">
-<div class="status status-success">✅ Arquivo recebido com sucesso!</div>
-<div class="btn-row">
-<button class="btn btn-success" onclick="downloadReceivedFile()">💾 Baixar Arquivo</button>
-</div>
-</div>
-</div>
-<div class="card">
-<div class="card-title"><span class="icon">🔊</span> Receber por Som</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Recebe dados através de sinais sonoros (FSK).</p>
-<div class="btn-row">
-<button class="btn btn-primary" onclick="startSoundReceive()">🎤 Iniciar Microfone</button>
-<button class="btn btn-danger" onclick="stopSoundReceive()">⏹️ Parar</button>
-</div>
-<div id="sound-receive-status" class="status" style="display:none;margin-top:10px"></div>
-</div>
-</div>
-
-<!-- ============ LUZ ============ -->
-<div class="panel" id="panel-light">
-<div class="grid-2">
-<div>
-<div class="card">
-<div class="card-title"><span class="icon">💡</span> Transmitir por Luz da Tela</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Transmite dados variando o brilho/cor da tela. O receptor usa a câmera para decodificar.</p>
-<label>Selecione um arquivo para transmitir:</label>
-<input type="file" id="light-file" onchange="handleLightFile(event)" style="margin:8px 0;color:#888;font-size:12px">
-<div class="transmit-visual" id="light-transmit-visual" style="background:#000">
-<span style="color:#333">💡</span>
-</div>
-<div class="btn-row" style="justify-content:center">
-<button class="btn btn-primary" onclick="startLightTransmit()">▶️ Iniciar Transmissão</button>
-<button class="btn btn-danger" onclick="stopLightTransmit()">⏹️ Parar</button>
-</div>
-<div class="progress-bar"><div class="progress-fill" id="light-progress"></div></div>
-<div id="light-status" class="status" style="display:none"></div>
-</div>
-</div>
-<div>
-<div class="card">
-<div class="card-title"><span class="icon">📷</span> Receber por Luz (Câmera)</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Aponte a câmera para a tela transmissora para receber dados.</p>
-<div class="camera-view" id="light-camera-container" style="display:none">
-<video id="light-camera-video" autoplay playsinline></video>
-</div>
-<div class="btn-row">
-<button class="btn btn-primary" onclick="startLightReceive()">📷 Iniciar Câmera</button>
-<button class="btn btn-danger" onclick="stopLightReceive()">⏹️ Parar</button>
-</div>
-<div id="light-receive-status" class="status" style="display:none;margin-top:10px"></div>
-<div class="progress-bar"><div class="progress-fill" id="light-receive-progress"></div></div>
-</div>
-</div>
-</div>
-</div>
-
-<!-- ============ SOM ============ -->
+<!-- ========== ABA: SOM ========== -->
 <div class="panel" id="panel-sound">
+<div class="section-title">🔊 Transmissão por Som (Audio Modem)</div>
+<p style="font-size:12px;color:#888;margin-bottom:15px">Transmite dados usando tons de áudio. Funciona como um modem antigo! O receptor usa o microfone para capturar.</p>
+
 <div class="grid-2">
 <div>
-<div class="card">
-<div class="card-title"><span class="icon">🔊</span> Transmitir por Som (FSK)</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Converte dados em sinais sonoros (Frequency Shift Keying). Funciona como um modem!</p>
-<label>Texto para transmitir:</label>
-<textarea id="sound-text" placeholder="Digite o texto ou dados para transmitir por som..."></textarea>
-<label style="margin-top:8px">Frequências</label>
-<div style="display:flex;gap:10px">
-<div style="flex:1"><label>Bit 0 (Hz)</label><input type="number" id="freq-0" value="800" style="width:100%"></div>
-<div style="flex:1"><label>Bit 1 (Hz)</label><input type="number" id="freq-1" value="1600" style="width:100%"></div>
+<div class="section-title">📤 Transmitir</div>
+<label>Dados para transmitir:</label>
+<textarea id="sound-data" placeholder="Digite o texto para transmitir por som..." style="height:80px"></textarea>
+
+<label>Velocidade:</label>
+<select id="sound-speed">
+<option value="slow">Lenta (mais confiável)</option>
+<option value="medium" selected>Média</option>
+<option value="fast">Rápida (menos confiável)</option>
+</select>
+
+<div style="margin-top:10px">
+<button class="btn btn-primary" onclick="transmitirSom()" id="btn-sound-tx">🔊 Transmitir</button>
+<button class="btn btn-danger" onclick="pararSom()" id="btn-sound-stop" disabled>⏹️ Parar</button>
 </div>
-<label style="margin-top:8px">Duração por bit: <span id="bit-dur-val">50</span>ms</label>
-<input type="range" id="bit-duration" min="10" max="200" value="50" oninput="document.getElementById('bit-dur-val').textContent=this.value" style="width:100%">
-<div class="btn-row">
-<button class="btn btn-primary" onclick="startSoundTransmitText()">▶️ Transmitir</button>
-<button class="btn btn-danger" onclick="stopSound()">⏹️ Parar</button>
-</div>
-<div id="sound-status" class="status" style="display:none;margin-top:10px"></div>
+
+<div style="margin-top:15px">
+<span class="status status-idle" id="sound-tx-status">Aguardando</span>
 </div>
 </div>
+
 <div>
-<div class="card">
-<div class="card-title"><span class="icon">🎤</span> Receber por Som</div>
-<p style="font-size:12px;color:#888;margin-bottom:12px">Escuta o microfone e decodifica sinais FSK.</p>
-<div class="btn-row">
-<button class="btn btn-primary" onclick="startFSKReceive()">🎤 Iniciar Escuta</button>
-<button class="btn btn-danger" onclick="stopFSKReceive()">⏹️ Parar</button>
+<div class="section-title">📥 Receber</div>
+<div style="text-align:center;padding:20px">
+<button class="btn btn-success" onclick="receberSom()" id="btn-sound-rx">🎤 Escutar</button>
+<button class="btn btn-danger" onclick="pararRecepcaoSom()" id="btn-sound-rx-stop" disabled>⏹️ Parar</button>
 </div>
-<div id="fsk-receive-status" class="status" style="display:none;margin-top:10px"></div>
-<div id="fsk-received" class="hash-output" style="margin-top:10px;display:none;min-height:60px"></div>
-<div class="btn-row" id="fsk-save-btn" style="display:none">
-<button class="btn btn-success" onclick="saveFSKData()">💾 Salvar Dados</button>
+<div style="margin-top:10px">
+<span class="status status-idle" id="sound-rx-status">Aguardando</span>
 </div>
+<label>Dados recebidos:</label>
+<div class="hash-output" id="sound-received" style="min-height:80px">Aguardando transmissão...</div>
+</div>
+</div>
+
+<div class="log" id="sound-log" style="margin-top:15px">
+<div class="info">[Sistema] Módulo de áudio pronto.</div>
+</div>
+</div>
+
+<!-- ========== ABA: LUZ ========== -->
+<div class="panel" id="panel-light">
+<div class="section-title">💡 Transmissão por Luz da Tela</div>
+<p style="font-size:12px;color:#888;margin-bottom:15px">Transmite dados variando o brilho/cor da tela. O receptor usa a câmera para captar as variações.</p>
+
+<div class="grid-2">
+<div>
+<div class="section-title">📤 Transmitir por Luz</div>
+<label>Dados:</label>
+<textarea id="light-data" placeholder="Texto para transmitir por luz..." style="height:80px"></textarea>
+
+<label>Velocidade (ms por bit):</label>
+<input type="range" id="light-speed" min="50" max="500" value="150" step="50" oninput="document.getElementById('light-speed-val').textContent=this.value+'ms'">
+<span id="light-speed-val" style="font-size:11px;color:#888">150ms</span>
+
+<div style="margin-top:10px">
+<button class="btn btn-primary" onclick="transmitirLuz()" id="btn-light-tx">💡 Transmitir</button>
+<button class="btn btn-danger" onclick="pararLuz()" id="btn-light-stop" disabled>⏹️ Parar</button>
+</div>
+
+<div style="margin-top:10px">
+<span class="status status-idle" id="light-tx-status">Aguardando</span>
+</div>
+
+<div class="light-display" id="light-display" style="margin-top:15px;background:#808080"></div>
+</div>
+
+<div>
+<div class="section-title">📥 Receber por Câmera (Luz)</div>
+<div style="text-align:center">
+<video id="light-camera" class="camera-view" autoplay playsinline style="display:none"></video>
+<canvas id="light-canvas" style="display:none"></canvas>
+<button class="btn btn-success" onclick="receberLuz()" id="btn-light-rx">📷 Iniciar Câmera</button>
+<button class="btn btn-danger" onclick="pararRecepcaoLuz()" id="btn-light-rx-stop" disabled>⏹️ Parar</button>
+</div>
+<div style="margin-top:10px">
+<span class="status status-idle" id="light-rx-status">Aguardando</span>
+</div>
+<label>Dados recebidos:</label>
+<div class="hash-output" id="light-received" style="min-height:80px">Aguardando transmissão...</div>
+</div>
+</div>
+</div>
+
+<!-- ========== ABA: CÂMERA ========== -->
+<div class="panel" id="panel-camera">
+<div class="section-title">📷 Leitor de QR Code por Câmera</div>
+<p style="font-size:12px;color:#888;margin-bottom:15px">Use a câmera para ler QR Codes. Aponte para um QR Code e ele será decodificado automaticamente.</p>
+
+<div class="grid-2">
+<div>
+<div style="text-align:center">
+<video id="qr-camera" class="camera-view" autoplay playsinline style="display:none;width:100%"></video>
+<canvas id="qr-scan-canvas" style="display:none"></canvas>
+<div id="camera-placeholder" style="background:rgba(0,0,0,.3);border-radius:12px;padding:40px;text-align:center">
+<div style="font-size:60px;opacity:.3">📷</div>
+<p style="margin-top:10px;color:#888">Clique para iniciar a câmera</p>
+</div>
+</div>
+<div style="margin-top:15px;text-align:center">
+<button class="btn btn-success" onclick="iniciarCameraQR()">📷 Iniciar Câmera</button>
+<button class="btn btn-danger" onclick="pararCameraQR()">⏹️ Parar</button>
+</div>
+</div>
+
+<div>
+<div class="section-title">📋 QR Codes Detectados</div>
+<div id="qr-detected" style="min-height:200px">
+<div style="color:#555;text-align:center;padding:40px">
+<p>Aponte a câmera para um QR Code</p>
+</div>
+</div>
+<div class="log" id="camera-log" style="margin-top:10px">
+<div class="info">[Sistema] Leitor de QR Code pronto.</div>
 </div>
 </div>
 </div>
 </div>
 
-</div>
 </div>
 
 <!-- QR Code Library -->
@@ -362,767 +369,596 @@ var qrcode=function(){var r=function(r,e){if(void 0===r.length)throw new Error(r
 </script>
 
 <script>
-// ============ STATE ============
-var state = {
-    ecLevel: 'M',
-    qrSize: 300,
-    currentQR: null,
-    transmitFile: null,
-    transmitChunks: [],
-    receivedChunks: {},
-    receivedFileData: null,
-    cameraStream: null,
-    audioCtx: null,
-    oscillator: null,
-    isTransmitting: false,
-    lightInterval: null,
-    fskReceiveInterval: null
-};
+// ============================================
+// ESTADO GLOBAL
+// ============================================
+var state = { ecLevel: 'M', darkColor: '#000000', lightColor: '#ffffff' };
+var fileChunks = [];
+var audioCtx = null;
+var cameraStream = null;
+var lightInterval = null;
+var soundInterval = null;
 
-// ============ TABS ============
-function switchTab(name) {
+// ============================================
+// NAVEGAÇÃO POR ABAS
+// ============================================
+function showTab(name) {
     document.querySelectorAll('.tab').forEach(function(t,i){t.classList.remove('active')});
     document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
-    document.querySelectorAll('.tab').forEach(function(t){if(t.textContent.toLowerCase().includes(name==='qr'?'qr code':name==='hash'?'hash':name==='transmit'?'transmitir':name==='receive'?'receber':name==='light'?'luz':'som'))t.classList.add('active')});
     document.getElementById('panel-'+name).classList.add('active');
+    var tabs = document.querySelectorAll('.tab');
+    var names = ['qr','hash','file','sound','light','camera'];
+    tabs[names.indexOf(name)].classList.add('active');
 }
 
-// ============ QR CODE ============
-function setECLevel(level) {
+// ============================================
+// QR CODE - GERADOR
+// ============================================
+function setEC(level) {
     state.ecLevel = level;
-    document.querySelectorAll('.ec-btn').forEach(function(b){
+    document.querySelectorAll('.ec-btn').forEach(function(b) {
         b.classList.remove('active');
-        if(b.getAttribute('data-level')===level) b.classList.add('active');
+        if (b.getAttribute('data-level') === level) b.classList.add('active');
     });
 }
 
-function applyQRTemplate(type) {
+function applyTheme(dark, light) {
+    state.darkColor = dark;
+    state.lightColor = light;
+    document.getElementById('qr-dark').value = dark;
+    document.getElementById('qr-light').value = light;
+}
+
+function applyTpl(type) {
     var t = {url:'https://',wifi:'WIFI:T:WPA;S:NomeDaRede;P:Senha;;',email:'mailto:email@exemplo.com',phone:'tel:+5511999999999',vcard:'BEGIN:VCARD\nVERSION:3.0\nFN:Nome\nTEL:+5511999999999\nEMAIL:email@exemplo.com\nEND:VCARD',sms:'smsto:+5511999999999:Mensagem'};
-    document.getElementById('qr-content').value = t[type]||'';
+    document.getElementById('qr-content').value = t[type] || '';
 }
 
-function renderQR(text, size, dark, light, margin) {
-    size = size || 300; dark = dark || '#000'; light = light || '#fff'; margin = margin || 4;
-    var qr = qrcode(0, state.ecLevel);
-    qr.addData(text);
-    qr.make();
-    var mc = qr.getModuleCount();
-    var cs = size / (mc + margin * 2);
-    var c = document.createElement('canvas');
-    c.width = size; c.height = size;
-    var ctx = c.getContext('2d');
-    ctx.fillStyle = light;
-    ctx.fillRect(0,0,size,size);
-    ctx.fillStyle = dark;
-    for(var r=0;r<mc;r++) for(var col=0;col<mc;col++) {
-        if(qr.isDark(r,col)) {
-            ctx.fillRect(Math.round((col+margin)*cs),Math.round((r+margin)*cs),Math.ceil(cs),Math.ceil(cs));
-        }
-    }
-    return c;
-}
-
-function generateQR() {
+function gerarQR() {
     var text = document.getElementById('qr-content').value;
-    if(!text.trim()) return alert('Digite algo!');
+    if (!text) return alert('Digite algo!');
+    var size = parseInt(document.getElementById('qr-size').value);
+    var margin = parseInt(document.getElementById('qr-margin').value);
+    var dark = document.getElementById('qr-dark').value;
+    var light = document.getElementById('qr-light').value;
+    
     try {
-        var size = parseInt(document.getElementById('qr-size').value);
-        var dark = document.getElementById('qr-dark').value;
-        var light = document.getElementById('qr-light').value;
-        var canvas = renderQR(text, size, dark, light);
-        canvas.id = 'qrcode-canvas';
-        var area = document.getElementById('qr-area');
-        area.innerHTML = '';
+        var qr = qrcode(text, state.ecLevel);
+        var mc = qr.getModuleCount();
+        var cs = size / (mc + margin * 2);
+        var canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        canvas.id = 'qrcode';
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = light;
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = dark;
+        for (var r = 0; r < mc; r++)
+            for (var c = 0; c < mc; c++)
+                if (qr.isDark(r, c))
+                    ctx.fillRect(Math.round((c+margin)*cs), Math.round((r+margin)*cs), Math.ceil(cs), Math.ceil(cs));
+        
+        var display = document.getElementById('qr-display');
+        display.innerHTML = '';
         var container = document.createElement('div');
-        container.className = 'qr-container';
-        container.style.background = light;
+        container.style.cssText = 'background:'+light+';border-radius:12px;padding:20px;display:inline-block;box-shadow:0 8px 30px rgba(102,126,234,.3)';
         container.appendChild(canvas);
-        area.appendChild(container);
-        document.getElementById('qr-actions').style.display = 'flex';
-    } catch(e) { alert('Erro: '+e.message); }
+        display.appendChild(container);
+        document.getElementById('qr-actions').style.display = 'block';
+    } catch(e) { alert('Erro: ' + e.message); }
 }
 
-function downloadQR() {
-    var c = document.getElementById('qrcode-canvas');
-    if(!c) return;
+function salvarQR() {
+    var c = document.getElementById('qrcode');
+    if (!c) return;
     var a = document.createElement('a');
-    a.download = 'qrcode-'+Date.now()+'.png';
+    a.download = 'qrcode-' + Date.now() + '.png';
     a.href = c.toDataURL('image/png');
     a.click();
 }
 
-// ============ HASH ============
-async function generateHash(algo) {
+// ============================================
+// HASH SHA-256 / SHA-512
+// ============================================
+async function calcularHash() {
     var text = document.getElementById('hash-input').value;
-    if(!text) return alert('Digite algo!');
+    if (!text) return alert('Digite algo!');
+    var start = performance.now();
     var data = new TextEncoder().encode(text);
-    var hashBuffer = await crypto.subtle.digest(algo, data);
-    var hashArray = Array.from(new Uint8Array(hashBuffer));
-    var hashHex = hashArray.map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    var hash256 = await crypto.subtle.digest('SHA-256', data);
+    var hash512 = await crypto.subtle.digest('SHA-512', data);
+    var time = (performance.now() - start).toFixed(2);
+    
+    var hex256 = Array.from(new Uint8Array(hash256)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    var hex512 = Array.from(new Uint8Array(hash512)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    
+    document.getElementById('hash-256').textContent = hex256;
+    document.getElementById('hash-512').textContent = hex512;
+    document.getElementById('hash-chars').textContent = text.length;
+    document.getElementById('hash-bytes').textContent = data.length;
+    document.getElementById('hash-time').textContent = time + 'ms';
+}
+
+async function hashArquivo(file) {
+    if (!file) return;
+    var start = performance.now();
+    var data = await file.arrayBuffer();
+    var hash256 = await crypto.subtle.digest('SHA-256', data);
+    var hash512 = await crypto.subtle.digest('SHA-512', data);
+    var time = (performance.now() - start).toFixed(2);
+    
+    var hex256 = Array.from(new Uint8Array(hash256)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    var hex512 = Array.from(new Uint8Array(hash512)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    
+    document.getElementById('hash-256').textContent = hex256;
+    document.getElementById('hash-512').textContent = hex512;
+    document.getElementById('hash-chars').textContent = '-';
+    document.getElementById('hash-bytes').textContent = file.size;
+    document.getElementById('hash-time').textContent = time + 'ms';
+}
+
+function copiarHash(id) {
+    var text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(function(){ alert('Copiado!'); });
+}
+
+function verificarHash() {
+    var verify = document.getElementById('hash-verify').value.trim().toLowerCase();
+    var h256 = document.getElementById('hash-256').textContent;
+    var h512 = document.getElementById('hash-512').textContent;
     var result = document.getElementById('hash-result');
-    result.innerHTML = '<label>'+algo+'</label><div class="hash-output">'+hashHex+'</div><div class="btn-row"><button class="btn btn-secondary" onclick="navigator.clipboard.writeText(\''+hashHex+'\')">📋 Copiar</button></div>';
+    
+    if (!verify) { result.innerHTML = '<span style="color:#f87171">Cole um hash para verificar!</span>'; return; }
+    if (verify === h256) result.innerHTML = '<span style="color:#4ade80">✅ MATCH! Hash SHA-256 correto!</span>';
+    else if (verify === h512) result.innerHTML = '<span style="color:#4ade80">✅ MATCH! Hash SHA-512 correto!</span>';
+    else result.innerHTML = '<span style="color:#f87171">❌ Hash NÃO corresponde!</span>';
 }
 
-async function hashFile() {
-    var file = document.getElementById('hash-file').files[0];
-    if(!file) return;
-    var buffer = await file.arrayBuffer();
-    var sha256 = await crypto.subtle.digest('SHA-256', buffer);
-    var sha512 = await crypto.subtle.digest('SHA-512', buffer);
-    var h256 = Array.from(new Uint8Array(sha256)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
-    var h512 = Array.from(new Uint8Array(sha512)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
-    document.getElementById('hash-result').innerHTML = '<label>SHA-256</label><div class="hash-output" style="margin-bottom:10px">'+h256+'</div><label>SHA-512</label><div class="hash-output">'+h512+'</div><div style="margin-top:8px;font-size:11px;color:#888">Arquivo: '+file.name+' ('+formatSize(file.size)+')</div>';
-}
-
-async function verifyHash(algo) {
-    var hash = document.getElementById('verify-hash').value.trim();
-    var text = document.getElementById('verify-text').value;
-    if(!hash || !text) return alert('Preencha os dois campos!');
-    var data = new TextEncoder().encode(text);
-    var hashBuffer = await crypto.subtle.digest(algo, data);
-    var hashHex = Array.from(new Uint8Array(hashBuffer)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
-    var match = hashHex === hash.toLowerCase();
-    document.getElementById('verify-result').innerHTML = match ? '<div class="status status-success">✅ Hash CORRETO! Os dados são idênticos.</div>' : '<div class="status status-error">❌ Hash DIFERENTE! Os dados foram alterados.</div>';
-}
-
-// ============ FILE TRANSMIT ============
-function handleFileSelect(e) {
-    var file = e.target.files[0];
-    if(!file) return;
-    state.transmitFile = file;
-    document.getElementById('file-info-area').innerHTML = '<div class="file-info"><div class="icon">📄</div><div class="details"><div class="name">'+file.name+'</div><div class="size">'+formatSize(file.size)+' • '+file.type+'</div></div></div>';
-    document.getElementById('transmit-controls').style.display = 'block';
+// ============================================
+// ARQUIVO → QR CODES
+// ============================================
+function processarArquivo(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var bytes = new Uint8Array(e.target.result);
+        var base64 = btoa(String.fromCharCode.apply(null, bytes));
+        
+        // Dividir em chunks de ~150 caracteres (cabe em um QR)
+        var chunkSize = 150;
+        fileChunks = [];
+        for (var i = 0; i < base64.length; i += chunkSize) {
+            fileChunks.push({
+                index: fileChunks.length,
+                total: Math.ceil(base64.length / chunkSize),
+                data: base64.substring(i, i + chunkSize),
+                name: file.name,
+                type: file.type
+            });
+        }
+        // Adicionar metadata como primeiro chunk
+        var meta = JSON.stringify({name:file.name, type:file.type, size:file.size, chunks:fileChunks.length});
+        fileChunks.unshift({index:0, total:fileChunks.length+1, data:'META:'+meta, name:file.name, type:'meta'});
+        // Atualizar total
+        fileChunks.forEach(function(c){c.total=fileChunks.length});
+        
+        document.getElementById('file-info').style.display = 'block';
+        document.getElementById('file-name').textContent = file.name;
+        document.getElementById('file-size').textContent = formatSize(file.size);
+        document.getElementById('file-qrs').textContent = fileChunks.length;
+        document.getElementById('btn-gerar-qrs').disabled = false;
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 function formatSize(bytes) {
-    if(bytes < 1024) return bytes + ' B';
-    if(bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
     return (bytes/1048576).toFixed(1) + ' MB';
 }
 
-async function startQRTransmit() {
-    if(!state.transmitFile) return alert('Selecione um arquivo!');
-    var status = document.getElementById('transmit-status');
-    status.style.display = 'block';
-    status.className = 'status status-info';
-    status.textContent = '📖 Lendo arquivo...';
-    
-    var buffer = await state.transmitFile.arrayBuffer();
-    var bytes = new Uint8Array(buffer);
-    
-    // Converter para base64
-    var binary = '';
-    for(var i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
-    var b64 = btoa(binary);
-    
-    // Header: nome do arquivo + tamanho
-    var header = JSON.stringify({name:state.transmitFile.name,size:state.transmitFile.size,type:state.transmitFile.type});
-    var headerB64 = btoa(unescape(encodeURIComponent(header)));
-    
-    // Dividir em chunks (max ~200 chars por QR com EC L)
-    var chunkSize = 200;
-    var chunks = [];
-    var totalData = headerB64 + '|' + b64;
-    
-    for(var i=0;i<totalData.length;i+=chunkSize) {
-        var chunkNum = Math.floor(i/chunkSize);
-        var totalChunks = Math.ceil(totalData.length/chunkSize);
-        var prefix = 'DL:' + chunkNum + '/' + totalChunks + ':';
-        chunks.push(prefix + totalData.substring(i, i+chunkSize));
-    }
-    
-    state.transmitChunks = chunks;
-    status.textContent = '✅ '+chunks.length+' QR Codes gerados!';
-    status.className = 'status status-success';
-    
-    // Renderizar QR codes
+function gerarQRsArquivo() {
+    if (!fileChunks.length) return;
     var grid = document.getElementById('qr-grid');
     grid.innerHTML = '';
-    document.getElementById('qr-count').textContent = chunks.length;
-    document.getElementById('qr-transmit-area').style.display = 'block';
+    var progress = document.getElementById('file-progress');
     
-    for(var i=0;i<chunks.length;i++) {
-        var div = document.createElement('div');
-        div.className = 'qr-item';
-        try {
-            var oldEC = state.ecLevel;
-            state.ecLevel = 'L';
-            var canvas = renderQR(chunks[i], 150, '#000', '#fff', 2);
-            state.ecLevel = oldEC;
-            div.appendChild(canvas);
-        } catch(e) {
-            div.innerHTML = '<div style="padding:20px;color:#f87171;font-size:10px">Erro no chunk '+i+'</div>';
-        }
-        var label = document.createElement('div');
-        label.className = 'label';
-        label.textContent = '#'+(i+1)+'/'+chunks.length;
-        div.appendChild(label);
-        grid.appendChild(div);
-    }
-    
-    document.getElementById('transmit-progress').style.width = '100%';
-}
-
-var qrSequenceInterval = null;
-function playQRSequence() {
-    if(!state.transmitChunks.length) return;
-    var grid = document.getElementById('qr-grid');
-    var items = grid.querySelectorAll('.qr-item');
-    var idx = 0;
-    
-    if(qrSequenceInterval) clearInterval(qrSequenceInterval);
-    
-    // Mostrar um por vez
-    items.forEach(function(item){item.style.display='none'});
-    items[0].style.display = 'block';
-    
-    qrSequenceInterval = setInterval(function(){
-        items[idx].style.display = 'none';
-        idx = (idx+1) % items.length;
-        items[idx].style.display = 'block';
-        items[idx].style.border = '2px solid #7c3aed';
-        setTimeout(function(){items[idx].style.border=''}, 200);
-    }, 1500);
-}
-
-function downloadAllQR() {
-    var grid = document.getElementById('qr-grid');
-    var canvases = grid.querySelectorAll('canvas');
-    canvases.forEach(function(c,i){
-        var a = document.createElement('a');
-        a.download = 'qr-'+(i+1)+'.png';
-        a.href = c.toDataURL('image/png');
-        a.click();
+    fileChunks.forEach(function(chunk, i) {
+        setTimeout(function() {
+            try {
+                var qr = qrcode(chunk.data, 'M');
+                var mc = qr.getModuleCount();
+                var size = 150;
+                var cs = size / (mc + 2);
+                var canvas = document.createElement('canvas');
+                canvas.width = size; canvas.height = size;
+                var ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#000';
+                for (var r = 0; r < mc; r++)
+                    for (var c = 0; c < mc; c++)
+                        if (qr.isDark(r, c))
+                            ctx.fillRect(Math.round((c+1)*cs), Math.round((r+1)*cs), Math.ceil(cs), Math.ceil(cs));
+                
+                var item = document.createElement('div');
+                item.className = 'qr-item';
+                item.appendChild(canvas);
+                var info = document.createElement('div');
+                info.className = 'info';
+                info.textContent = 'Parte ' + (i+1) + '/' + fileChunks.length;
+                item.appendChild(info);
+                grid.appendChild(item);
+                
+                progress.style.width = ((i+1)/fileChunks.length*100) + '%';
+                if (i === fileChunks.length - 1) {
+                    document.getElementById('btn-descarregar').disabled = false;
+                }
+            } catch(e) { console.error(e); }
+        }, i * 50);
     });
 }
 
-// ============ SOUND TRANSMIT (FSK) ============
-function startSoundTransmitText() {
-    var text = document.getElementById('sound-text').value;
-    if(!text) return alert('Digite algo!');
+function descarregarTodos() {
+    var grid = document.getElementById('qr-grid');
+    var canvases = grid.querySelectorAll('canvas');
+    canvases.forEach(function(c, i) {
+        setTimeout(function() {
+            var a = document.createElement('a');
+            a.download = 'qr-parte-' + (i+1) + '.png';
+            a.href = c.toDataURL('image/png');
+            a.click();
+        }, i * 200);
+    });
+}
+
+// ============================================
+// TRANSMISSÃO POR SOM
+// ============================================
+function logSound(msg, type) {
+    var log = document.getElementById('sound-log');
+    var div = document.createElement('div');
+    div.className = type || 'info';
+    div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+function transmitirSom() {
+    var data = document.getElementById('sound-data').value;
+    if (!data) return alert('Digite dados para transmitir!');
     
-    var freq0 = parseInt(document.getElementById('freq-0').value) || 800;
-    var freq1 = parseInt(document.getElementById('freq-1').value) || 1600;
-    var bitDur = parseInt(document.getElementById('bit-duration').value) || 50;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var speed = document.getElementById('sound-speed').value;
+    var bitDuration = speed === 'slow' ? 0.1 : speed === 'medium' ? 0.05 : 0.025;
+    var freq0 = 800, freq1 = 1200, freqSync = 600;
     
-    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    var status = document.getElementById('sound-status');
-    status.style.display = 'block';
-    status.className = 'status status-info';
-    status.textContent = '🔊 Transmitindo...';
-    
-    // Converter texto para bits
-    var bits = [];
-    // Preâmbulo (sincronização)
-    for(var i=0;i<16;i++) bits.push(1,0);
-    // Dados
-    var encoder = new TextEncoder();
-    var bytes = encoder.encode(text);
-    for(var i=0;i<bytes.length;i++) {
-        for(var b=7;b>=0;b--) {
-            bits.push((bytes[i]>>b)&1);
+    // Converter para binário
+    var bits = '111111110'; // Sync
+    for (var i = 0; i < data.length; i++) {
+        var code = data.charCodeAt(i);
+        for (var j = 7; j >= 0; j--) {
+            bits += (code >> j) & 1;
         }
     }
-    // Fim
-    for(var i=0;i<8;i++) bits.push(0);
+    bits += '111111110'; // End sync
     
-    var idx = 0;
-    state.isTransmitting = true;
+    var pos = 0;
+    var status = document.getElementById('sound-tx-status');
+    status.textContent = '🔊 Transmitindo...';
+    status.className = 'status status-active';
+    document.getElementById('btn-sound-tx').disabled = true;
+    document.getElementById('btn-sound-stop').disabled = false;
     
-    function playBit() {
-        if(!state.isTransmitting || idx >= bits.length) {
-            status.textContent = '✅ Transmissão concluída!';
-            status.className = 'status status-success';
-            state.isTransmitting = false;
+    logSound('Iniciando transmissão de ' + data.length + ' caracteres (' + bits.length + ' bits)', 'info');
+    
+    soundInterval = setInterval(function() {
+        if (pos >= bits.length) {
+            clearInterval(soundInterval);
+            status.textContent = '✅ Transmissão completa!';
+            status.className = 'status status-idle';
+            document.getElementById('btn-sound-tx').disabled = false;
+            document.getElementById('btn-sound-stop').disabled = true;
+            logSound('Transmissão concluída!', 'success');
             return;
         }
         
-        var freq = bits[idx] ? freq1 : freq0;
-        var osc = state.audioCtx.createOscillator();
-        var gain = state.audioCtx.createGain();
+        var bit = bits[pos];
+        var freq = bit === '1' ? freq1 : bit === '0' ? freq0 : freqSync;
+        
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
         osc.type = 'sine';
         osc.frequency.value = freq;
         gain.gain.value = 0.3;
         osc.connect(gain);
-        gain.connect(state.audioCtx.destination);
+        gain.connect(audioCtx.destination);
         osc.start();
-        osc.stop(state.audioCtx.currentTime + bitDur/1000);
+        osc.stop(audioCtx.currentTime + bitDuration);
         
-        idx++;
-        var progress = (idx/bits.length*100).toFixed(0);
-        document.getElementById('transmit-progress').style.width = progress+'%';
-        
-        setTimeout(playBit, bitDur);
-    }
-    
-    playBit();
+        pos++;
+        var progress = Math.round(pos / bits.length * 100);
+        logSound('Bit ' + pos + '/' + bits.length + ' (' + progress + '%)', 'info');
+    }, bitDuration * 1000);
 }
 
-function stopSound() {
-    state.isTransmitting = false;
-    if(state.audioCtx) { state.audioCtx.close(); state.audioCtx = null; }
+function pararSom() {
+    if (soundInterval) clearInterval(soundInterval);
+    if (audioCtx) audioCtx.close();
+    document.getElementById('sound-tx-status').textContent = 'Aguardando';
+    document.getElementById('sound-tx-status').className = 'status status-idle';
+    document.getElementById('btn-sound-tx').disabled = false;
+    document.getElementById('btn-sound-stop').disabled = true;
+    logSound('Transmissão interrompida.', 'warn');
 }
 
-async function startSoundTransmit() {
-    if(!state.transmitFile) return;
-    var buffer = await state.transmitFile.arrayBuffer();
-    var bytes = new Uint8Array(buffer);
-    var binary = '';
-    for(var i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
-    var b64 = btoa(binary);
+function receberSom() {
+    document.getElementById('sound-rx-status').textContent = '🎤 Escutando...';
+    document.getElementById('sound-rx-status').className = 'status status-active';
+    document.getElementById('btn-sound-rx').disabled = true;
+    document.getElementById('btn-sound-rx-stop').disabled = false;
+    document.getElementById('sound-received').textContent = 'Escutando...';
+    logSound('Microfone ativado. Aguardando dados...', 'info');
     
-    // Adicionar header
-    var header = JSON.stringify({name:state.transmitFile.name,size:state.transmitFile.size});
-    var data = btoa(unescape(encodeURIComponent(header))) + '|' + b64;
-    
-    document.getElementById('sound-text').value = 'FILE:' + data;
-    switchTab('sound');
-    startSoundTransmitText();
-}
-
-// ============ FSK RECEIVE ============
-var fskStream = null;
-var fskAnalyser = null;
-var fskData = [];
-var fskLastState = 0;
-var fskLastChange = 0;
-var fskBits = [];
-var fskReceiving = false;
-
-async function startFSKReceive() {
-    try {
-        fskStream = await navigator.mediaDevices.getUserMedia({audio:true});
-        state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        var source = state.audioCtx.createMediaStreamSource(fskStream);
-        fskAnalyser = state.audioCtx.createAnalyser();
-        fskAnalyser.fftSize = 2048;
-        source.connect(fskAnalyser);
+    navigator.mediaDevices.getUserMedia({audio: true}).then(function(stream) {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var source = ctx.createMediaStreamSource(stream);
+        var analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
         
-        fskReceiving = true;
-        fskBits = [];
-        fskLastState = 0;
-        fskLastChange = performance.now();
+        var bufferLength = analyser.frequencyBinCount;
+        var dataArray = new Uint8Array(bufferLength);
+        var received = '';
+        var currentByte = 0;
+        var bitCount = 0;
         
-        var status = document.getElementById('fsk-receive-status');
-        status.style.display = 'block';
-        status.className = 'status status-info';
-        status.textContent = '🎤 Escutando... (Aguarde o sinal sonoro)';
-        
-        var freq0 = parseInt(document.getElementById('freq-0').value) || 800;
-        var freq1 = parseInt(document.getElementById('freq-1').value) || 1600;
-        var bitDur = parseInt(document.getElementById('bit-duration').value) || 50;
-        var threshold = (freq0 + freq1) / 2;
-        
-        var dataArray = new Float32Array(fskAnalyser.fftSize);
-        var lastBitTime = 0;
-        
-        function detect() {
-            if(!fskReceiving) return;
-            fskAnalyser.getFloatTimeDomainData(dataArray);
+        window._soundRxInterval = setInterval(function() {
+            analyser.getByteFrequencyData(dataArray);
             
-            // Calcular frequência dominante (autocorrelação simplificada)
-            var correlations = new Array(512).fill(0);
-            for(var lag = 1; lag < 512; lag++) {
-                for(var i = 0; i < dataArray.length - lag; i++) {
-                    correlations[lag] += dataArray[i] * dataArray[i+lag];
-                }
-            }
+            // Detectar frequências
+            var sampleRate = ctx.sampleRate;
+            var binSize = sampleRate / analyser.fftSize;
             
-            // Encontrar pico
-            var maxCorr = 0, maxLag = 0;
-            for(var lag = 20; lag < 200; lag++) {
-                if(correlations[lag] > maxCorr) {
-                    maxCorr = correlations[lag];
-                    maxLag = lag;
-                }
-            }
+            // Verificar energia em 800Hz (bit 0) e 1200Hz (bit 1)
+            var bin800 = Math.round(800 / binSize);
+            var bin1200 = Math.round(1200 / binSize);
             
-            var sampleRate = state.audioCtx.sampleRate;
-            var freq = maxLag > 0 ? sampleRate / maxLag : 0;
+            var energy800 = dataArray[bin800];
+            var energy1200 = dataArray[bin1200];
             
-            // Verificar se há sinal forte o suficiente
-            var rms = 0;
-            for(var i=0;i<dataArray.length;i++) rms += dataArray[i]*dataArray[i];
-            rms = Math.sqrt(rms/dataArray.length);
-            
-            if(rms > 0.01 && freq > 200) {
-                var bit = freq > threshold ? 1 : 0;
-                var now = performance.now();
+            if (energy800 > 100 || energy1200 > 100) {
+                var bit = energy1200 > energy800 ? '1' : '0';
+                currentByte = (currentByte << 1) | parseInt(bit);
+                bitCount++;
                 
-                if(now - lastBitTime > bitDur * 0.7) {
-                    fskBits.push(bit);
-                    lastBitTime = now;
-                    
-                    // Tentar decodificar a cada 8 bits
-                    if(fskBits.length >= 8 && fskBits.length % 8 === 0) {
-                        tryDecodeFSK();
-                    }
+                if (bitCount === 8) {
+                    received += String.fromCharCode(currentByte);
+                    currentByte = 0;
+                    bitCount = 0;
+                    document.getElementById('sound-received').textContent = received;
                 }
-                
-                status.textContent = '🎤 Frequência: '+Math.round(freq)+'Hz | Bits: '+fskBits.length;
             }
-            
-            requestAnimationFrame(detect);
-        }
+        }, 50);
         
-        detect();
-    } catch(e) {
-        alert('Erro ao acessar microfone: '+e.message);
-    }
-}
-
-function tryDecodeFSK() {
-    var bytes = [];
-    for(var i=0;i<fskBits.length-7;i+=8) {
-        var byte = 0;
-        for(var b=0;b<8;b++) {
-            byte = (byte << 1) | fskBits[i+b];
-        }
-        bytes.push(byte);
-    }
-    
-    try {
-        var text = new TextDecoder().decode(new Uint8Array(bytes));
-        // Remover caracteres não imprimíveis
-        text = text.replace(/[^\x20-\x7E\u00C0-\u024F\n]/g, '');
-        if(text.length > 2) {
-            document.getElementById('fsk-received').style.display = 'block';
-            document.getElementById('fsk-received').textContent = text;
-            document.getElementById('fsk-save-btn').style.display = 'flex';
-        }
-    } catch(e) {}
-}
-
-function stopFSKReceive() {
-    fskReceiving = false;
-    if(fskStream) { fskStream.getTracks().forEach(function(t){t.stop()}); fskStream = null; }
-    if(state.audioCtx) { state.audioCtx.close(); state.audioCtx = null; }
-    var status = document.getElementById('fsk-receive-status');
-    status.className = 'status status-warning';
-    status.textContent = '⏹️ Parado';
-}
-
-function saveFSKData() {
-    var text = document.getElementById('fsk-received').textContent;
-    var blob = new Blob([text], {type:'text/plain'});
-    var a = document.createElement('a');
-    a.download = 'dados-recebidos-'+Date.now()+'.txt';
-    a.href = URL.createObjectURL(blob);
-    a.click();
-}
-
-// ============ CAMERA RECEIVE ============
-async function startCamera() {
-    try {
-        state.cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-        var video = document.getElementById('camera-video');
-        video.srcObject = state.cameraStream;
-        document.getElementById('camera-container').style.display = 'block';
-        
-        var status = document.getElementById('receive-status');
-        status.style.display = 'block';
-        status.className = 'status status-info';
-        status.textContent = '📷 Câmera ativa - Aponte para os QR Codes';
-        document.getElementById('receive-log').style.display = 'block';
-        
-        // Iniciar scan contínuo
-        startQRScanning();
-    } catch(e) {
-        alert('Erro ao acessar câmera: '+e.message);
-    }
-}
-
-function stopCamera() {
-    if(state.cameraStream) {
-        state.cameraStream.getTracks().forEach(function(t){t.stop()});
-        state.cameraStream = null;
-    }
-    document.getElementById('camera-container').style.display = 'none';
-    if(state.scanInterval) clearInterval(state.scanInterval);
-}
-
-function startQRScanning() {
-    var video = document.getElementById('camera-video');
-    var canvas = document.getElementById('camera-canvas');
-    var ctx = canvas.getContext('2d');
-    var log = document.getElementById('receive-log');
-    
-    state.receivedChunks = {};
-    var totalExpected = 0;
-    
-    function addLog(msg, type) {
-        var div = document.createElement('div');
-        div.className = type || 'info';
-        div.textContent = '['+new Date().toLocaleTimeString()+'] '+msg;
-        log.appendChild(div);
-        log.scrollTop = log.scrollHeight;
-    }
-    
-    addLog('Iniciando scanner de QR Code...', 'info');
-    
-    // Nota: Scanner QR por câmera requer uma biblioteca como jsQR
-    // Por enquanto, mostramos a câmera e instruímos o usuário
-    addLog('Aponte a câmera para os QR Codes. A decodificação requer a biblioteca jsQR.', 'warn');
-    addLog('Para receber: use a aba "Som" para recepção por áudio, ou escaneie os QR codes com um app leitor e cole os dados aqui.', 'info');
-    
-    // Área para colar dados manualmente
-    var status = document.getElementById('receive-status');
-    status.innerHTML = '📷 Câmera ativa. Para decodificar QR, use um leitor externo e cole os dados abaixo:<br><textarea id="manual-qr-input" placeholder="Cole os dados do QR aqui (formato: DL:X/Y:dados)" style="width:100%;height:60px;margin-top:8px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;color:#fff;font-size:11px;font-family:monospace"></textarea><button class="btn btn-primary" onclick="processManualQR()" style="margin-top:6px">Processar</button>';
-}
-
-function processManualQR() {
-    var input = document.getElementById('manual-qr-input');
-    if(!input) return;
-    var data = input.value.trim();
-    if(!data) return;
-    
-    var lines = data.split('\n');
-    var log = document.getElementById('receive-log');
-    
-    lines.forEach(function(line) {
-        line = line.trim();
-        if(!line) return;
-        
-        // Formato: DL:X/Y:dados
-        var match = line.match(/^DL:(\d+)\/(\d+):(.+)$/);
-        if(match) {
-            var chunkNum = parseInt(match[1]);
-            var totalChunks = parseInt(match[2]);
-            var chunkData = match[3];
-            
-            state.receivedChunks[chunkNum] = chunkData;
-            
-            var div = document.createElement('div');
-            div.className = 'success';
-            div.textContent = '✅ Chunk '+chunkNum+'/'+totalChunks+' recebido';
-            log.appendChild(div);
-            log.scrollTop = log.scrollHeight;
-            
-            // Verificar se temos todos
-            if(Object.keys(state.receivedChunks).length >= totalChunks) {
-                assembleFile(totalChunks);
-            }
-            
-            var progress = (Object.keys(state.receivedChunks).length / totalChunks * 100);
-            document.getElementById('receive-progress').style.width = progress + '%';
-        }
+        window._soundRxStream = stream;
+        window._soundRxCtx = ctx;
+    }).catch(function(e) {
+        logSound('Erro ao acessar microfone: ' + e.message, 'error');
+        document.getElementById('sound-rx-status').textContent = '❌ Erro';
+        document.getElementById('sound-rx-status').className = 'status status-error';
     });
-    
-    input.value = '';
 }
 
-function assembleFile(totalChunks) {
-    var fullData = '';
-    for(var i=0;i<totalChunks;i++) {
-        if(state.receivedChunks[i]) {
-            fullData += state.receivedChunks[i];
+function pararRecepcaoSom() {
+    if (window._soundRxInterval) clearInterval(window._soundRxInterval);
+    if (window._soundRxStream) window._soundRxStream.getTracks().forEach(function(t){t.stop()});
+    if (window._soundRxCtx) window._soundRxCtx.close();
+    document.getElementById('sound-rx-status').textContent = 'Aguardando';
+    document.getElementById('sound-rx-status').className = 'status status-idle';
+    document.getElementById('btn-sound-rx').disabled = false;
+    document.getElementById('btn-sound-rx-stop').disabled = true;
+    logSound('Recepção interrompida.', 'warn');
+}
+
+// ============================================
+// TRANSMISSÃO POR LUZ
+// ============================================
+function transmitirLuz() {
+    var data = document.getElementById('light-data').value;
+    if (!data) return alert('Digite dados!');
+    
+    var speed = parseInt(document.getElementById('light-speed').value);
+    var display = document.getElementById('light-display');
+    var status = document.getElementById('light-tx-status');
+    
+    // Converter para binário com sync
+    var bits = '101010101'; // Sync pattern
+    for (var i = 0; i < data.length; i++) {
+        var code = data.charCodeAt(i);
+        for (var j = 7; j >= 0; j--) {
+            bits += (code >> j) & 1;
         }
     }
+    bits += '101010101'; // End sync
     
-    // Separar header e dados
-    var parts = fullData.split('|');
-    if(parts.length < 2) return;
+    var pos = 0;
+    status.textContent = '💡 Transmitindo...';
+    status.className = 'status status-active';
+    document.getElementById('btn-light-tx').disabled = true;
+    document.getElementById('btn-light-stop').disabled = false;
     
-    try {
-        var header = JSON.parse(decodeURIComponent(escape(atob(parts[0]))));
-        var b64Data = parts[1];
-        
-        // Converter base64 para blob
-        var binary = atob(b64Data);
-        var bytes = new Uint8Array(binary.length);
-        for(var i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
-        
-        state.receivedFileData = new Blob([bytes], {type: header.type || 'application/octet-stream'});
-        state.receivedFileName = header.name;
-        
-        document.getElementById('received-file').style.display = 'block';
-        
-        var log = document.getElementById('receive-log');
-        var div = document.createElement('div');
-        div.className = 'success';
-        div.textContent = '🎉 Arquivo completo: '+header.name+' ('+formatSize(header.size)+')';
-        log.appendChild(div);
-    } catch(e) {
-        var log = document.getElementById('receive-log');
-        var div = document.createElement('div');
-        div.className = 'error';
-        div.textContent = '❌ Erro ao montar arquivo: '+e.message;
-        log.appendChild(div);
-    }
-}
-
-function downloadReceivedFile() {
-    if(!state.receivedFileData) return;
-    var a = document.createElement('a');
-    a.download = state.receivedFileName || 'arquivo-recebido';
-    a.href = URL.createObjectURL(state.receivedFileData);
-    a.click();
-}
-
-// ============ LIGHT TRANSMIT ============
-var lightFileData = null;
-var lightTransmitting = false;
-
-function handleLightFile(e) {
-    var file = e.target.files[0];
-    if(!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-        lightFileData = ev.target.result; // base64
-        var status = document.getElementById('light-status');
-        status.style.display = 'block';
-        status.className = 'status status-info';
-        status.textContent = '📁 Arquivo carregado: '+file.name+' ('+formatSize(file.size)+')';
-    };
-    reader.readAsDataURL(file);
-}
-
-function startLightTransmit() {
-    if(!lightFileData) return alert('Selecione um arquivo!');
-    
-    lightTransmitting = true;
-    var visual = document.getElementById('light-transmit-visual');
-    var progress = document.getElementById('light-progress');
-    var status = document.getElementById('light-status');
-    status.className = 'status status-info';
-    status.textContent = '💡 Transmitindo por luz... (Aponte a tela para a câmera do receptor)';
-    
-    // Converter dados para sequência de bits
-    var b64 = lightFileData.split(',')[1] || lightFileData;
-    var bits = [];
-    
-    // Preâmbulo de sincronização
-    for(var i=0;i<32;i++) bits.push(1,0,1,0);
-    
-    // Dados
-    for(var i=0;i<b64.length;i++) {
-        var code = b64.charCodeAt(i);
-        for(var b=7;b>=0;b--) {
-            bits.push((code>>b)&1);
-        }
-    }
-    
-    // Fim
-    for(var i=0;i<16;i++) bits.push(1,1,1,1);
-    
-    var idx = 0;
-    var speed = 100; // ms por bit
-    
-    state.lightInterval = setInterval(function(){
-        if(!lightTransmitting || idx >= bits.length) {
-            clearInterval(state.lightInterval);
-            visual.style.background = '#333';
-            status.textContent = '✅ Transmissão por luz concluída!';
-            status.className = 'status status-success';
-            lightTransmitting = false;
+    lightInterval = setInterval(function() {
+        if (pos >= bits.length) {
+            clearInterval(lightInterval);
+            display.style.backgroundColor = '#808080';
+            status.textContent = '✅ Completo!';
+            status.className = 'status status-idle';
+            document.getElementById('btn-light-tx').disabled = false;
+            document.getElementById('btn-light-stop').disabled = true;
             return;
         }
         
-        if(bits[idx]) {
-            visual.style.background = '#fff';
-        } else {
-            visual.style.background = '#000';
-        }
-        
-        idx++;
-        progress.style.width = (idx/bits.length*100)+'%';
+        display.style.backgroundColor = bits[pos] === '1' ? '#ffffff' : '#000000';
+        pos++;
     }, speed);
 }
 
-function stopLightTransmit() {
-    lightTransmitting = false;
-    if(state.lightInterval) clearInterval(state.lightInterval);
-    document.getElementById('light-transmit-visual').style.background = '#333';
+function pararLuz() {
+    if (lightInterval) clearInterval(lightInterval);
+    document.getElementById('light-display').style.backgroundColor = '#808080';
+    document.getElementById('light-tx-status').textContent = 'Aguardando';
+    document.getElementById('light-tx-status').className = 'status status-idle';
+    document.getElementById('btn-light-tx').disabled = false;
+    document.getElementById('btn-light-stop').disabled = true;
 }
 
-// ============ LIGHT RECEIVE ============
-var lightStream = null;
-var lightReceiving = false;
-
-async function startLightReceive() {
-    try {
-        lightStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-        var video = document.getElementById('light-camera-video');
-        video.srcObject = lightStream;
-        document.getElementById('light-camera-container').style.display = 'block';
+function receberLuz() {
+    var status = document.getElementById('light-rx-status');
+    status.textContent = '📷 Iniciando câmera...';
+    status.className = 'status status-active';
+    
+    navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function(stream) {
+        var video = document.getElementById('light-camera');
+        video.srcObject = stream;
+        video.style.display = 'block';
+        document.getElementById('camera-placeholder').style.display = 'none';
+        window._lightStream = stream;
         
-        lightReceiving = true;
-        var status = document.getElementById('light-receive-status');
-        status.style.display = 'block';
-        status.className = 'status status-info';
-        status.textContent = '📷 Analisando luz... Aponte para a tela transmissora';
-        
-        var canvas = document.createElement('canvas');
-        canvas.width = 10; canvas.height = 10;
+        var canvas = document.getElementById('light-canvas');
         var ctx = canvas.getContext('2d');
+        canvas.width = 10; canvas.height = 10;
         
+        var received = '';
+        var currentByte = 0;
+        var bitCount = 0;
         var lastBrightness = 0;
-        var bits = [];
-        var lastBitTime = 0;
         var threshold = 128;
         
-        function analyze() {
-            if(!lightReceiving) return;
-            
+        document.getElementById('btn-light-rx').disabled = true;
+        document.getElementById('btn-light-rx-stop').disabled = false;
+        document.getElementById('light-received').textContent = 'Capturando luz...';
+        status.textContent = '📷 Capturando...';
+        
+        window._lightRxInterval = setInterval(function() {
             ctx.drawImage(video, 0, 0, 10, 10);
-            var data = ctx.getImageData(0,0,10,10).data;
+            var data = ctx.getImageData(0, 0, 10, 10).data;
             
             // Calcular brilho médio
-            var brightness = 0;
-            for(var i=0;i<data.length;i+=4) {
-                brightness += (data[i]+data[i+1]+data[i+2])/3;
+            var totalBrightness = 0;
+            for (var i = 0; i < data.length; i += 4) {
+                totalBrightness += (data[i] + data[i+1] + data[i+2]) / 3;
             }
-            brightness /= (data.length/4);
+            var avgBrightness = totalBrightness / (data.length / 4);
             
             // Detectar mudança
-            var now = performance.now();
-            var bit = brightness > threshold ? 1 : 0;
-            var lastBit = lastBrightness > threshold ? 1 : 0;
+            var bit = avgBrightness > threshold ? '1' : '0';
+            var prevBit = lastBrightness > threshold ? '1' : '0';
             
-            if(bit !== lastBit && now - lastBitTime > 50) {
-                bits.push(bit);
-                lastBitTime = now;
+            if (bit !== prevBit) {
+                currentByte = (currentByte << 1) | parseInt(bit);
+                bitCount++;
+                
+                if (bitCount === 8) {
+                    if (currentByte >= 32 && currentByte <= 126) {
+                        received += String.fromCharCode(currentByte);
+                        document.getElementById('light-received').textContent = received;
+                    }
+                    currentByte = 0;
+                    bitCount = 0;
+                }
             }
             
-            lastBrightness = brightness;
-            
-            status.textContent = '💡 Brilho: '+Math.round(brightness)+' | Bits: '+bits.length;
-            document.getElementById('light-receive-progress').style.width = Math.min(bits.length/100*100,100)+'%';
-            
-            requestAnimationFrame(analyze);
-        }
+            lastBrightness = avgBrightness;
+        }, 100);
         
-        analyze();
-    } catch(e) {
-        alert('Erro ao acessar câmera: '+e.message);
-    }
-}
-
-function stopLightReceive() {
-    lightReceiving = false;
-    if(lightStream) { lightStream.getTracks().forEach(function(t){t.stop()}); lightStream = null; }
-    document.getElementById('light-camera-container').style.display = 'none';
-    var status = document.getElementById('light-receive-status');
-    status.className = 'status status-warning';
-    status.textContent = '⏹️ Parado';
-}
-
-// ============ DRAG & DROP ============
-var dropZone = document.getElementById('file-drop');
-if(dropZone) {
-    dropZone.addEventListener('dragover', function(e){e.preventDefault();dropZone.classList.add('dragover')});
-    dropZone.addEventListener('dragleave', function(){dropZone.classList.remove('dragover')});
-    dropZone.addEventListener('drop', function(e){
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        var files = e.dataTransfer.files;
-        if(files.length) {
-            state.transmitFile = files[0];
-            document.getElementById('file-info-area').innerHTML = '<div class="file-info"><div class="icon">📄</div><div class="details"><div class="name">'+files[0].name+'</div><div class="size">'+formatSize(files[0].size)+' • '+files[0].type+'</div></div></div>';
-            document.getElementById('transmit-controls').style.display = 'block';
-        }
+    }).catch(function(e) {
+        status.textContent = '❌ Erro: ' + e.message;
+        status.className = 'status status-error';
     });
 }
+
+function pararRecepcaoLuz() {
+    if (window._lightRxInterval) clearInterval(window._lightRxInterval);
+    if (window._lightStream) window._lightStream.getTracks().forEach(function(t){t.stop()});
+    document.getElementById('light-camera').style.display = 'none';
+    document.getElementById('light-rx-status').textContent = 'Aguardando';
+    document.getElementById('light-rx-status').className = 'status status-idle';
+    document.getElementById('btn-light-rx').disabled = false;
+    document.getElementById('btn-light-rx-stop').disabled = true;
+}
+
+// ============================================
+// CÂMERA - LEITOR DE QR
+// ============================================
+function iniciarCameraQR() {
+    navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function(stream) {
+        var video = document.getElementById('qr-camera');
+        video.srcObject = stream;
+        video.style.display = 'block';
+        document.getElementById('camera-placeholder').style.display = 'none';
+        cameraStream = stream;
+        logCamera('Câmera iniciada. Aponte para um QR Code.', 'success');
+        
+        // Iniciar detecção contínua
+        window._qrScanInterval = setInterval(function() {
+            scanForQR(video);
+        }, 500);
+    }).catch(function(e) {
+        logCamera('Erro: ' + e.message, 'error');
+    });
+}
+
+function pararCameraQR() {
+    if (window._qrScanInterval) clearInterval(window._qrScanInterval);
+    if (cameraStream) cameraStream.getTracks().forEach(function(t){t.stop()});
+    document.getElementById('qr-camera').style.display = 'none';
+    document.getElementById('camera-placeholder').style.display = 'block';
+    cameraStream = null;
+    logCamera('Câmera desligada.', 'warn');
+}
+
+function scanForQR(video) {
+    // Nota: detecção real de QR requer uma biblioteca como jsQR
+    // Aqui mostramos o frame da câmera e indicamos que precisa de jsQR
+    var canvas = document.getElementById('qr-scan-canvas');
+    var ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    ctx.drawImage(video, 0, 0);
+}
+
+function logCamera(msg, type) {
+    var log = document.getElementById('camera-log');
+    var div = document.createElement('div');
+    div.className = type || 'info';
+    div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+// ============================================
+// DRAG AND DROP
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    var drops = document.querySelectorAll('.file-drop');
+    drops.forEach(function(drop) {
+        drop.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            drop.classList.add('dragover');
+        });
+        drop.addEventListener('dragleave', function() {
+            drop.classList.remove('dragover');
+        });
+        drop.addEventListener('drop', function(e) {
+            e.preventDefault();
+            drop.classList.remove('dragover');
+            var file = e.dataTransfer.files[0];
+            if (drop.id === 'hash-drop') hashArquivo(file);
+            else if (drop.id === 'file-drop') processarArquivo(file);
+        });
+    });
+});
 </script>
 </body>
 </html>
