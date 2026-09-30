@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataLink Chat - Comunicação Segura</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#8b5cf6 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.container{width:100%;max-width:500px}
+.card{background:white;border-radius:20px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.logo{text-align:center;margin-bottom:25px}
+.logo-icon{font-size:48px;margin-bottom:10px}
+h1{font-size:24px;color:#1e3a8a;margin-bottom:5px}
+.subtitle{font-size:13px;color:#666}
+.form-group{margin-bottom:15px}
+label{display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:5px}
+input[type="text"],input[type="password"]{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;transition:border 0.3s}
+input:focus{border-color:#3b82f6}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.3s;margin-top:10px}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(59,130,246,0.4)}
+.btn-secondary{background:#f0f0f0;color:#333}
+.btn-danger{background:#ef4444;color:white}
+.btn-success{background:#10b981;color:white}
+.hidden{display:none}
+.error{color:#ef4444;font-size:12px;margin-top:5px}
+.success{color:#10b981;font-size:12px;margin-top:5px}
+.info-box{background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;padding:10px;margin-bottom:15px;font-size:11px;color:#1e40af}
+.timer{background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;margin-bottom:15px;font-size:12px;color:#92400e;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+<!-- TELA DE LOGIN -->
+<div class="card" id="login-screen">
+<div class="logo">
+<div class="logo-icon">💬</div>
+<h1>DataLink Chat</h1>
+<p class="subtitle">Comunicação Segura Offline</p>
+</div>
+
+<div class="timer" id="reset-timer">
+⏰ Chat reinicia em: <strong id="time-remaining">--:--:--</strong>
+</div>
+
+<div class="info-box">
+💡 <strong>Novo usuário?</strong> Digite um nome e senha para criar sua conta.<br>
+🔒 Suas mensagens são criptografadas e privadas.
+</div>
+
+<div id="login-form">
+<div class="form-group">
+<label>👤 Nome de Usuário</label>
+<input type="text" id="username" placeholder="Digite seu nome..." maxlength="20">
+</div>
+<div class="form-group">
+<label>🔐 Senha</label>
+<input type="password" id="password" placeholder="Digite sua senha..." maxlength="30">
+</div>
+<div id="login-error" class="error hidden"></div>
+<div id="login-success" class="success hidden"></div>
+<button class="btn btn-primary" onclick="login()">🚀 Entrar / Criar Conta</button>
+</div>
+
+<div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;text-align:center">
+<p style="font-size:11px;color:#888">
+🔒 Criptografia AES-256 | 🕐 Reset a cada 12h | 🗑️ Excluir mensagens
+</p>
+</div>
+</div>
+
+<!-- TELA DO CHAT -->
+<div class="card hidden" id="chat-screen">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+<div>
+<h2 style="font-size:18px;color:#1e3a8a">💬 Chat</h2>
+<p style="font-size:11px;color:#666">Olá, <strong id="user-display"></strong>!</p>
+</div>
+<button class="btn btn-danger" style="width:auto;padding:8px 15px;margin:0;font-size:12px" onclick="logout()">🚪 Sair</button>
+</div>
+
+<div class="timer" style="margin-bottom:10px">
+⏰ Reset em: <strong id="chat-timer">--:--:--</strong>
+</div>
+
+<div style="background:#f8f9fa;border-radius:10px;padding:15px;min-height:300px;max-height:400px;overflow-y:auto;margin-bottom:15px" id="messages-container">
+<div style="text-align:center;color:#888;font-size:12px;padding:20px">
+💬 Nenhuma mensagem ainda. Comece a conversar!
+</div>
+</div>
+
+<div style="display:flex;gap:8px">
+<input type="text" id="message-input" placeholder="Digite sua mensagem..." style="flex:1" onkeypress="if(event.key==='Enter')sendMessage()">
+<button class="btn btn-primary" style="width:auto;padding:12px 20px;margin:0" onclick="sendMessage()">📤</button>
+</div>
+
+<div style="margin-top:10px;display:flex;gap:8px">
+<button class="btn btn-secondary" style="flex:1;font-size:11px;padding:8px" onclick="deleteMyMessages()">🗑️ Excluir Minhas Mensagens</button>
+<button class="btn btn-secondary" style="flex:1;font-size:11px;padding:8px" onclick="clearAll()">🧹 Limpar Chat</button>
+</div>
+
+<div style="margin-top:15px;padding-top:15px;border-top:1px solid #e0e0e0">
+<p style="font-size:10px;color:#888;text-align:center">
+👥 <span id="online-count">0</span> usuários online | 📝 <span id="msg-count">0</span> mensagens
+</p>
+</div>
+</div>
+</div>
+
+<script>
+// ============================================
+// SISTEMA DE CHAT COMPLETO
+// ============================================
+
+const RESET_INTERVAL = 12 * 60 * 60 * 1000; // 12 horas em ms
+const STORAGE_KEY = 'datalink_chat';
+const USERS_KEY = 'datalink_users';
+const SESSION_KEY = 'datalink_session';
+
+let currentUser = null;
+let updateInterval = null;
+
+// ============================================
+// CRIPTOGRAFIA
+// ============================================
+
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'datalink_salt_2024');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function encryptMessage(text, key) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(key.padEnd(32, '0')), 'PBKDF2', false, ['deriveKey']);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const aesKey = await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:1000,hash:'SHA-256'}, keyMaterial, {name:'AES-GCM',length:256}, false, ['encrypt']);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv:iv}, aesKey, data);
+    
+    const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+    result.set(salt, 0);
+    result.set(iv, salt.length);
+    result.set(new Uint8Array(encrypted), salt.length + iv.length);
+    
+    return btoa(String.fromCharCode.apply(null, result));
+}
+
+async function decryptMessage(encryptedBase64, key) {
+    try {
+        const encoder = new TextEncoder();
+        const data = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+        const salt = data.slice(0, 16);
+        const iv = data.slice(16, 28);
+        const encrypted = data.slice(28);
+        
+        const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(key.padEnd(32, '0')), 'PBKDF2', false, ['deriveKey']);
+        const aesKey = await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:1000,hash:'SHA-256'}, keyMaterial, {name:'AES-GCM',length:256}, false, ['decrypt']);
+        const decrypted = await crypto.subtle.decrypt({name:'AES-GCM',iv:iv}, aesKey, encrypted);
+        
+        return new TextDecoder().decode(decrypted);
+    } catch(e) {
+        return '[Mensagem criptografada]';
+    }
+}
+
+// ============================================
+// GERENCIAMENTO DE DADOS
+// ============================================
+
+function getChatData() {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return { messages: [], lastReset: Date.now() };
+    
+    const parsed = JSON.parse(data);
+    
+    // Verificar se precisa resetar (12 horas)
+    if (Date.now() - parsed.lastReset > RESET_INTERVAL) {
+        localStorage.removeItem(STORAGE_KEY);
+        return { messages: [], lastReset: Date.now() };
+    }
+    
+    return parsed;
+}
+
+function saveChatData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function getUsers() {
+    const data = localStorage.getItem(USERS_KEY);
+    return data ? JSON.parse(data) : {};
+}
+
+function saveUsers(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+function getSession() {
+    const data = sessionStorage.getItem(SESSION_KEY);
+    return data ? JSON.parse(data) : null;
+}
+
+function saveSession(user) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
+}
+
+function clearSession() {
+    sessionStorage.removeItem(SESSION_KEY);
+}
+
+// ============================================
+// AUTENTICAÇÃO
+// ============================================
+
+async function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    
+    const errorDiv = document.getElementById('login-error');
+    const successDiv = document.getElementById('login-success');
+    
+    errorDiv.classList.add('hidden');
+    successDiv.classList.add('hidden');
+    
+    if (!username || !password) {
+        errorDiv.textContent = '⚠️ Preencha nome e senha!';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    
+    if (username.length < 3) {
+        errorDiv.textContent = '⚠️ Nome deve ter pelo menos 3 caracteres!';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    
+    if (password.length < 4) {
+        errorDiv.textContent = '⚠️ Senha deve ter pelo menos 4 caracteres!';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    
+    const users = getUsers();
+    const passwordHash = await hashPassword(password);
+    
+    if (users[username]) {
+        // Usuário existente - verificar senha
+        if (users[username].passwordHash !== passwordHash) {
+            errorDiv.textContent = '❌ Senha incorreta!';
+            errorDiv.classList.remove('hidden');
+            return;
+        }
+        
+        successDiv.textContent = '✅ Login bem-sucedido!';
+        successDiv.classList.remove('hidden');
+    } else {
+        // Novo usuário - criar conta
+        users[username] = {
+            passwordHash: passwordHash,
+            createdAt: Date.now(),
+            lastSeen: Date.now()
+        };
+        saveUsers(users);
+        
+        successDiv.textContent = '✅ Conta criada com sucesso!';
+        successDiv.classList.remove('hidden');
+    }
+    
+    // Salvar sessão
+    currentUser = { username: username, password: password };
+    saveSession(currentUser);
+    
+    // Atualizar lastSeen
+    users[username].lastSeen = Date.now();
+    saveUsers(users);
+    
+    // Entrar no chat após 1 segundo
+    setTimeout(() => {
+        enterChat();
+    }, 1000);
+}
+
+function logout() {
+    if (confirm('Deseja sair do chat?')) {
+        currentUser = null;
+        clearSession();
+        
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+        
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('chat-screen').classList.add('hidden');
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+    }
+}
+
+function enterChat() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('chat-screen').classList.remove('hidden');
+    document.getElementById('user-display').textContent = currentUser.username;
+    
+    loadMessages();
+    startUpdateLoop();
+}
+
+// ============================================
+// MENSAGENS
+// ============================================
+
+async function sendMessage() {
+    const input = document.getElementById('message-input');
+    const text = input.value.trim();
+    
+    if (!text) return;
+    
+    if (text.length > 500) {
+        alert('⚠️ Mensagem muito longa! Máximo 500 caracteres.');
+        return;
+    }
+    
+    const chatData = getChatData();
+    
+    // Criptografar mensagem
+    const encrypted = await encryptMessage(text, currentUser.password);
+    
+    const message = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        username: currentUser.username,
+        encrypted: encrypted,
+        timestamp: Date.now(),
+        deleted: false
+    };
+    
+    chatData.messages.push(message);
+    saveChatData(chatData);
+    
+    input.value = '';
+    loadMessages();
+}
+
+async function loadMessages() {
+    const chatData = getChatData();
+    const container = document.getElementById('messages-container');
+    
+    if (chatData.messages.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;padding:20px">💬 Nenhuma mensagem ainda. Comece a conversar!</div>';
+        updateStats(0);
+        return;
+    }
+    
+    // Filtrar mensagens não deletadas
+    const activeMessages = chatData.messages.filter(m => !m.deleted);
+    
+    if (activeMessages.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;padding:20px">💬 Chat limpo. Comece uma nova conversa!</div>';
+        updateStats(0);
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    for (const msg of activeMessages) {
+        const div = document.createElement('div');
+        div.style.cssText = 'margin-bottom:10px;padding:10px;border-radius:8px;' + 
+            (msg.username === currentUser.username ? 'background:#eff6ff;margin-left:20px;' : 'background:#f8f9fa;margin-right:20px;');
+        
+        const time = new Date(msg.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        const isOwn = msg.username === currentUser.username;
+        
+        // Descriptografar mensagem
+        const decrypted = await decryptMessage(msg.encrypted, currentUser.password);
+        
+        div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                <strong style="font-size:12px;color:#1e3a8a">${escapeHtml(msg.username)}</strong>
+                <span style="font-size:10px;color:#888">${time}</span>
+            </div>
+            <div style="font-size:13px;color:#333;word-wrap:break-word">${escapeHtml(decrypted)}</div>
+            ${isOwn ? '<button onclick="deleteMessage(\'' + msg.id + '\')" style="margin-top:5px;background:none;border:none;color:#ef4444;font-size:10px;cursor:pointer">🗑️ Excluir</button>' : ''}
+        `;
+        
+        container.appendChild(div);
+    }
+    
+    container.scrollTop = container.scrollHeight;
+    updateStats(activeMessages.length);
+}
+
+async function deleteMessage(messageId) {
+    if (!confirm('Excluir esta mensagem?')) return;
+    
+    const chatData = getChatData();
+    const msg = chatData.messages.find(m => m.id === messageId);
+    
+    if (msg && msg.username === currentUser.username) {
+        msg.deleted = true;
+        saveChatData(chatData);
+        loadMessages();
+    }
+}
+
+async function deleteMyMessages() {
+    if (!confirm('Excluir TODAS as suas mensagens?')) return;
+    
+    const chatData = getChatData();
+    let count = 0;
+    
+    chatData.messages.forEach(msg => {
+        if (msg.username === currentUser.username) {
+            msg.deleted = true;
+            count++;
+        }
+    });
+    
+    saveChatData(chatData);
+    loadMessages();
+    
+    alert(`✅ ${count} mensagem(s) excluída(s)!`);
+}
+
+function clearAll() {
+    if (!confirm('Limpar TODO o chat? (apenas administradores)')) return;
+    
+    if (confirm('⚠️ Tem certeza? Isso apagará TODAS as mensagens de TODOS os usuários!')) {
+        localStorage.removeItem(STORAGE_KEY);
+        loadMessages();
+        alert('✅ Chat limpo!');
+    }
+}
+
+// ============================================
+// TIMER E ATUALIZAÇÕES
+// ============================================
+
+function updateTimer() {
+    const chatData = getChatData();
+    const elapsed = Date.now() - chatData.lastReset;
+    const remaining = RESET_INTERVAL - elapsed;
+    
+    if (remaining <= 0) {
+        // Reset automático
+        localStorage.removeItem(STORAGE_KEY);
+        loadMessages();
+        return;
+    }
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+    
+    const timeStr = `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    
+    document.getElementById('time-remaining').textContent = timeStr;
+    document.getElementById('chat-timer').textContent = timeStr;
+}
+
+function startUpdateLoop() {
+    updateTimer();
+    updateInterval = setInterval(() => {
+        updateTimer();
+        loadMessages();
+        updateOnlineCount();
+    }, 2000); // Atualizar a cada 2 segundos
+}
+
+function updateOnlineCount() {
+    const users = getUsers();
+    const now = Date.now();
+    const onlineThreshold = 5 * 60 * 1000; // 5 minutos
+    
+    let onlineCount = 0;
+    Object.values(users).forEach(user => {
+        if (now - user.lastSeen < onlineThreshold) {
+            onlineCount++;
+        }
+    });
+    
+    document.getElementById('online-count').textContent = onlineCount;
+}
+
+function updateStats(msgCount) {
+    document.getElementById('msg-count').textContent = msgCount;
+}
+
+// ============================================
+// UTILITÁRIOS
+// ============================================
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+window.onload = function() {
+    // Verificar sessão existente
+    const session = getSession();
+    if (session) {
+        currentUser = session;
+        enterChat();
+    }
+    
+    // Iniciar timer
+    updateTimer();
+    setInterval(updateTimer, 1000);
+    
+    // Atualizar lastSeen periodicamente
+    setInterval(() => {
+        if (currentUser) {
+            const users = getUsers();
+            if (users[currentUser.username]) {
+                users[currentUser.username].lastSeen = Date.now();
+                saveUsers(users);
+            }
+        }
+    }, 60000); // A cada minuto
+};
+</script>
+</body>
+</html>
