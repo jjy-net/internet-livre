@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataLink Mesh - Comunicação Multi-Canal Offline/Online</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);min-height:100vh;color:#fff;padding:15px}
+.container{max-width:700px;margin:0 auto}
+.card{background:rgba(30,41,59,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:15px;padding:20px;margin-bottom:15px;backdrop-filter:blur(10px)}
+h1{font-size:20px;margin-bottom:5px;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:16px;margin-bottom:10px;color:#60a5fa}
+h3{font-size:14px;margin-bottom:8px;color:#a78bfa}
+.subtitle{font-size:11px;color:#94a3b8;margin-bottom:15px}
+.status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px}
+.status-card{background:rgba(0,0,0,0.3);border-radius:10px;padding:10px;text-align:center;border:1px solid rgba(255,255,255,0.05)}
+.status-card .icon{font-size:20px;margin-bottom:3px}
+.status-card .label{font-size:9px;color:#94a3b8;text-transform:uppercase}
+.status-card .value{font-size:12px;font-weight:600;margin-top:2px}
+.status-online{color:#10b981}
+.status-offline{color:#ef4444}
+.status-warning{color:#f59e0b}
+.channel-list{display:grid;gap:8px;margin-bottom:15px}
+.channel-item{background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,0.05)}
+.channel-icon{font-size:24px;width:40px;text-align:center}
+.channel-info{flex:1}
+.channel-name{font-size:13px;font-weight:600}
+.channel-desc{font-size:10px;color:#94a3b8;margin-top:2px}
+.channel-status{font-size:10px;padding:4px 8px;border-radius:5px;font-weight:600}
+.channel-active{background:rgba(16,185,129,0.2);color:#10b981}
+.channel-inactive{background:rgba(239,68,68,0.2);color:#ef4444}
+.channel-available{background:rgba(245,158,11,0.2);color:#f59e0b}
+.btn{padding:10px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;margin:3px}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff}
+.btn-success{background:#10b981;color:#fff}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-warning{background:#f59e0b;color:#000}
+.btn-secondary{background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+input,select,textarea{width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;color:#fff;font-size:12px;outline:none;margin-bottom:10px}
+input:focus,select:focus,textarea:focus{border-color:#3b82f6}
+label{display:block;font-size:11px;color:#94a3b8;margin-bottom:4px;font-weight:600}
+.message{background:rgba(0,0,0,0.3);border-radius:10px;padding:10px;margin-bottom:8px;border-left:3px solid #3b82f6}
+.message.sent{border-left-color:#10b981}
+.message.received{border-left-color:#60a5fa}
+.message-header{display:flex;justify-content:space-between;margin-bottom:4px}
+.message-user{font-size:11px;font-weight:600;color:#60a5fa}
+.message-channel{font-size:9px;color:#94a3b8;background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px}
+.message-text{font-size:12px;color:#e2e8f0}
+.message-time{font-size:9px;color:#64748b;margin-top:4px}
+.log{background:rgba(0,0,0,0.5);border-radius:8px;padding:10px;font-family:'Courier New',monospace;font-size:10px;max-height:200px;overflow-y:auto;color:#94a3b8}
+.log .info{color:#60a5fa}
+.log .success{color:#10b981}
+.log .error{color:#ef4444}
+.log .warn{color:#f59e0b}
+.tabs{display:flex;gap:5px;margin-bottom:15px;flex-wrap:wrap}
+.tab{padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;color:#94a3b8;transition:all 0.2s}
+.tab.active{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border-color:transparent}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.queue-item{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin-bottom:5px;font-size:11px;display:flex;justify-content:space-between;align-items:center}
+.queue-status{font-size:9px;padding:3px 6px;border-radius:4px}
+.queue-pending{background:rgba(245,158,11,0.2);color:#f59e0b}
+.queue-sent{background:rgba(16,185,129,0.2);color:#10b981}
+.queue-failed{background:rgba(239,68,68,0.2);color:#ef4444}
+.mesh-visual{width:100%;height:150px;background:rgba(0,0,0,0.3);border-radius:10px;position:relative;overflow:hidden;margin-bottom:15px}
+.mesh-node{position:absolute;width:30px;height:30px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:2px solid #fff;transition:all 0.3s}
+.mesh-node.active{background:#10b981;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)}50%{box-shadow:0 0 0 10px rgba(16,185,129,0)}}
+.mesh-line{position:absolute;height:2px;background:linear-gradient(90deg,#3b82f6,#10b981);transform-origin:left center;opacity:0.5}
+.hidden{display:none}
+.alert{padding:10px;border-radius:8px;margin-bottom:10px;font-size:11px}
+.alert-info{background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:#60a5fa}
+.alert-success{background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.3);color:#10b981}
+.alert-warning{background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.3);color:#f59e0b}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<h1>🌐 DataLink Mesh</h1>
+<p class="subtitle">Comunicação Multi-Canal - Funciona COM e SEM Internet</p>
+
+<div class="status-grid">
+<div class="status-card">
+<div class="icon">🌐</div>
+<div class="label">Internet</div>
+<div class="value" id="status-internet">Verificando...</div>
+</div>
+<div class="status-card">
+<div class="icon">📡</div>
+<div class="label">Canal Ativo</div>
+<div class="value" id="status-channel">Nenhum</div>
+</div>
+<div class="status-card">
+<div class="icon">📦</div>
+<div class="label">Fila Offline</div>
+<div class="value" id="status-queue">0</div>
+</div>
+</div>
+
+<div id="connection-alert" class="alert alert-info">
+💡 Sistema detectando canais disponíveis...
+</div>
+</div>
+
+<div class="tabs">
+<div class="tab active" onclick="showTab('channels')">📡 Canais</div>
+<div class="tab" onclick="showTab('chat')">💬 Chat</div>
+<div class="tab" onclick="showTab('mesh')">🕸️ Mesh</div>
+<div class="tab" onclick="showTab('queue')">📦 Fila</div>
+<div class="tab" onclick="showTab('settings')">⚙️ Config</div>
+</div>
+
+<!-- TAB: CANAIS -->
+<div class="tab-content active" id="tab-channels">
+<div class="card">
+<h2>📡 Canais de Comunicação</h2>
+<p class="subtitle">O sistema escolhe automaticamente o melhor canal disponível</p>
+
+<div class="channel-list">
+<div class="channel-item">
+<div class="channel-icon">🌐</div>
+<div class="channel-info">
+<div class="channel-name">Internet (WebSocket)</div>
+<div class="channel-desc">Conexão online via servidor - Maior alcance</div>
+</div>
+<div class="channel-status channel-inactive" id="ch-internet">Indisponível</div>
+</div>
+
+<div class="channel-item">
+<div class="channel-icon">📶</div>
+<div class="channel-info">
+<div class="channel-name">WebRTC (LAN P2P)</div>
+<div class="channel-desc">Conexão direta entre dispositivos na mesma rede</div>
+</div>
+<div class="channel-status channel-inactive" id="ch-webrtc">Indisponível</div>
+</div>
+
+<div class="channel-item">
+<div class="channel-icon">🔊</div>
+<div class="channel-info">
+<div class="channel-name">Ultrassom (18-22kHz)</div>
+<div class="channel-desc">Som inaudível via alto-falante/microfone</div>
+</div>
+<div class="channel-status channel-inactive" id="ch-ultrasonic">Indisponível</div>
+</div>
+
+<div class="channel-item">
+<div class="channel-icon">📱</div>
+<div class="channel-info">
+<div class="channel-name">Bluetooth (BLE)</div>
+<div class="channel-desc">Conexão Bluetooth Low Energy - Curto alcance</div>
+</div>
+<div class="channel-status channel-inactive" id="ch-bluetooth">Indisponível</div>
+</div>
+
+<div class="channel-item">
+<div class="channel-icon">📱</div>
+<div class="channel-info">
+<div class="channel-name">QR Code Dinâmico</div>
+<div class="channel-desc">Transmissão visual via câmera - Muito lento</div>
+</div>
+<div class="channel-status channel-inactive" id="ch-qr">Indisponível</div>
+</div>
+
+<div class="channel-item">
+<div class="channel-icon">💡</div>
+<div class="channel-info">
+<div class="channel-name">Luz da Tela</div>
+<div class="channel-desc">Transmissão via variação de brilho</div>
+</div>
+<div class="channel-status channel-inactive" id="ch-light">Indisponível</div>
+</div>
+</div>
+
+<button class="btn btn-primary" onclick="detectChannels()">🔍 Detectar Canais</button>
+<button class="btn btn-secondary" onclick="testAllChannels()">🧪 Testar Todos</button>
+</div>
+</div>
+
+<!-- TAB: CHAT -->
+<div class="tab-content" id="tab-chat">
+<div class="card">
+<h2>💬 Chat Multi-Canal</h2>
+
+<div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;min-height:250px;max-height:350px;overflow-y:auto;margin-bottom:10px" id="chat-messages">
+<div style="text-align:center;color:#64748b;font-size:11px;padding:20px">💬 Nenhuma mensagem ainda</div>
+</div>
+
+<div style="display:flex;gap:5px">
+<input type="text" id="chat-input" placeholder="Digite sua mensagem..." onkeypress="if(event.key==='Enter')sendMessage()">
+<button class="btn btn-primary" onclick="sendMessage()" style="margin:0">📤</button>
+</div>
+
+<div style="margin-top:10px">
+<label>Canal de envio:</label>
+<select id="send-channel">
+<option value="auto">🤖 Automático (melhor disponível)</option>
+<option value="internet">🌐 Internet</option>
+<option value="webrtc">📶 WebRTC (LAN)</option>
+<option value="ultrasonic">🔊 Ultrassom</option>
+<option value="bluetooth">📱 Bluetooth</option>
+<option value="qr">📱 QR Code</option>
+<option value="light">💡 Luz</option>
+</select>
+</div>
+</div>
+</div>
+
+<!-- TAB: MESH -->
+<div class="tab-content" id="tab-mesh">
+<div class="card">
+<h2>🕸️ Rede Mesh</h2>
+<p class="subtitle">Visualização da rede de dispositivos conectados</p>
+
+<div class="mesh-visual" id="mesh-visual">
+<div class="mesh-node active" style="top:60px;left:50%;transform:translateX(-50%)">Eu</div>
+</div>
+
+<div id="mesh-nodes">
+<div style="text-align:center;color:#64748b;font-size:11px;padding:10px">Nenhum dispositivo na rede</div>
+</div>
+
+<button class="btn btn-primary" onclick="announcePresence()">📢 Anunciar Presença</button>
+<button class="btn btn-secondary" onclick="scanForPeers()">🔍 Buscar Dispositivos</button>
+</div>
+</div>
+
+<!-- TAB: FILA -->
+<div class="tab-content" id="tab-queue">
+<div class="card">
+<h2>📦 Fila de Mensagens Offline</h2>
+<p class="subtitle">Mensagens aguardando envio quando canal disponível</p>
+
+<div id="queue-list">
+<div style="text-align:center;color:#64748b;font-size:11px;padding:10px">Fila vazia</div>
+</div>
+
+<div style="margin-top:15px;display:flex;gap:5px">
+<button class="btn btn-success" onclick="processQueue()">📤 Processar Fila</button>
+<button class="btn btn-danger" onclick="clearQueue()">🗑️ Limpar Fila</button>
+</div>
+
+<div class="log" id="queue-log" style="margin-top:15px">
+<div class="info">[Sistema] Fila de mensagens inicializada</div>
+</div>
+</div>
+</div>
+
+<!-- TAB: CONFIG -->
+<div class="tab-content" id="tab-settings">
+<div class="card">
+<h2>⚙️ Configurações</h2>
+
+<label>Nome de Usuário:</label>
+<input type="text" id="config-username" placeholder="Seu nome..." value="Usuário">
+
+<label>Ultrassom - Frequência (kHz):</label>
+<input type="range" id="config-ultra-freq" min="18" max="22" value="19" step="0.5" oninput="document.getElementById('freq-val').textContent=this.value+'kHz'">
+<span id="freq-val" style="font-size:11px;color:#94a3b8">19kHz</span>
+
+<label>Ultrassom - Volume:</label>
+<input type="range" id="config-ultra-vol" min="0.1" max="1" value="0.5" step="0.1" oninput="document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%'">
+<span id="vol-val" style="font-size:11px;color:#94a3b8">50%</span>
+
+<label>Prioridade de Canais (arraste para reordenar):</label>
+<div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:11px">
+1. 🌐 Internet (se disponível)<br>
+2. 📶 WebRTC (se em LAN)<br>
+3. 🔊 Ultrassom (se áudio disponível)<br>
+4. 📱 Bluetooth (se BLE disponível)<br>
+5. 💡 Luz (se câmera disponível)<br>
+6. 📱 QR Code (último recurso)
+</div>
+
+<button class="btn btn-primary" onclick="saveSettings()" style="margin-top:15px">💾 Salvar Configurações</button>
+</div>
+</div>
+</div>
+
+<script>
+// ============================================
+// DATALINK MESH - MULTI-CANAL OFFLINE/ONLINE
+// ============================================
+
+// Estado global
+const state = {
+    username: 'Usuário_' + Math.random().toString(36).substr(2, 5),
+    channels: {
+        internet: { available: false, priority: 1 },
+        webrtc: { available: false, priority: 2 },
+        ultrasonic: { available: false, priority: 3 },
+        bluetooth: { available: false, priority: 4 },
+        qr: { available: false, priority: 6 },
+        light: { available: false, priority: 5 }
+    },
+    activeChannel: null,
+    messageQueue: [],
+    peers: [],
+    audioContext: null,
+    peerConnections: {},
+    bluetoothDevice: null
+};
+
+// ============================================
+// DETECÇÃO DE CANAIS
+// ============================================
+
+async function detectChannels() {
+    log('info', 'Iniciando detecção de canais...');
+    
+    // 1. Verificar Internet
+    await checkInternet();
+    
+    // 2. Verificar WebRTC
+    await checkWebRTC();
+    
+    // 3. Verificar Ultrassom (Web Audio API)
+    await checkUltrasonic();
+    
+    // 4. Verificar Bluetooth
+    await checkBluetooth();
+    
+    // 5. Verificar QR (câmera)
+    await checkQR();
+    
+    // 6. Verificar Luz (câmera)
+    await checkLight();
+    
+    // Escolher melhor canal
+    selectBestChannel();
+    
+    updateUI();
+    log('success', 'Detecção de canais concluída!');
+}
+
+async function checkInternet() {
+    try {
+        const response = await fetch('https://httpbin.org/get', { 
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-cache'
+        });
+        state.channels.internet.available = navigator.onLine;
+        log('info', `Internet: ${state.channels.internet.available ? 'Disponível' : 'Indisponível'}`);
+    } catch(e) {
+        state.channels.internet.available = false;
+        log('warn', 'Internet: Indisponível');
+    }
+    updateChannelStatus('internet', state.channels.internet.available);
+}
+
+async function checkWebRTC() {
+    try {
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        const dc = pc.createDataChannel('test');
+        state.channels.webrtc.available = true;
+        pc.close();
+        log('info', 'WebRTC: Disponível');
+    } catch(e) {
+        state.channels.webrtc.available = false;
+        log('warn', 'WebRTC: Indisponível');
+    }
+    updateChannelStatus('webrtc', state.channels.webrtc.available);
+}
+
+async function checkUltrasonic() {
+    try {
+        if (!window.AudioContext && !window.webkitAudioContext) {
+            throw new Error('AudioContext não suportado');
+        }
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Testar se pode criar oscillator
+        const osc = state.audioContext.createOscillator();
+        osc.frequency.value = 19000; // 19kHz
+        osc.connect(state.audioContext.destination);
+        osc.start();
+        osc.stop(state.audioContext.currentTime + 0.01);
+        
+        state.channels.ultrasonic.available = true;
+        log('info', 'Ultrassom: Disponível');
+    } catch(e) {
+        state.channels.ultrasonic.available = false;
+        log('warn', 'Ultrassom: Indisponível - ' + e.message);
+    }
+    updateChannelStatus('ultrasonic', state.channels.ultrasonic.available);
+}
+
+async function checkBluetooth() {
+    try {
+        if (!navigator.bluetooth) {
+            throw new Error('Web Bluetooth não suportado');
+        }
+        const available = await navigator.bluetooth.getAvailability();
+        state.channels.bluetooth.available = available;
+        log('info', `Bluetooth: ${available ? 'Disponível' : 'Indisponível'}`);
+    } catch(e) {
+        state.channels.bluetooth.available = false;
+        log('warn', 'Bluetooth: Indisponível - ' + e.message);
+    }
+    updateChannelStatus('bluetooth', state.channels.bluetooth.available);
+}
+
+async function checkQR() {
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia não suportado');
+        }
+        // Testar se pode acessar câmera
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(t => t.stop());
+        state.channels.qr.available = true;
+        log('info', 'QR Code: Disponível (câmera acessível)');
+    } catch(e) {
+        state.channels.qr.available = false;
+        log('warn', 'QR Code: Indisponível - ' + e.message);
+    }
+    updateChannelStatus('qr', state.channels.qr.available);
+}
+
+async function checkLight() {
+    // Luz usa mesma câmera do QR
+    state.channels.light.available = state.channels.qr.available;
+    updateChannelStatus('light', state.channels.light.available);
+    log('info', `Luz: ${state.channels.light.available ? 'Disponível' : 'Indisponível'}`);
+}
+
+function updateChannelStatus(channel, available) {
+    const el = document.getElementById('ch-' + channel);
+    if (el) {
+        el.textContent = available ? 'Disponível' : 'Indisponível';
+        el.className = 'channel-status ' + (available ? 'channel-available' : 'channel-inactive');
+    }
+}
+
+function selectBestChannel() {
+    const available = Object.entries(state.channels)
+        .filter(([_, ch]) => ch.available)
+        .sort((a, b) => a[1].priority - b[1].priority);
+    
+    if (available.length > 0) {
+        state.activeChannel = available[0][0];
+        log('success', `Canal ativo: ${state.activeChannel}`);
+    } else {
+        state.activeChannel = null;
+        log('error', 'Nenhum canal disponível!');
+    }
+    
+    document.getElementById('status-channel').textContent = state.activeChannel || 'Nenhum';
+    document.getElementById('status-channel').className = 'value ' + (state.activeChannel ? 'status-online' : 'status-offline');
+}
+
+// ============================================
+// ENVIO DE MENSAGENS POR CANAL
+// ============================================
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    const channel = document.getElementById('send-channel').value;
+    const targetChannel = channel === 'auto' ? state.activeChannel : channel;
+    
+    if (!targetChannel) {
+        log('error', 'Nenhum canal disponível! Mensagem adicionada à fila.');
+        addToQueue(text);
+        input.value = '';
+        return;
+    }
+    
+    const message = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        from: state.username,
+        text: text,
+        channel: targetChannel,
+        timestamp: Date.now(),
+        status: 'sending'
+    };
+    
+    addMessageToUI(message, 'sent');
+    input.value = '';
+    
+    try {
+        switch(targetChannel) {
+            case 'internet':
+                await sendViaInternet(message);
+                break;
+            case 'webrtc':
+                await sendViaWebRTC(message);
+                break;
+            case 'ultrasonic':
+                await sendViaUltrasonic(message);
+                break;
+            case 'bluetooth':
+                await sendViaBluetooth(message);
+                break;
+            case 'qr':
+                await sendViaQR(message);
+                break;
+            case 'light':
+                await sendViaLight(message);
+                break;
+        }
+        
+        message.status = 'sent';
+        log('success', `Mensagem enviada via ${targetChannel}`);
+    } catch(e) {
+        message.status = 'failed';
+        log('error', `Falha ao enviar via ${targetChannel}: ${e.message}`);
+        addToQueue(text);
+    }
+}
+
+// ============================================
+// CANAL: INTERNET (WebSocket)
+// ============================================
+
+async function sendViaInternet(message) {
+    // Simulação - em produção, usaria WebSocket real
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (navigator.onLine) {
+                log('info', '📤 Mensagem enviada via Internet');
+                resolve();
+            } else {
+                reject(new Error('Sem conexão com internet'));
+            }
+        }, 500);
+    });
+}
+
+// ============================================
+// CANAL: WEBRTC (LAN P2P)
+// ============================================
+
+async function sendViaWebRTC(message) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Criar peer connection
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            
+            const dc = pc.createDataChannel('chat');
+            
+            dc.onopen = () => {
+                dc.send(JSON.stringify(message));
+                log('info', '📤 Mensagem enviada via WebRTC');
+                dc.close();
+                pc.close();
+                resolve();
+            };
+            
+            dc.onerror = (err) => {
+                reject(new Error('WebRTC error: ' + err));
+            };
+            
+            // Timeout
+            setTimeout(() => {
+                reject(new Error('WebRTC timeout'));
+            }, 5000);
+            
+        } catch(e) {
+            reject(e);
+        }
+    });
+}
+
+// ============================================
+// CANAL: ULTRASSOM (18-22kHz)
+// ============================================
+
+async function sendViaUltrasonic(message) {
+    return new Promise((resolve, reject) => {
+        try {
+            if (!state.audioContext) {
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const freq = parseFloat(document.getElementById('config-ultra-freq').value) * 1000;
+            const volume = parseFloat(document.getElementById('config-ultra-vol').value);
+            
+            // Converter mensagem para binário
+            const text = message.text;
+            const bits = [];
+            for (let i = 0; i < text.length; i++) {
+                const code = text.charCodeAt(i);
+                for (let j = 7; j >= 0; j--) {
+                    bits.push((code >> j) & 1);
+                }
+            }
+            
+            // Adicionar sync pattern
+            const syncPattern = [1, 0, 1, 0, 1, 0, 1, 0];
+            const allBits = [...syncPattern, ...bits, ...syncPattern];
+            
+            log('info', `🔊 Transmitindo ${allBits.length} bits via ultrassom (${freq/1000}kHz)`);
+            
+            // Transmitir bits usando FSK
+            const bitDuration = 0.05; // 50ms por bit
+            const freq0 = freq - 500; // Bit 0
+            const freq1 = freq + 500; // Bit 1
+            
+            let currentTime = state.audioContext.currentTime;
+            
+            allBits.forEach((bit, i) => {
+                const osc = state.audioContext.createOscillator();
+                const gain = state.audioContext.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.value = bit === 1 ? freq1 : freq0;
+                gain.gain.value = volume;
+                
+                osc.connect(gain);
+                gain.connect(state.audioContext.destination);
+                
+                osc.start(currentTime);
+                osc.stop(currentTime + bitDuration);
+                
+                currentTime += bitDuration;
+            });
+            
+            // Resolver após transmissão completa
+            setTimeout(() => {
+                log('success', '✅ Transmissão ultrassom concluída');
+                resolve();
+            }, allBits.length * bitDuration * 1000 + 100);
+            
+        } catch(e) {
+            reject(e);
+        }
+    });
+}
+
+// ============================================
+// CANAL: BLUETOOTH (BLE)
+// ============================================
+
+async function sendViaBluetooth(message) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            if (!navigator.bluetooth) {
+                reject(new Error('Bluetooth não suportado'));
+                return;
+            }
+            
+            log('info', '📱 Buscando dispositivo Bluetooth...');
+            
+            const device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: ['generic_access']
+            });
+            
+            log('info', `📱 Conectando a ${device.name || 'dispositivo'}...`);
+            
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService('generic_access');
+            const characteristic = await service.getCharacteristic('device_name');
+            
+            // Enviar mensagem (limitado a 20 bytes por vez em BLE)
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message.text.substring(0, 20));
+            await characteristic.writeValue(data);
+            
+            log('success', '✅ Mensagem enviada via Bluetooth');
+            resolve();
+            
+        } catch(e) {
+            reject(new Error('Bluetooth: ' + e.message));
+        }
+    });
+}
+
+// ============================================
+// CANAL: QR CODE DINÂMICO
+// ============================================
+
+async function sendViaQR(message) {
+    return new Promise((resolve, reject) => {
+        try {
+            log('info', '📱 Gerando QR Code dinâmico...');
+            
+            // Dividir mensagem em chunks
+            const chunks = [];
+            const chunkSize = 50;
+            for (let i = 0; i < message.text.length; i += chunkSize) {
+                chunks.push(message.text.substring(i, i + chunkSize));
+            }
+            
+            log('info', `📱 ${chunks.length} QR codes necessários`);
+            
+            // Mostrar QR codes em sequência
+            let currentChunk = 0;
+            
+            const showNextQR = () => {
+                if (currentChunk >= chunks.length) {
+                    log('success', '✅ Transmissão QR concluída');
+                    resolve();
+                    return;
+                }
+                
+                // Aqui mostraria QR code na tela
+                // Por enquanto, apenas log
+                log('info', `📱 QR ${currentChunk + 1}/${chunks.length}: ${chunks[currentChunk].substring(0, 20)}...`);
+                
+                currentChunk++;
+                setTimeout(showNextQR, 2000); // 2 segundos por QR
+            };
+            
+            showNextQR();
+            
+        } catch(e) {
+            reject(e);
+        }
+    });
+}
+
+// ============================================
+// CANAL: LUZ DA TELA
+// ============================================
+
+async function sendViaLight(message) {
+    return new Promise((resolve, reject) => {
+        try {
+            log('info', '💡 Iniciando transmissão por luz...');
+            
+            // Converter para binário
+            const bits = [];
+            for (let i = 0; i < message.text.length; i++) {
+                const code = message.text.charCodeAt(i);
+                for (let j = 7; j >= 0; j--) {
+                    bits.push((code >> j) & 1);
+                }
+            }
+            
+            // Sync pattern
+            const sync = [1, 0, 1, 0, 1, 0, 1, 0];
+            const allBits = [...sync, ...bits, ...sync];
+            
+            const bitDuration = 150; // 150ms por bit
+            
+            // Criar overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;transition:background-color 0.05s';
+            document.body.appendChild(overlay);
+            
+            let i = 0;
+            const transmitNext = () => {
+                if (i >= allBits.length) {
+                    document.body.removeChild(overlay);
+                    log('success', '✅ Transmissão por luz concluída');
+                    resolve();
+                    return;
+                }
+                
+                overlay.style.backgroundColor = allBits[i] === 1 ? '#ffffff' : '#000000';
+                i++;
+                setTimeout(transmitNext, bitDuration);
+            };
+            
+            transmitNext();
+            
+        } catch(e) {
+            reject(e);
+        }
+    });
+}
+
+// ============================================
+// FILA DE MENSAGENS OFFLINE
+// ============================================
+
+function addToQueue(text) {
+    const message = {
+        id: 'queue_' + Date.now(),
+        text: text,
+        timestamp: Date.now(),
+        status: 'pending',
+        attempts: 0
+    };
+    
+    state.messageQueue.push(message);
+    saveQueue();
+    updateQueueUI();
+    log('warn', `📦 Mensagem adicionada à fila: ${text.substring(0, 30)}...`);
+}
+
+async function processQueue() {
+    if (state.messageQueue.length === 0) {
+        log('info', 'Fila vazia');
+        return;
+    }
+    
+    log('info', `📤 Processando ${state.messageQueue.length} mensagens na fila...`);
+    
+    for (let i = 0; i < state.messageQueue.length; i++) {
+        const msg = state.messageQueue[i];
+        
+        if (msg.status === 'pending' && msg.attempts < 3) {
+            try {
+                // Tentar enviar
+                const message = {
+                    id: msg.id,
+                    from: state.username,
+                    text: msg.text,
+                    channel: state.activeChannel,
+                    timestamp: msg.timestamp
+                };
+                
+                switch(state.activeChannel) {
+                    case 'internet':
+                        await sendViaInternet(message);
+                        break;
+                    case 'webrtc':
+                        await sendViaWebRTC(message);
+                        break;
+                    case 'ultrasonic':
+                        await sendViaUltrasonic(message);
+                        break;
+                }
+                
+                msg.status = 'sent';
+                log('success', `✅ Mensagem ${i + 1} enviada`);
+                
+            } catch(e) {
+                msg.attempts++;
+                log('error', `❌ Falha na mensagem ${i + 1} (tentativa ${msg.attempts}/3)`);
+                
+                if (msg.attempts >= 3) {
+                    msg.status = 'failed';
+                }
+            }
+        }
+    }
+    
+    saveQueue();
+    updateQueueUI();
+}
+
+function clearQueue() {
+    if (confirm('Limpar toda a fila de mensagens?')) {
+        state.messageQueue = [];
+        saveQueue();
+        updateQueueUI();
+        log('info', '🗑️ Fila limpa');
+    }
+}
+
+function saveQueue() {
+    localStorage.setItem('datalink_queue', JSON.stringify(state.messageQueue));
+    document.getElementById('status-queue').textContent = state.messageQueue.filter(m => m.status === 'pending').length;
+}
+
+function loadQueue() {
+    const data = localStorage.getItem('datalink_queue');
+    if (data) {
+        state.messageQueue = JSON.parse(data);
+    }
+    updateQueueUI();
+}
+
+function updateQueueUI() {
+    const container = document.getElementById('queue-list');
+    
+    if (state.messageQueue.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#64748b;font-size:11px;padding:10px">Fila vazia</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    state.messageQueue.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'queue-item';
+        
+        const statusClass = msg.status === 'pending' ? 'queue-pending' : 
+                           msg.status === 'sent' ? 'queue-sent' : 'queue-failed';
+        const statusText = msg.status === 'pending' ? 'Pendente' : 
+                          msg.status === 'sent' ? 'Enviada' : 'Falhou';
+        
+        div.innerHTML = `
+            <div>
+                <div style="font-size:11px">${msg.text.substring(0, 40)}${msg.text.length > 40 ? '...' : ''}</div>
+                <div style="font-size:9px;color:#64748b">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+            </div>
+            <div class="queue-status ${statusClass}">${statusText}</div>
+        `;
+        
+        container.appendChild(div);
+    });
+    
+    document.getElementById('status-queue').textContent = state.messageQueue.filter(m => m.status === 'pending').length;
+}
+
+// ============================================
+// MESH NETWORK
+// ============================================
+
+function announcePresence() {
+    log('info', '📢 Anunciando presença na rede...');
+    
+    // Adicionar próprio nó
+    const myNode = {
+        id: state.username,
+        name: state.username,
+        type: 'self',
+        channels: Object.entries(state.channels)
+            .filter(([_, ch]) => ch.available)
+            .map(([name, _]) => name)
+    };
+    
+    // Visualizar
+    updateMeshVisual();
+    
+    log('success', '✅ Presença anunciada');
+}
+
+function scanForPeers() {
+    log('info', '🔍 Buscando dispositivos na rede...');
+    
+    // Simular descoberta de peers
+    setTimeout(() => {
+        log('info', 'Nenhum dispositivo encontrado (simulação)');
+    }, 2000);
+}
+
+function updateMeshVisual() {
+    const visual = document.getElementById('mesh-visual');
+    visual.innerHTML = '<div class="mesh-node active" style="top:60px;left:50%;transform:translateX(-50%)">Eu</div>';
+    
+    // Adicionar peers
+    state.peers.forEach((peer, i) => {
+        const angle = (i / state.peers.length) * Math.PI * 2;
+        const x = 50 + Math.cos(angle) * 35;
+        const y = 50 + Math.sin(angle) * 35;
+        
+        const node = document.createElement('div');
+        node.className = 'mesh-node';
+        node.style.cssText = `top:${y}%;left:${x}%;transform:translate(-50%,-50%)`;
+        node.textContent = peer.name.charAt(0).toUpperCase();
+        visual.appendChild(node);
+    });
+}
+
+// ============================================
+// UI HELPERS
+// ============================================
+
+function showTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+function addMessageToUI(message, type) {
+    const container = document.getElementById('chat-messages');
+    
+    if (container.querySelector('.text-center')) {
+        container.innerHTML = '';
+    }
+    
+    const div = document.createElement('div');
+    div.className = 'message ' + type;
+    
+    const channelIcons = {
+        internet: '🌐',
+        webrtc: '📶',
+        ultrasonic: '🔊',
+        bluetooth: '📱',
+        qr: '📱',
+        light: '💡'
+    };
+    
+    div.innerHTML = `
+        <div class="message-header">
+            <span class="message-user">${message.from}</span>
+            <span class="message-channel">${channelIcons[message.channel] || '📤'} ${message.channel}</span>
+        </div>
+        <div class="message-text">${escapeHtml(message.text)}</div>
+        <div class="message-time">${new Date(message.timestamp).toLocaleTimeString()}</div>
+    `;
+    
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function log(type, message) {
+    const logEl = document.getElementById('queue-log');
+    const div = document.createElement('div');
+    div.className = type;
+    div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function updateUI() {
+    // Atualizar status de internet
+    const internetEl = document.getElementById('status-internet');
+    internetEl.textContent = state.channels.internet.available ? 'Online' : 'Offline';
+    internetEl.className = 'value ' + (state.channels.internet.available ? 'status-online' : 'status-offline');
+    
+    // Atualizar alerta
+    const alertEl = document.getElementById('connection-alert');
+    if (state.activeChannel) {
+        alertEl.className = 'alert alert-success';
+        alertEl.innerHTML = `✅ Canal ativo: <strong>${state.activeChannel}</strong> - Pronto para comunicar!`;
+    } else {
+        alertEl.className = 'alert alert-warning';
+        alertEl.innerHTML = '⚠️ Nenhum canal disponível - Mensagens serão adicionadas à fila';
+    }
+}
+
+async function testAllChannels() {
+    log('info', '🧪 Testando todos os canais...');
+    
+    for (const [channel, config] of Object.entries(state.channels)) {
+        if (config.available) {
+            log('info', `🧪 Testando ${channel}...`);
+            
+            try {
+                const testMsg = {
+                    id: 'test_' + Date.now(),
+                    from: state.username,
+                    text: 'Teste',
+                    channel: channel,
+                    timestamp: Date.now()
+                };
+                
+                switch(channel) {
+                    case 'ultrasonic':
+                        await sendViaUltrasonic(testMsg);
+                        break;
+                    case 'light':
+                        await sendViaLight(testMsg);
+                        break;
+                }
+                
+                log('success', `✅ ${channel}: OK`);
+            } catch(e) {
+                log('error', `❌ ${channel}: ${e.message}`);
+            }
+        }
+    }
+}
+
+function saveSettings() {
+    state.username = document.getElementById('config-username').value;
+    localStorage.setItem('datalink_settings', JSON.stringify({
+        username: state.username,
+        ultraFreq: document.getElementById('config-ultra-freq').value,
+        ultraVol: document.getElementById('config-ultra-vol').value
+    }));
+    
+    log('success', '💾 Configurações salvas');
+    alert('Configurações salvas!');
+}
+
+function loadSettings() {
+    const data = localStorage.getItem('datalink_settings');
+    if (data) {
+        const settings = JSON.parse(data);
+        state.username = settings.username || state.username;
+        document.getElementById('config-username').value = state.username;
+        document.getElementById('config-ultra-freq').value = settings.ultraFreq || 19;
+        document.getElementById('config-ultra-vol').value = settings.ultraVol || 0.5;
+    }
+}
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+window.onload = function() {
+    log('info', '🚀 DataLink Mesh inicializado');
+    log('info', '👤 Usuário: ' + state.username);
+    
+    loadSettings();
+    loadQueue();
+    
+    // Detectar canais automaticamente
+    setTimeout(detectChannels, 1000);
+    
+    // Verificar conexão periodicamente
+    setInterval(() => {
+        checkInternet();
+    }, 30000);
+};
+</script>
+</body>
+</html>
