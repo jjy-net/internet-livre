@@ -6,8 +6,8 @@
 <title>DataLink Chat - Comunicação Segura</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#8b5cf6 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.container{width:100%;max-width:600px}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#8b5cf6 100%);min-height:100vh;padding:20px}
+.container{width:100%;max-width:600px;margin:0 auto}
 .card{background:white;border-radius:20px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
 .logo{text-align:center;margin-bottom:25px}
 .logo-icon{font-size:48px;margin-bottom:10px}
@@ -32,20 +32,37 @@ input:focus,select:focus{border-color:#3b82f6}
 .destruct-config label{font-size:11px;font-weight:600;color:#92400e;margin-bottom:5px}
 .online-users{margin-top:15px;padding-top:15px;border-top:1px solid #e0e0e0}
 .online-users h3{font-size:13px;color:#1e3a8a;margin-bottom:10px}
-.user-item{display:flex;align-items:center;gap:8px;padding:6px;background:#f8f9fa;border-radius:6px;margin-bottom:5px;font-size:12px}
+.user-item{display:flex;align-items:center;gap:8px;padding:6px;background:#f8f9fa;border-radius:6px;margin-bottom:5px;font-size:12px;cursor:pointer;transition:all 0.2s}
+.user-item:hover{background:#e0e7ff}
 .user-status{width:8px;height:8px;border-radius:50%;background:#10b981}
 .user-name{flex:1;font-weight:500}
 .user-badge{font-size:10px;color:#888}
 .message{margin-bottom:10px;padding:10px;border-radius:8px;position:relative}
 .message.own{background:#eff6ff;margin-left:20px}
 .message.other{background:#f8f9fa;margin-right:20px}
+.message.private{border-left:3px solid #f59e0b;background:#fffbeb}
 .message-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
 .message-user{font-size:12px;font-weight:600;color:#1e3a8a}
 .message-time{font-size:10px;color:#888}
 .message-text{font-size:13px;color:#333;word-wrap:break-word}
+.message-private-badge{font-size:9px;color:#f59e0b;font-weight:600;margin-left:5px}
 .message-destruct{position:absolute;top:5px;right:5px;font-size:10px;color:#f59e0b}
 .message-delete{margin-top:5px;background:none;border:none;color:#ef4444;font-size:10px;cursor:pointer}
 .stats{margin-top:10px;padding-top:10px;border-top:1px solid #e0e0e0;font-size:10px;color:#888;text-align:center}
+.sticker-panel{background:#f8f9fa;border-radius:10px;padding:10px;margin-bottom:10px;max-height:200px;overflow-y:auto;display:none}
+.sticker-panel.active{display:block}
+.sticker-category{margin-bottom:10px}
+.sticker-category-title{font-size:11px;font-weight:600;color:#666;margin-bottom:5px}
+.sticker-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.sticker{font-size:24px;cursor:pointer;padding:5px;text-align:center;border-radius:5px;transition:all 0.2s}
+.sticker:hover{background:#e0e7ff;transform:scale(1.2)}
+.send-to{background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;padding:10px;margin-bottom:10px}
+.send-to label{font-size:11px;font-weight:600;color:#1e40af;margin-bottom:5px}
+.banner{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:10px;padding:15px;margin-bottom:15px;text-align:center;color:white;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(102,126,234,0.3)}
+.banner-top{margin-bottom:15px}
+.banner-bottom{margin-top:15px}
+.banner-editable{cursor:pointer;transition:all 0.2s}
+.banner-editable:hover{opacity:0.9;transform:translateY(-2px)}
 </style>
 </head>
 <body>
@@ -55,7 +72,7 @@ input:focus,select:focus{border-color:#3b82f6}
 <div class="logo">
 <div class="logo-icon">💬</div>
 <h1>DataLink Chat</h1>
-<p class="subtitle">Comunicação Segura com Auto-Destruição</p>
+<p class="subtitle">Comunicação Segura com Figurinhas e Mensagens Privadas</p>
 </div>
 
 <div class="timer" id="reset-timer">
@@ -64,7 +81,7 @@ input:focus,select:focus{border-color:#3b82f6}
 
 <div class="info-box">
 💡 <strong>Novo usuário?</strong> Digite um nome e senha para criar sua conta.<br>
-🔒 Mensagens criptografadas | 💣 Auto-destruição configurável | 🧹 Limpeza automática
+🔒 Mensagens criptografadas | 💣 Auto-destruição | 🎭 Figurinhas | 📨 Mensagens privadas
 </div>
 
 <div id="login-form">
@@ -83,13 +100,18 @@ input:focus,select:focus{border-color:#3b82f6}
 
 <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;text-align:center">
 <p style="font-size:11px;color:#888">
-🔒 AES-256 | 🕐 Reset 12h | 💣 Auto-destruição | 🧹 Limpeza automática
+🔒 AES-256 | 🕐 Reset 12h | 💣 Auto-destruição | 🎭 Figurinhas | 📨 DM
 </p>
 </div>
 </div>
 
 <!-- TELA DO CHAT -->
 <div class="card hidden" id="chat-screen">
+<!-- Banner Topo -->
+<div class="banner banner-top banner-editable" id="banner-top" onclick="editBanner('top')">
+📢 Banner do Topo - Clique para editar
+</div>
+
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
 <div>
 <h2 style="font-size:18px;color:#1e3a8a">💬 Chat</h2>
@@ -119,14 +141,135 @@ input:focus,select:focus{border-color:#3b82f6}
 </div>
 </div>
 
+<!-- Enviar Para -->
+<div class="send-to">
+<label>📨 Enviar Para:</label>
+<select id="send-to-user">
+<option value="all">🌐 Todos (Público)</option>
+</select>
+<div style="font-size:10px;color:#1e40af;margin-top:5px">
+💡 Selecione um usuário para enviar mensagem privada
+</div>
+</div>
+
+<!-- Painel de Figurinhas -->
+<div class="sticker-panel" id="sticker-panel">
+<div class="sticker-category">
+<div class="sticker-category-title">😊 Emojis</div>
+<div class="sticker-grid">
+<div class="sticker" onclick="insertSticker('😀')">😀</div>
+<div class="sticker" onclick="insertSticker('😂')">😂</div>
+<div class="sticker" onclick="insertSticker('😍')">😍</div>
+<div class="sticker" onclick="insertSticker('😎')">😎</div>
+<div class="sticker" onclick="insertSticker('🤔')">🤔</div>
+<div class="sticker" onclick="insertSticker('😢')">😢</div>
+<div class="sticker" onclick="insertSticker('😡')">😡</div>
+<div class="sticker" onclick="insertSticker('🥳')">🥳</div>
+<div class="sticker" onclick="insertSticker('😴')">😴</div>
+<div class="sticker" onclick="insertSticker('🤗')">🤗</div>
+<div class="sticker" onclick="insertSticker('😇')">😇</div>
+<div class="sticker" onclick="insertSticker('🤩')">🤩</div>
+<div class="sticker" onclick="insertSticker('😏')">😏</div>
+<div class="sticker" onclick="insertSticker('😭')">😭</div>
+<div class="sticker" onclick="insertSticker('😱')">😱</div>
+<div class="sticker" onclick="insertSticker('🤯')">🤯</div>
+</div>
+</div>
+<div class="sticker-category">
+<div class="sticker-category-title">👍 Gestos</div>
+<div class="sticker-grid">
+<div class="sticker" onclick="insertSticker('👍')">👍</div>
+<div class="sticker" onclick="insertSticker('👎')">👎</div>
+<div class="sticker" onclick="insertSticker('👏')">👏</div>
+<div class="sticker" onclick="insertSticker('🙌')">🙌</div>
+<div class="sticker" onclick="insertSticker('🤝')">🤝</div>
+<div class="sticker" onclick="insertSticker('✌️')">✌️</div>
+<div class="sticker" onclick="insertSticker('🤞')">🤞</div>
+<div class="sticker" onclick="insertSticker('🤟')">🤟</div>
+<div class="sticker" onclick="insertSticker('🤘')">🤘</div>
+<div class="sticker" onclick="insertSticker('👌')">👌</div>
+<div class="sticker" onclick="insertSticker('🤙')">🤙</div>
+<div class="sticker" onclick="insertSticker('💪')">💪</div>
+<div class="sticker" onclick="insertSticker('🙏')">🙏</div>
+<div class="sticker" onclick="insertSticker('👋')">👋</div>
+<div class="sticker" onclick="insertSticker('🤚')">🤚</div>
+<div class="sticker" onclick="insertSticker('✋')">✋</div>
+</div>
+</div>
+<div class="sticker-category">
+<div class="sticker-category-title">❤️ Corações</div>
+<div class="sticker-grid">
+<div class="sticker" onclick="insertSticker('❤️')">❤️</div>
+<div class="sticker" onclick="insertSticker('💛')">💛</div>
+<div class="sticker" onclick="insertSticker('💚')">💚</div>
+<div class="sticker" onclick="insertSticker('💙')">💙</div>
+<div class="sticker" onclick="insertSticker('💜')">💜</div>
+<div class="sticker" onclick="insertSticker('🖤')">🖤</div>
+<div class="sticker" onclick="insertSticker('💔')">💔</div>
+<div class="sticker" onclick="insertSticker('💕')">💕</div>
+<div class="sticker" onclick="insertSticker('💖')">💖</div>
+<div class="sticker" onclick="insertSticker('💗')">💗</div>
+<div class="sticker" onclick="insertSticker('💘')">💘</div>
+<div class="sticker" onclick="insertSticker('💝')">💝</div>
+<div class="sticker" onclick="insertSticker('💟')">💟</div>
+<div class="sticker" onclick="insertSticker('❣️')">❣️</div>
+<div class="sticker" onclick="insertSticker('💓')">💓</div>
+<div class="sticker" onclick="insertSticker('💞')">💞</div>
+</div>
+</div>
+<div class="sticker-category">
+<div class="sticker-category-title">🎉 Objetos</div>
+<div class="sticker-grid">
+<div class="sticker" onclick="insertSticker('🎉')">🎉</div>
+<div class="sticker" onclick="insertSticker('🎊')">🎊</div>
+<div class="sticker" onclick="insertSticker('🎈')">🎈</div>
+<div class="sticker" onclick="insertSticker('🎁')">🎁</div>
+<div class="sticker" onclick="insertSticker('🎂')">🎂</div>
+<div class="sticker" onclick="insertSticker('🎃')">🎃</div>
+<div class="sticker" onclick="insertSticker('🎄')">🎄</div>
+<div class="sticker" onclick="insertSticker('🎅')">🎅</div>
+<div class="sticker" onclick="insertSticker('🎆')">🎆</div>
+<div class="sticker" onclick="insertSticker('🎇')">🎇</div>
+<div class="sticker" onclick="insertSticker('✨')">✨</div>
+<div class="sticker" onclick="insertSticker('🎈')">🎈</div>
+<div class="sticker" onclick="insertSticker('🎯')">🎯</div>
+<div class="sticker" onclick="insertSticker('🎲')">🎲</div>
+<div class="sticker" onclick="insertSticker('🎮')">🎮</div>
+<div class="sticker" onclick="insertSticker('🎸')">🎸</div>
+</div>
+</div>
+<div class="sticker-category">
+<div class="sticker-category-title">🍕 Comida</div>
+<div class="sticker-grid">
+<div class="sticker" onclick="insertSticker('🍕')">🍕</div>
+<div class="sticker" onclick="insertSticker('🍔')">🍔</div>
+<div class="sticker" onclick="insertSticker('🍟')">🍟</div>
+<div class="sticker" onclick="insertSticker('🌭')">🌭</div>
+<div class="sticker" onclick="insertSticker('🍿')">🍿</div>
+<div class="sticker" onclick="insertSticker('🧀')">🧀</div>
+<div class="sticker" onclick="insertSticker('🥗')">🥗</div>
+<div class="sticker" onclick="insertSticker('🍜')">🍜</div>
+<div class="sticker" onclick="insertSticker('🍣')">🍣</div>
+<div class="sticker" onclick="insertSticker('🍱')">🍱</div>
+<div class="sticker" onclick="insertSticker('🍰')">🍰</div>
+<div class="sticker" onclick="insertSticker('🎂')">🎂</div>
+<div class="sticker" onclick="insertSticker('🍩')">🍩</div>
+<div class="sticker" onclick="insertSticker('🍪')">🍪</div>
+<div class="sticker" onclick="insertSticker('☕')">☕</div>
+<div class="sticker" onclick="insertSticker('🍺')">🍺</div>
+</div>
+</div>
+</div>
+
 <div style="background:#f8f9fa;border-radius:10px;padding:15px;min-height:300px;max-height:400px;overflow-y:auto;margin-bottom:15px" id="messages-container">
 <div style="text-align:center;color:#888;font-size:12px;padding:20px">
 💬 Nenhuma mensagem ainda. Comece a conversar!
 </div>
 </div>
 
-<div style="display:flex;gap:8px">
-<input type="text" id="message-input" placeholder="Digite sua mensagem..." style="flex:1" onkeypress="if(event.key==='Enter')sendMessage()">
+<div style="display:flex;gap:8px;margin-bottom:8px">
+<input type="text" id="message-input" placeholder="Digite sua mensagem ou clique em 🎭 para figurinhas..." style="flex:1" onkeypress="if(event.key==='Enter')sendMessage()">
+<button class="btn btn-secondary" style="width:auto;padding:12px 15px;margin:0;font-size:16px" onclick="toggleStickers()" title="Figurinhas">🎭</button>
 <button class="btn btn-primary" style="width:auto;padding:12px 20px;margin:0" onclick="sendMessage()">📤</button>
 </div>
 
@@ -148,6 +291,11 @@ Carregando...
 <div class="stats">
 📝 <span id="msg-count">0</span> mensagens | 💣 Auto-destruição: <span id="destruct-status">Desativado</span>
 </div>
+
+<!-- Banner Rodapé -->
+<div class="banner banner-bottom banner-editable" id="banner-bottom" onclick="editBanner('bottom')">
+📢 Banner do Rodapé - Clique para editar
+</div>
 </div>
 </div>
 
@@ -156,10 +304,11 @@ Carregando...
 // SISTEMA DE CHAT COMPLETO
 // ============================================
 
-const RESET_INTERVAL = 12 * 60 * 60 * 1000; // 12 horas
+const RESET_INTERVAL = 12 * 60 * 60 * 1000;
 const STORAGE_KEY = 'datalink_chat';
 const USERS_KEY = 'datalink_users';
 const SESSION_KEY = 'datalink_session';
+const BANNERS_KEY = 'datalink_banners';
 
 let currentUser = null;
 let updateInterval = null;
@@ -255,6 +404,52 @@ function clearSession() {
     sessionStorage.removeItem(SESSION_KEY);
 }
 
+function getBanners() {
+    const data = localStorage.getItem(BANNERS_KEY);
+    return data ? JSON.parse(data) : { top: '📢 Banner do Topo - Clique para editar', bottom: '📢 Banner do Rodapé - Clique para editar' };
+}
+
+function saveBanners(banners) {
+    localStorage.setItem(BANNERS_KEY, JSON.stringify(banners));
+}
+
+// ============================================
+// BANNERS
+// ============================================
+
+function editBanner(position) {
+    const banners = getBanners();
+    const currentText = banners[position];
+    const newText = prompt('Digite o texto do banner:', currentText);
+    
+    if (newText !== null && newText.trim() !== '') {
+        banners[position] = newText.trim();
+        saveBanners(banners);
+        loadBanners();
+    }
+}
+
+function loadBanners() {
+    const banners = getBanners();
+    document.getElementById('banner-top').textContent = banners.top;
+    document.getElementById('banner-bottom').textContent = banners.bottom;
+}
+
+// ============================================
+// FIGURINHAS
+// ============================================
+
+function toggleStickers() {
+    const panel = document.getElementById('sticker-panel');
+    panel.classList.toggle('active');
+}
+
+function insertSticker(sticker) {
+    const input = document.getElementById('message-input');
+    input.value += sticker;
+    input.focus();
+}
+
 // ============================================
 // AUTENTICAÇÃO
 // ============================================
@@ -346,14 +541,34 @@ function enterChat() {
     document.getElementById('chat-screen').classList.remove('hidden');
     document.getElementById('user-display').textContent = currentUser.username;
     
+    loadBanners();
     loadMessages();
     updateOnlineUsers();
+    updateSendToOptions();
     startUpdateLoop();
 }
 
 // ============================================
-// MENSAGENS COM AUTO-DESTRUIÇÃO
+// MENSAGENS PRIVADAS E PÚBLICAS
 // ============================================
+
+function updateSendToOptions() {
+    const select = document.getElementById('send-to-user');
+    const users = getUsers();
+    const now = Date.now();
+    const onlineThreshold = 5 * 60 * 1000;
+    
+    select.innerHTML = '<option value="all">🌐 Todos (Público)</option>';
+    
+    Object.keys(users).forEach(username => {
+        if (username !== currentUser.username && now - users[username].lastSeen < onlineThreshold) {
+            const option = document.createElement('option');
+            option.value = username;
+            option.textContent = '🔒 ' + username + ' (Privado)';
+            select.appendChild(option);
+        }
+    });
+}
 
 async function sendMessage() {
     const input = document.getElementById('message-input');
@@ -369,6 +584,7 @@ async function sendMessage() {
     const chatData = getChatData();
     const encrypted = await encryptMessage(text, currentUser.password);
     const destructTime = parseInt(document.getElementById('auto-destruct-time').value);
+    const sendTo = document.getElementById('send-to-user').value;
     
     const message = {
         id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -376,7 +592,8 @@ async function sendMessage() {
         encrypted: encrypted,
         timestamp: Date.now(),
         destructAt: destructTime > 0 ? Date.now() + (destructTime * 1000) : null,
-        deleted: false
+        deleted: false,
+        sendTo: sendTo
     };
     
     chatData.messages.push(message);
@@ -410,7 +627,11 @@ async function loadMessages() {
         return;
     }
     
-    const activeMessages = chatData.messages.filter(m => !m.deleted);
+    const activeMessages = chatData.messages.filter(m => {
+        if (m.deleted) return false;
+        // Mostrar mensagem se: é pública OU é para mim OU é minha
+        return m.sendTo === 'all' || m.sendTo === currentUser.username || m.username === currentUser.username;
+    });
     
     if (activeMessages.length === 0) {
         container.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;padding:20px">💬 Chat limpo. Comece uma nova conversa!</div>';
@@ -423,6 +644,11 @@ async function loadMessages() {
     for (const msg of activeMessages) {
         const div = document.createElement('div');
         div.className = 'message ' + (msg.username === currentUser.username ? 'own' : 'other');
+        
+        if (msg.sendTo !== 'all') {
+            div.classList.add('private');
+        }
+        
         div.id = 'msg-' + msg.id;
         
         const time = new Date(msg.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
@@ -434,10 +660,15 @@ async function loadMessages() {
             destructInfo = `<div class="message-destruct">💣 ${remaining}s</div>`;
         }
         
+        let privateBadge = '';
+        if (msg.sendTo !== 'all') {
+            privateBadge = `<span class="message-private-badge">🔒 Privado para ${escapeHtml(msg.sendTo)}</span>`;
+        }
+        
         div.innerHTML = `
             ${destructInfo}
             <div class="message-header">
-                <span class="message-user">${escapeHtml(msg.username)}</span>
+                <span class="message-user">${escapeHtml(msg.username)} ${privateBadge}</span>
                 <span class="message-time">${time}</span>
             </div>
             <div class="message-text">${escapeHtml(decrypted)}</div>
@@ -514,7 +745,7 @@ function clearAll() {
 function updateOnlineUsers() {
     const users = getUsers();
     const now = Date.now();
-    const onlineThreshold = 5 * 60 * 1000; // 5 minutos
+    const onlineThreshold = 5 * 60 * 1000;
     
     const onlineUsers = Object.entries(users).filter(([_, user]) => {
         return now - user.lastSeen < onlineThreshold;
@@ -533,6 +764,7 @@ function updateOnlineUsers() {
     onlineUsers.forEach(([username, user]) => {
         const div = document.createElement('div');
         div.className = 'user-item';
+        div.onclick = () => selectUserForDM(username);
         
         const isCurrentUser = username === currentUser.username;
         const badge = isCurrentUser ? '(você)' : '';
@@ -547,6 +779,12 @@ function updateOnlineUsers() {
     });
     
     document.getElementById('online-count').textContent = onlineUsers.length;
+}
+
+function selectUserForDM(username) {
+    const select = document.getElementById('send-to-user');
+    select.value = username;
+    document.getElementById('message-input').focus();
 }
 
 // ============================================
@@ -597,8 +835,8 @@ function startUpdateLoop() {
         updateTimer();
         loadMessages();
         updateOnlineUsers();
+        updateSendToOptions();
         
-        // Limpar cache e cookies automaticamente a cada 5 minutos
         if (Date.now() % (5 * 60 * 1000) < 2000) {
             clearOldCache();
         }
