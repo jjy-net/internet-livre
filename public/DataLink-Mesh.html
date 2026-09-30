@@ -197,7 +197,7 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:4px;font-weight:6
 
 <div style="margin-top:10px">
 <label>Canal de envio:</label>
-<select id="send-channel">
+<select id="send-channel" onchange="showChannelConfig()">
 <option value="auto">🤖 Automático (melhor disponível)</option>
 <option value="internet">🌐 Internet</option>
 <option value="webrtc">📶 WebRTC (LAN)</option>
@@ -206,6 +206,30 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:4px;font-weight:6
 <option value="qr">📱 QR Code</option>
 <option value="light">💡 Luz</option>
 </select>
+</div>
+
+<!-- Configurações do Canal Selecionado -->
+<div id="channel-config" style="margin-top:15px;display:none">
+<div class="alert alert-info" id="channel-config-content"></div>
+</div>
+
+<!-- Auto-Destruição -->
+<div style="margin-top:15px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px">
+<label style="color:#f87171">💣 Auto-Destruição de Mensagens:</label>
+<select id="auto-destruct" style="margin-top:5px">
+<option value="0">Desativado</option>
+<option value="10">10 segundos</option>
+<option value="30">30 segundos</option>
+<option value="60">1 minuto</option>
+<option value="300">5 minutos</option>
+</select>
+<p style="font-size:10px;color:#94a3b8;margin-top:5px">Mensagens serão automaticamente excluídas após o tempo selecionado</p>
+</div>
+
+<!-- Limpeza de Cache -->
+<div style="margin-top:10px;display:flex;gap:5px">
+<button class="btn btn-warning" onclick="clearChatCache()">🧹 Limpar Cache do Chat</button>
+<button class="btn btn-secondary" onclick="clearAllData()">🗑️ Limpar Todos os Dados</button>
 </div>
 </div>
 </div>
@@ -299,11 +323,15 @@ const state = {
     },
     activeChannel: null,
     messageQueue: [],
+    messages: [],
     peers: [],
     audioContext: null,
     peerConnections: {},
     bluetoothDevice: null
 };
+
+// BroadcastChannel para comunicação entre abas
+let broadcastChannel = null;
 
 // ============================================
 // DETECÇÃO DE CANAIS
@@ -473,8 +501,9 @@ async function sendMessage() {
         return;
     }
     
+    const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const message = {
-        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        id: messageId,
         from: state.username,
         text: text,
         channel: targetChannel,
@@ -482,8 +511,20 @@ async function sendMessage() {
         status: 'sending'
     };
     
+    // Salvar mensagem
+    if (!state.messages) state.messages = [];
+    state.messages.push(message);
+    saveMessages();
+    
     addMessageToUI(message, 'sent');
     input.value = '';
+    
+    // Configurar auto-destruição se ativado
+    const autoDestruct = parseInt(document.getElementById('auto-destruct').value);
+    if (autoDestruct > 0) {
+        setupAutoDestruct(messageId, autoDestruct);
+        log('info', `💣 Auto-destruição configurada: ${autoDestruct}s`);
+    }
     
     try {
         switch(targetChannel) {
@@ -508,9 +549,11 @@ async function sendMessage() {
         }
         
         message.status = 'sent';
+        saveMessages();
         log('success', `Mensagem enviada via ${targetChannel}`);
     } catch(e) {
         message.status = 'failed';
+        saveMessages();
         log('error', `Falha ao enviar via ${targetChannel}: ${e.message}`);
         addToQueue(text);
     }
@@ -919,12 +962,75 @@ function announcePresence() {
     log('success', '✅ Presença anunciada');
 }
 
-function scanForPeers() {
+async function scanForPeers() {
     log('info', '🔍 Buscando dispositivos na rede...');
     
-    // Simular descoberta de peers
+    // Anunciar presença via BroadcastChannel
+    if (broadcastChannel) {
+        broadcastChannel.postMessage({
+            type: 'presence_announce',
+            username: state.username,
+            timestamp: Date.now()
+        });
+    }
+    
+    // Tentar WebRTC peer discovery
+    if (state.channels.webrtc.available) {
+        try {
+            // Criar oferta para descobrir peers
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Enviar candidato via BroadcastChannel para outros peers
+                    if (broadcastChannel) {
+                        broadcastChannel.postMessage({
+                            type: 'webrtc_candidate',
+                            username: state.username,
+                            candidate: event.candidate
+                        });
+                    }
+                }
+            };
+            
+            // Criar data channel para signaling
+            const dc = pc.createDataChannel('mesh_discovery');
+            dc.onopen = () => {
+                log('success', '✅ Peer WebRTC encontrado!');
+                dc.send(JSON.stringify({
+                    type: 'peer_info',
+                    username: state.username,
+                    channels: Object.keys(state.channels).filter(k => state.channels[k].available)
+                }));
+            };
+            
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            // Enviar oferta via BroadcastChannel
+            if (broadcastChannel) {
+                broadcastChannel.postMessage({
+                    type: 'webrtc_offer',
+                    username: state.username,
+                    offer: pc.localDescription
+                });
+            }
+            
+        } catch(e) {
+            log('warn', 'WebRTC discovery falhou: ' + e.message);
+        }
+    }
+    
+    // Atualizar visualização após 2 segundos
     setTimeout(() => {
-        log('info', 'Nenhum dispositivo encontrado (simulação)');
+        updateMeshVisual();
+        if (state.peers.length === 0) {
+            log('info', 'Nenhum dispositivo encontrado na rede');
+        } else {
+            log('success', `${state.peers.length} dispositivo(s) encontrado(s)`);
+        }
     }, 2000);
 }
 
@@ -932,18 +1038,45 @@ function updateMeshVisual() {
     const visual = document.getElementById('mesh-visual');
     visual.innerHTML = '<div class="mesh-node active" style="top:60px;left:50%;transform:translateX(-50%)">Eu</div>';
     
-    // Adicionar peers
-    state.peers.forEach((peer, i) => {
-        const angle = (i / state.peers.length) * Math.PI * 2;
-        const x = 50 + Math.cos(angle) * 35;
-        const y = 50 + Math.sin(angle) * 35;
-        
-        const node = document.createElement('div');
-        node.className = 'mesh-node';
-        node.style.cssText = `top:${y}%;left:${x}%;transform:translate(-50%,-50%)`;
-        node.textContent = peer.name.charAt(0).toUpperCase();
-        visual.appendChild(node);
-    });
+    // Adicionar peers em círculo ao redor do nó central
+    if (state.peers.length > 0) {
+        state.peers.forEach((peer, i) => {
+            const angle = (i / state.peers.length) * Math.PI * 2 - Math.PI / 2;
+            const radius = 35; // porcentagem
+            const x = 50 + Math.cos(angle) * radius;
+            const y = 50 + Math.sin(angle) * radius;
+            
+            const node = document.createElement('div');
+            node.className = 'mesh-node';
+            node.style.cssText = `top:${y}%;left:${x}%;transform:translate(-50%,-50%)`;
+            node.textContent = peer.username.charAt(0).toUpperCase();
+            node.title = peer.username;
+            visual.appendChild(node);
+            
+            // Desenhar linha conectando ao nó central
+            const line = document.createElement('div');
+            line.className = 'mesh-line';
+            
+            // Calcular posição e rotação da linha
+            const centerX = 50;
+            const centerY = 60;
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            line.style.cssText = `
+                top:${centerY}%;
+                left:${centerX}%;
+                width:${length}%;
+                transform:rotate(${angleDeg}deg);
+            `;
+            visual.appendChild(line);
+        });
+    }
+    
+    // Atualizar lista de nós
+    updateMeshNodesList();
 }
 
 // ============================================
@@ -967,6 +1100,7 @@ function addMessageToUI(message, type) {
     
     const div = document.createElement('div');
     div.className = 'message ' + type;
+    div.setAttribute('data-message-id', message.id);
     
     const channelIcons = {
         internet: '🌐',
@@ -988,6 +1122,33 @@ function addMessageToUI(message, type) {
     
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+}
+
+// ============================================
+// PERSISTÊNCIA DE MENSAGENS
+// ============================================
+
+function saveMessages() {
+    if (!state.messages) state.messages = [];
+    localStorage.setItem('datalink_messages', JSON.stringify(state.messages));
+}
+
+function loadMessages() {
+    const data = localStorage.getItem('datalink_messages');
+    if (data) {
+        state.messages = JSON.parse(data);
+        
+        // Carregar mensagens na UI
+        const container = document.getElementById('chat-messages');
+        if (state.messages.length > 0) {
+            container.innerHTML = '';
+            state.messages.forEach(msg => {
+                addMessageToUI(msg, msg.from === state.username ? 'sent' : 'received');
+            });
+        }
+    } else {
+        state.messages = [];
+    }
 }
 
 function log(type, message) {
@@ -1079,6 +1240,223 @@ function loadSettings() {
 }
 
 // ============================================
+// CONFIGURAÇÕES DO CANAL SELECIONADO
+// ============================================
+
+function showChannelConfig() {
+    const channel = document.getElementById('send-channel').value;
+    const configDiv = document.getElementById('channel-config');
+    const contentDiv = document.getElementById('channel-config-content');
+    
+    if (channel === 'auto') {
+        configDiv.style.display = 'none';
+        return;
+    }
+    
+    configDiv.style.display = 'block';
+    
+    const configs = {
+        internet: {
+            icon: '🌐',
+            name: 'Internet (WebSocket)',
+            description: 'Usa conexão WebSocket para comunicação em tempo real',
+            requirements: 'Conexão com internet necessária',
+            settings: `
+                <p style="font-size:11px;margin-top:8px">
+                    <strong>Como funciona:</strong><br>
+                    • Conecta a servidor WebSocket<br>
+                    • Comunicação em tempo real<br>
+                    • Baixa latência<br>
+                    • Funciona globalmente
+                </p>
+                <p style="font-size:10px;color:#94a3b8;margin-top:5px">
+                    ⚠️ Requer internet ativa
+                </p>
+            `
+        },
+        webrtc: {
+            icon: '📶',
+            name: 'WebRTC (LAN P2P)',
+            description: 'Conexão peer-to-peer direta na rede local',
+            requirements: 'Dispositivos na mesma rede WiFi/LAN',
+            settings: `
+                <p style="font-size:11px;margin-top:8px">
+                    <strong>Como funciona:</strong><br>
+                    • WebRTC DataChannel P2P<br>
+                    • Não requer servidor<br>
+                    • Criptografia DTLS automática<br>
+                    • Funciona em rede local sem internet
+                </p>
+                <p style="font-size:10px;color:#94a3b8;margin-top:5px">
+                    ⚠️ Dispositivos devem estar na mesma rede
+                </p>
+            `
+        },
+        ultrasonic: {
+            icon: '🔊',
+            name: 'Ultrassom (18-22kHz)',
+            description: 'Comunicação por som inaudível via alto-falante/microfone',
+            requirements: 'Alto-falante e microfone disponíveis',
+            settings: `
+                <p style="font-size:11px;margin-top:8px">
+                    <strong>Configurações:</strong><br>
+                    • Frequência: <strong>${document.getElementById('config-ultra-freq').value}kHz</strong><br>
+                    • Volume: <strong>${Math.round(document.getElementById('config-ultra-vol').value * 100)}%</strong><br>
+                    • Velocidade: 50ms por bit<br>
+                    • Modulação: FSK (Frequency Shift Keying)
+                </p>
+                <p style="font-size:10px;color:#94a3b8;margin-top:5px">
+                    ⚠️ Alcance: 1-5 metros | Sensível a ruído ambiente
+                </p>
+            `
+        },
+        bluetooth: {
+            icon: '📱',
+            name: 'Bluetooth (BLE)',
+            description: 'Conexão Bluetooth Low Energy para dispositivos próximos',
+            requirements: 'Bluetooth habilitado, dispositivo pareado',
+            settings: `
+                <p style="font-size:11px;margin-top:8px">
+                    <strong>Como funciona:</strong><br>
+                    • Bluetooth Low Energy (BLE)<br>
+                    • Conexão GATT<br>
+                    • Baixo consumo de energia<br>
+                    • Alcance: ~10 metros
+                </p>
+                <p style="font-size:10px;color:#94a3b8;margin-top:5px">
+                    ⚠️ Requer pareamento inicial | Limitado a 20 bytes por transmissão
+                </p>
+            `
+        },
+        qr: {
+            icon: '📱',
+            name: 'QR Code Dinâmico',
+            description: 'Transmissão visual via sequência de QR codes',
+            requirements: 'Câmera disponível no receptor',
+            settings: `
+                <p style="font-size:11px;margin-top:8px">
+                    <strong>Como funciona:</strong><br>
+                    • Gera sequência de QR codes<br>
+                    • Cada QR carrega ~50 caracteres<br>
+                    • Câmera escaneia em sequência<br>
+                    • Reconstrói mensagem completa
+                </p>
+                <p style="font-size:10px;color:#94a3b8;margin-top:5px">
+                    ⚠️ Muito lento (2s por QR) | Requer linha de visão
+                </p>
+            `
+        },
+        light: {
+            icon: '💡',
+            name: 'Luz da Tela',
+            description: 'Transmissão via variação de brilho da tela',
+            requirements: 'Tela e câmera disponíveis',
+            settings: `
+                <p style="font-size:11px;margin-top:8px">
+                    <strong>Como funciona:</strong><br>
+                    • Modulação OOK (On-Off Keying)<br>
+                    • Branco = bit 1, Preto = bit 0<br>
+                    • Velocidade: 150ms por bit<br>
+                    • Sync pattern no início/fim
+                </p>
+                <p style="font-size:10px;color:#94a3b8;margin-top:5px">
+                    ⚠️ Muito lento (~7 bits/seg) | Requer linha de visão
+                </p>
+            `
+        }
+    };
+    
+    const config = configs[channel];
+    if (config) {
+        contentDiv.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <span style="font-size:24px">${config.icon}</span>
+                <div>
+                    <strong>${config.name}</strong><br>
+                    <span style="font-size:10px;color:#94a3b8">${config.description}</span>
+                </div>
+            </div>
+            <p style="font-size:11px;color:#60a5fa;margin-bottom:5px">
+                <strong>Requisitos:</strong> ${config.requirements}
+            </p>
+            ${config.settings}
+        `;
+    }
+}
+
+// ============================================
+// LIMPEZA DE CACHE E DADOS
+// ============================================
+
+function clearChatCache() {
+    if (confirm('Limpar cache do chat? Isso removerá todas as mensagens locais.')) {
+        // Limpar mensagens do localStorage
+        localStorage.removeItem('datalink_messages');
+        
+        // Limpar UI
+        const container = document.getElementById('chat-messages');
+        container.innerHTML = '<div style="text-align:center;color:#64748b;font-size:11px;padding:20px">💬 Cache limpo. Nenhuma mensagem.</div>';
+        
+        log('success', '🧹 Cache do chat limpo');
+        alert('✅ Cache do chat limpo com sucesso!');
+    }
+}
+
+function clearAllData() {
+    if (confirm('⚠️ ATENÇÃO: Isso removerá TODOS os dados incluindo:\n\n• Mensagens\n• Fila offline\n• Configurações\n• Peers descobertos\n\nTem certeza?')) {
+        if (confirm('Última confirmação: Deseja realmente apagar tudo?')) {
+            // Limpar todos os localStorage
+            localStorage.removeItem('datalink_messages');
+            localStorage.removeItem('datalink_queue');
+            localStorage.removeItem('datalink_settings');
+            localStorage.removeItem('datalink_peers');
+            
+            // Limpar estado
+            state.messageQueue = [];
+            state.peers = [];
+            
+            // Limpar UI
+            document.getElementById('chat-messages').innerHTML = '<div style="text-align:center;color:#64748b;font-size:11px;padding:20px">💬 Todos os dados foram removidos</div>';
+            document.getElementById('queue-list').innerHTML = '<div style="text-align:center;color:#64748b;font-size:11px;padding:10px">Fila vazia</div>';
+            document.getElementById('mesh-nodes').innerHTML = '<div style="text-align:center;color:#64748b;font-size:11px;padding:10px">Nenhum dispositivo na rede</div>';
+            
+            // Atualizar contadores
+            document.getElementById('status-queue').textContent = '0';
+            
+            log('warn', '🗑️ Todos os dados foram removidos');
+            alert('✅ Todos os dados foram removidos com sucesso!');
+        }
+    }
+}
+
+// ============================================
+// AUTO-DESTRUIÇÃO DE MENSAGENS
+// ============================================
+
+function setupAutoDestruct(messageId, seconds) {
+    if (seconds <= 0) return;
+    
+    setTimeout(() => {
+        // Remover mensagem da UI
+        const msgElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (msgElement) {
+            msgElement.style.transition = 'opacity 0.5s';
+            msgElement.style.opacity = '0';
+            setTimeout(() => msgElement.remove(), 500);
+        }
+        
+        // Remover do estado
+        const msgIndex = state.messages.findIndex(m => m.id === messageId);
+        if (msgIndex !== -1) {
+            state.messages.splice(msgIndex, 1);
+            saveMessages();
+        }
+        
+        log('info', `💣 Mensagem auto-destruída: ${messageId}`);
+    }, seconds * 1000);
+}
+
+// ============================================
 // INICIALIZAÇÃO
 // ============================================
 
@@ -1086,8 +1464,20 @@ window.onload = function() {
     log('info', '🚀 DataLink Mesh inicializado');
     log('info', '👤 Usuário: ' + state.username);
     
+    // Inicializar BroadcastChannel para mesh
+    try {
+        broadcastChannel = new BroadcastChannel('datalink_mesh');
+        broadcastChannel.onmessage = (event) => {
+            handleMeshMessage(event.data);
+        };
+        log('success', '📡 BroadcastChannel inicializado para mesh');
+    } catch(e) {
+        log('warn', 'BroadcastChannel não suportado: ' + e.message);
+    }
+    
     loadSettings();
     loadQueue();
+    loadMessages();
     
     // Detectar canais automaticamente
     setTimeout(detectChannels, 1000);
@@ -1096,7 +1486,93 @@ window.onload = function() {
     setInterval(() => {
         checkInternet();
     }, 30000);
+    
+    // Anunciar presença periodicamente
+    setInterval(() => {
+        if (broadcastChannel) {
+            broadcastChannel.postMessage({
+                type: 'presence_announce',
+                username: state.username,
+                timestamp: Date.now()
+            });
+        }
+    }, 5000); // A cada 5 segundos
+    
+    // Atualizar configurações do canal quando mudar
+    document.getElementById('send-channel').addEventListener('change', showChannelConfig);
 };
+
+// ============================================
+// HANDLERS DE MENSAGENS MESH
+// ============================================
+
+function handleMeshMessage(data) {
+    if (!data || !data.type) return;
+    
+    switch(data.type) {
+        case 'presence_announce':
+            // Adicionar peer se não existir
+            if (data.username !== state.username) {
+                const existingPeer = state.peers.find(p => p.username === data.username);
+                if (!existingPeer) {
+                    state.peers.push({
+                        username: data.username,
+                        lastSeen: Date.now(),
+                        channels: data.channels || []
+                    });
+                    log('success', `👤 Novo peer descoberto: ${data.username}`);
+                    updateMeshVisual();
+                    updateMeshNodesList();
+                } else {
+                    existingPeer.lastSeen = Date.now();
+                }
+            }
+            break;
+            
+        case 'webrtc_offer':
+            // Handle WebRTC offer
+            log('info', `📶 Oferta WebRTC recebida de ${data.username}`);
+            break;
+            
+        case 'webrtc_candidate':
+            // Handle WebRTC candidate
+            log('info', `📶 Candidato WebRTC recebido de ${data.username}`);
+            break;
+            
+        case 'message':
+            // Receber mensagem de outro peer
+            if (data.message && data.message.from !== state.username) {
+                state.messages.push(data.message);
+                saveMessages();
+                addMessageToUI(data.message, 'received');
+                log('success', `💬 Mensagem recebida de ${data.message.from} via ${data.message.channel}`);
+            }
+            break;
+    }
+}
+
+function updateMeshNodesList() {
+    const container = document.getElementById('mesh-nodes');
+    
+    if (state.peers.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#64748b;font-size:11px;padding:10px">Nenhum dispositivo na rede</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    state.peers.forEach(peer => {
+        const div = document.createElement('div');
+        div.className = 'channel-item';
+        div.innerHTML = `
+            <div class="channel-icon">👤</div>
+            <div class="channel-info">
+                <div class="channel-name">${peer.username}</div>
+                <div class="channel-desc">Visto há ${Math.floor((Date.now() - peer.lastSeen) / 1000)}s | Canais: ${peer.channels.join(', ') || 'desconhecido'}</div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
 </script>
 </body>
 </html>
