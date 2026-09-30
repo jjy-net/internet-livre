@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataLink - Transmissão Universal de Dados</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:100vh;overflow-x:hidden}
+.app{display:flex;flex-direction:column;height:100vh}
+.header{background:linear-gradient(135deg,#1a1a3e,#2d1b69);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1)}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo h1{font-size:18px;background:linear-gradient(135deg,#a78bfa,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:10px;color:#888}
+.tabs{display:flex;gap:4px;background:rgba(0,0,0,0.3);padding:4px;border-radius:12px;margin:10px 20px;overflow-x:auto}
+.tab{padding:10px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap;transition:all .2s;border:1px solid transparent;color:#888}
+.tab:hover{background:rgba(255,255,255,0.05);color:#fff}
+.tab.active{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;border-color:transparent}
+.content{flex:1;overflow-y:auto;padding:20px}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:20px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.grid-2{grid-template-columns:1fr}}
+textarea,input[type="text"],input[type="number"],select{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;color:#fff;font-size:13px;outline:none;font-family:inherit}
+textarea:focus,input:focus{border-color:#7c3aed}
+textarea{resize:vertical;min-height:80px;font-family:'Courier New',monospace}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(124,58,237,0.4)}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15)}
+.btn-secondary:hover{background:rgba(255,255,255,0.12)}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-success{background:#16a34a;color:#fff}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+label{display:block;font-size:12px;color:#888;margin-bottom:4px;font-weight:500}
+.hash-output{background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:11px;word-break:break-all;color:#a78bfa;max-height:120px;overflow-y:auto}
+.progress-bar{width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#ec4899);border-radius:4px;transition:width .3s;width:0%}
+.status{padding:8px 12px;border-radius:8px;font-size:12px;margin:8px 0}
+.status-info{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:#60a5fa}
+.status-success{background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.3);color:#4ade80}
+.status-error{background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#f87171}
+.status-warning{background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);color:#fbbf24}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px;max-height:400px;overflow-y:auto;padding:10px}
+.qr-item{background:rgba(255,255,255,0.05);border-radius:8px;padding:8px;text-align:center}
+.qr-item canvas{width:100%;height:auto;border-radius:4px}
+.qr-item .label{font-size:10px;color:#888;margin-top:4px}
+.file-drop{border:2px dashed rgba(255,255,255,0.2);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s}
+.file-drop:hover{border-color:#7c3aed;background:rgba(124,58,237,0.05)}
+.file-drop.dragover{border-color:#7c3aed;background:rgba(124,58,237,0.1)}
+.file-info{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;margin-top:10px}
+.file-info .icon{font-size:24px}
+.file-info .details{flex:1}
+.file-info .name{font-size:13px;font-weight:500}
+.file-info .size{font-size:11px;color:#888}
+video,canvas.preview{width:100%;max-width:400px;border-radius:8px;background:#000}
+.camera-view{position:relative;border-radius:12px;overflow:hidden;background:#000}
+.camera-view video{width:100%;display:block}
+.transmit-visual{width:200px;height:200px;border-radius:12px;margin:10px auto;display:flex;align-items:center;justify-content:center;font-size:40px;transition:background .05s}
+.log{background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-family:'Courier New',monospace;font-size:11px;max-height:200px;overflow-y:auto;color:#888}
+.log .info{color:#60a5fa}
+.log .success{color:#4ade80}
+.log .error{color:#f87171}
+.log .warn{color:#fbbf24}
+.ec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.ec-btn{padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:center;font-size:11px;transition:all .2s}
+.ec-btn:hover{background:rgba(255,255,255,0.1)}
+.ec-btn.active{background:rgba(124,58,237,0.3);border-color:#7c3aed}
+.templates{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.template-btn{padding:12px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;text-align:center;transition:all .2s}
+.template-btn:hover{background:rgba(255,255,255,0.1);border-color:#7c3aed}
+.template-btn .icon{font-size:20px}
+.template-btn .label{font-size:10px;color:#888;margin-top:4px}
+.qr-display{display:flex;flex-direction:column;align-items:center;padding:20px}
+.qr-container{background:#fff;border-radius:12px;padding:20px;display:inline-block}
+.mode-selector{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.mode-btn{padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;cursor:pointer;font-size:11px;transition:all .2s}
+.mode-btn:hover{background:rgba(255,255,255,0.1)}
+.mode-btn.active{background:linear-gradient(135deg,#7c3aed,#ec4899);border-color:transparent}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header">
+<div class="logo">
+<div class="logo-icon">📡</div>
+<div>
+<h1>DataLink</h1>
+<p>Transmissão Universal de Dados</p>
+</div>
+</div>
+<div style="font-size:11px;color:#666">v2.0 • Offline</div>
+</div>
+
+<div class="tabs">
+<div class="tab active" onclick="switchTab('qr')">🔲 QR Code</div>
+<div class="tab" onclick="switchTab('hash')">🔐 Hash</div>
+<div class="tab" onclick="switchTab('transmit')">📤 Transmitir</div>
+<div class="tab" onclick="switchTab('receive')">📥 Receber</div>
+<div class="tab" onclick="switchTab('light')">💡 Luz</div>
+<div class="tab" onclick="switchTab('sound')">🔊 Som</div>
+</div>
+
+<div class="content">
+
+<!-- ============ QR CODE ============ -->
+<div class="panel active" id="panel-qr">
+<div class="grid-2">
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">📝</span> Conteúdo</div>
+<textarea id="qr-content" placeholder="Digite ou cole: texto, link, senha, Wi-Fi..."></textarea>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="generateQR()">⚡ Gerar QR Code</button>
+<button class="btn btn-secondary" onclick="document.getElementById('qr-content').value=''">🗑️ Limpar</button>
+</div>
+</div>
+<div class="card">
+<div class="card-title"><span class="icon">⚙️</span> Configurações</div>
+<label>Correção de Erro</label>
+<div class="ec-grid">
+<div class="ec-btn" data-level="L" onclick="setECLevel('L')">L<br><small>7%</small></div>
+<div class="ec-btn active" data-level="M" onclick="setECLevel('M')">M<br><small>15%</small></div>
+<div class="ec-btn" data-level="Q" onclick="setECLevel('Q')">Q<br><small>25%</small></div>
+<div class="ec-btn" data-level="H" onclick="setECLevel('H')">H<br><small>30%</small></div>
+</div>
+<label>Tamanho: <span id="size-val">300</span>px</label>
+<input type="range" id="qr-size" min="150" max="600" value="300" step="25" oninput="document.getElementById('size-val').textContent=this.value" style="width:100%">
+<div style="margin-top:10px">
+<label>Cores</label>
+<div style="display:flex;gap:8px">
+<input type="color" id="qr-dark" value="#000000" style="width:40px;height:32px;border:none;background:transparent;cursor:pointer">
+<input type="color" id="qr-light" value="#ffffff" style="width:40px;height:32px;border:none;background:transparent;cursor:pointer">
+</div>
+</div>
+</div>
+<div class="card">
+<div class="card-title"><span class="icon">📋</span> Modelos</div>
+<div class="templates">
+<div class="template-btn" onclick="applyQRTemplate('url')"><div class="icon">🔗</div><div class="label">Link</div></div>
+<div class="template-btn" onclick="applyQRTemplate('wifi')"><div class="icon">📶</div><div class="label">Wi-Fi</div></div>
+<div class="template-btn" onclick="applyQRTemplate('email')"><div class="icon">📧</div><div class="label">E-mail</div></div>
+<div class="template-btn" onclick="applyQRTemplate('phone')"><div class="icon">📱</div><div class="label">Telefone</div></div>
+<div class="template-btn" onclick="applyQRTemplate('vcard')"><div class="icon">👤</div><div class="label">Contato</div></div>
+<div class="template-btn" onclick="applyQRTemplate('sms')"><div class="icon">💬</div><div class="label">SMS</div></div>
+</div>
+</div>
+</div>
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">📱</span> QR Code</div>
+<div class="qr-display" id="qr-area">
+<div style="text-align:center;color:#666;padding:60px 20px">
+<div style="font-size:60px;opacity:0.3;margin-bottom:15px">🔲</div>
+<p>Digite algo e clique em "Gerar QR Code"</p>
+</div>
+</div>
+<div class="btn-row" id="qr-actions" style="display:none;justify-content:center">
+<button class="btn btn-primary" onclick="downloadQR()">💾 Salvar PNG</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ============ HASH ============ -->
+<div class="panel" id="panel-hash">
+<div class="grid-2">
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">🔐</span> Gerar Hash</div>
+<label>Texto ou dados para gerar hash</label>
+<textarea id="hash-input" placeholder="Digite o texto ou cole os dados aqui..." style="min-height:120px"></textarea>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="generateHash('SHA-256')">🔒 SHA-256</button>
+<button class="btn btn-primary" onclick="generateHash('SHA-512')">🔐 SHA-512</button>
+<button class="btn btn-secondary" onclick="generateHash('SHA-1')">SHA-1</button>
+</div>
+<div style="margin-top:12px">
+<label>Ou selecione um arquivo:</label>
+<input type="file" id="hash-file" onchange="hashFile()" style="margin-top:6px;color:#888;font-size:12px">
+</div>
+</div>
+</div>
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">📋</span> Resultado</div>
+<div id="hash-result" style="color:#666;font-size:13px">Os hashes aparecerão aqui...</div>
+</div>
+<div class="card">
+<div class="card-title"><span class="icon">✅</span> Verificar Hash</div>
+<label>Cole o hash para verificar</label>
+<input type="text" id="verify-hash" placeholder="Cole o hash aqui...">
+<label style="margin-top:8px">Texto original</label>
+<textarea id="verify-text" placeholder="Texto para comparar..." style="min-height:60px"></textarea>
+<div class="btn-row">
+<button class="btn btn-success" onclick="verifyHash('SHA-256')">✓ Verificar SHA-256</button>
+<button class="btn btn-success" onclick="verifyHash('SHA-512')">✓ Verificar SHA-512</button>
+</div>
+<div id="verify-result" style="margin-top:10px"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ============ TRANSMITIR ============ -->
+<div class="panel" id="panel-transmit">
+<div class="card">
+<div class="card-title"><span class="icon">📤</span> Transmitir Arquivo por QR Code</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Divide o arquivo em múltiplos QR Codes. O receptor escaneia todos para reconstruir o arquivo.</p>
+<div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
+<div style="font-size:40px;margin-bottom:10px">📁</div>
+<p style="color:#888">Clique ou arraste um arquivo aqui</p>
+<p style="font-size:11px;color:#666;margin-top:5px">Imagens, músicas, vídeos, documentos...</p>
+<input type="file" id="file-input" style="display:none" onchange="handleFileSelect(event)">
+</div>
+<div id="file-info-area"></div>
+<div id="transmit-controls" style="display:none">
+<div class="btn-row">
+<button class="btn btn-primary" onclick="startQRTransmit()">📤 Gerar QR Codes</button>
+<button class="btn btn-secondary" onclick="startSoundTransmit()">🔊 Transmitir por Som</button>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="transmit-progress"></div></div>
+<div id="transmit-status" class="status status-info" style="display:none"></div>
+</div>
+</div>
+<div class="card" id="qr-transmit-area" style="display:none">
+<div class="card-title"><span class="icon">🔲</span> QR Codes Gerados (<span id="qr-count">0</span> códigos)</div>
+<p style="font-size:11px;color:#888;margin-bottom:10px">O receptor deve escanear todos os QR codes na ordem. Cada código contém um pedaço do arquivo.</p>
+<div class="qr-grid" id="qr-grid"></div>
+<div class="btn-row" style="margin-top:12px">
+<button class="btn btn-secondary" onclick="downloadAllQR()">💾 Baixar Todos</button>
+<button class="btn btn-primary" onclick="playQRSequence()">▶️ Reproduzir Sequência</button>
+</div>
+</div>
+</div>
+
+<!-- ============ RECEBER ============ -->
+<div class="panel" id="panel-receive">
+<div class="card">
+<div class="card-title"><span class="icon">📷</span> Receber por Câmera (QR Code)</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Escaneia múltiplos QR Codes para reconstruir o arquivo transmitido.</p>
+<div class="camera-view" id="camera-container" style="display:none">
+<video id="camera-video" autoplay playsinline></video>
+<canvas id="camera-canvas" style="display:none"></canvas>
+</div>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="startCamera()">📷 Iniciar Câmera</button>
+<button class="btn btn-danger" onclick="stopCamera()">⏹️ Parar</button>
+</div>
+<div id="receive-status" class="status status-info" style="display:none;margin-top:10px"></div>
+<div class="progress-bar"><div class="progress-fill" id="receive-progress"></div></div>
+<div id="receive-log" class="log" style="margin-top:10px;display:none"></div>
+<div id="received-file" style="display:none;margin-top:12px">
+<div class="status status-success">✅ Arquivo recebido com sucesso!</div>
+<div class="btn-row">
+<button class="btn btn-success" onclick="downloadReceivedFile()">💾 Baixar Arquivo</button>
+</div>
+</div>
+</div>
+<div class="card">
+<div class="card-title"><span class="icon">🔊</span> Receber por Som</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Recebe dados através de sinais sonoros (FSK).</p>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="startSoundReceive()">🎤 Iniciar Microfone</button>
+<button class="btn btn-danger" onclick="stopSoundReceive()">⏹️ Parar</button>
+</div>
+<div id="sound-receive-status" class="status" style="display:none;margin-top:10px"></div>
+</div>
+</div>
+
+<!-- ============ LUZ ============ -->
+<div class="panel" id="panel-light">
+<div class="grid-2">
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">💡</span> Transmitir por Luz da Tela</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Transmite dados variando o brilho/cor da tela. O receptor usa a câmera para decodificar.</p>
+<label>Selecione um arquivo para transmitir:</label>
+<input type="file" id="light-file" onchange="handleLightFile(event)" style="margin:8px 0;color:#888;font-size:12px">
+<div class="transmit-visual" id="light-transmit-visual" style="background:#000">
+<span style="color:#333">💡</span>
+</div>
+<div class="btn-row" style="justify-content:center">
+<button class="btn btn-primary" onclick="startLightTransmit()">▶️ Iniciar Transmissão</button>
+<button class="btn btn-danger" onclick="stopLightTransmit()">⏹️ Parar</button>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="light-progress"></div></div>
+<div id="light-status" class="status" style="display:none"></div>
+</div>
+</div>
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">📷</span> Receber por Luz (Câmera)</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Aponte a câmera para a tela transmissora para receber dados.</p>
+<div class="camera-view" id="light-camera-container" style="display:none">
+<video id="light-camera-video" autoplay playsinline></video>
+</div>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="startLightReceive()">📷 Iniciar Câmera</button>
+<button class="btn btn-danger" onclick="stopLightReceive()">⏹️ Parar</button>
+</div>
+<div id="light-receive-status" class="status" style="display:none;margin-top:10px"></div>
+<div class="progress-bar"><div class="progress-fill" id="light-receive-progress"></div></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ============ SOM ============ -->
+<div class="panel" id="panel-sound">
+<div class="grid-2">
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">🔊</span> Transmitir por Som (FSK)</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Converte dados em sinais sonoros (Frequency Shift Keying). Funciona como um modem!</p>
+<label>Texto para transmitir:</label>
+<textarea id="sound-text" placeholder="Digite o texto ou dados para transmitir por som..."></textarea>
+<label style="margin-top:8px">Frequências</label>
+<div style="display:flex;gap:10px">
+<div style="flex:1"><label>Bit 0 (Hz)</label><input type="number" id="freq-0" value="800" style="width:100%"></div>
+<div style="flex:1"><label>Bit 1 (Hz)</label><input type="number" id="freq-1" value="1600" style="width:100%"></div>
+</div>
+<label style="margin-top:8px">Duração por bit: <span id="bit-dur-val">50</span>ms</label>
+<input type="range" id="bit-duration" min="10" max="200" value="50" oninput="document.getElementById('bit-dur-val').textContent=this.value" style="width:100%">
+<div class="btn-row">
+<button class="btn btn-primary" onclick="startSoundTransmitText()">▶️ Transmitir</button>
+<button class="btn btn-danger" onclick="stopSound()">⏹️ Parar</button>
+</div>
+<div id="sound-status" class="status" style="display:none;margin-top:10px"></div>
+</div>
+</div>
+<div>
+<div class="card">
+<div class="card-title"><span class="icon">🎤</span> Receber por Som</div>
+<p style="font-size:12px;color:#888;margin-bottom:12px">Escuta o microfone e decodifica sinais FSK.</p>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="startFSKReceive()">🎤 Iniciar Escuta</button>
+<button class="btn btn-danger" onclick="stopFSKReceive()">⏹️ Parar</button>
+</div>
+<div id="fsk-receive-status" class="status" style="display:none;margin-top:10px"></div>
+<div id="fsk-received" class="hash-output" style="margin-top:10px;display:none;min-height:60px"></div>
+<div class="btn-row" id="fsk-save-btn" style="display:none">
+<button class="btn btn-success" onclick="saveFSKData()">💾 Salvar Dados</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- QR Code Library -->
+<script>
+var qrcode=function(){var r=function(r,e){if(void 0===r.length)throw new Error(r.length+"/"+e);for(var t=0;t<r.length&&0==r[t];)t++;this.num=new Array(r.length-t+e);for(var n=0;n<r.length-t;n++)this.num[n]=r[n+t]};r.prototype={get:function(r){return this.num[r]},getLength:function(){return this.num.length},multiply:function(e){for(var t=new Array(this.getLength()+e.getLength()-1),n=0;n<this.getLength();n++)for(var o=0;o<e.getLength();o++)t[n+o]^=a.gexp(a.glog(this.get(n))+a.glog(e.get(o)));return new r(t,0)},mod:function(e){if(this.getLength()-e.getLength()<0)return this;for(var t=a.glog(this.get(0))-a.glog(e.get(0)),n=new Array(this.getLength()),o=0;o<this.getLength();o++)n[o]=this.get(o);for(o=0;o<e.getLength();o++)n[o]^=a.gexp(a.glog(e.get(o))+t);return new r(n,0).mod(e)}};var a={glog:function(r){if(r<1)throw new Error("glog("+r+")");return a.LOG_TABLE[r]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return a.EXP_TABLE[r]},EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)};for(var t=0;t<8;t++)a.EXP_TABLE[t]=1<<t;for(t=8;t<256;t++)a.EXP_TABLE[t]=a.EXP_TABLE[t-4]^a.EXP_TABLE[t-5]^a.EXP_TABLE[t-6]^a.EXP_TABLE[t-8];for(t=0;t<255;t++)a.LOG_TABLE[a.EXP_TABLE[t]]=t;function n(r,e){this.typeNumber=r,this.errorCorrectLevel=e,this.modules=null,this.moduleCount=0,this.dataCache=null,this.dataList=[]}n.prototype={addData:function(r){var e=new function(r){this.mode=4,this.data=r,this.parsedData=[];for(var e=[],t=0,n=this.data.length;t<n;t++){var o=this.data.charCodeAt(t);o>65536?(e[0]=0xf0|(o>>>18&7),e[1]=0x80|(o>>>12&63),e[2]=0x80|(o>>>6&63),e[3]=0x80|(63&o),t+=3):o>2048?(e[0]=0xe0|(o>>>12&15),e[1]=0x80|(o>>>6&63),e[2]=0x80|(63&o),t+=2):o>127?(e[0]=0xc0|o>>>6&31,e[1]=0x80|(63&o),t++):e[0]=o,this.parsedData.push(e)}this.parsedData=Array.prototype.concat.apply([],this.parsedData),this.parsedData.length!=this.data.length&&(this.parsedData.unshift(191),this.parsedData.unshift(187),this.parsedData.unshift(239))}(r);this.dataList.push(e),this.dataCache=null},isDark:function(r,e){if(r<0||this.moduleCount<=r||e<0||this.moduleCount<=e)throw new Error(r+","+e);return this.modules[r][e]},getModuleCount:function(){return this.moduleCount},make:function(){if(this.typeNumber<1){for(var r=1;r<40;r++){try{var e=new n(r,this.errorCorrectLevel);e.dataList=this.dataList;e.dataCache=null;e.make();this.typeNumber=r;break}catch(t){continue}}if(this.typeNumber<1)throw new Error("Dados muito grandes")}this.makeImpl(!1,this.getBestMaskPattern())},makeImpl:function(r,e){this.moduleCount=4*this.typeNumber+17,this.modules=new Array(this.moduleCount);for(var t=0;t<this.moduleCount;t++){this.modules[t]=new Array(this.moduleCount);for(var o=0;o<this.moduleCount;o++)this.modules[t][o]=null}this.setupPositionProbePattern(0,0),this.setupPositionProbePattern(this.moduleCount-7,0),this.setupPositionProbePattern(0,this.moduleCount-7),this.setupPositionAdjustPattern(),this.setupTimingPattern(),this.setupTypeInfo(r,e),this.typeNumber>=7&&this.setupTypeNumber(r),null==this.dataCache&&(this.dataCache=n.createData(this.typeNumber,this.errorCorrectLevel,this.dataList)),this.mapData(this.dataCache,e)},setupPositionProbePattern:function(r,e){for(var t=-1;t<=7;t++)if(!(r+t<=-1||this.moduleCount<=r+t))for(var o=-1;o<=7;o++)e+o<=-1||this.moduleCount<=e+o||(this.modules[r+t][e+o]=0<=t&&t<=6&&(0==o||6==o)||0<=o&&o<=6&&(0==t||6==t)||2<=t&&t<=4&&2<=o&&o<=4)},getBestMaskPattern:function(){for(var r=0,e=0,t=0;t<8;t++){this.makeImpl(!0,t);var o=i.getLostPoint(this);(0==t||r>o)&&(r=o,e=t)}return e},setupTimingPattern:function(){for(var r=8;r<this.moduleCount-8;r++)null==this.modules[r][6]&&(this.modules[r][6]=r%2==0);for(var e=8;e<this.moduleCount-8;e++)null==this.modules[6][e]&&(this.modules[6][e]=e%2==0)},setupPositionAdjustPattern:function(){for(var r=i.getPatternPosition(this.typeNumber),e=0;e<r.length;e++)for(var t=0;t<r.length;t++){var o=r[e],a=r[t];if(null==this.modules[o][a])for(var n=-2;n<=2;n++)for(var s=-2;s<=2;s++)this.modules[o+n][a+s]=-2==n||2==n||-2==s||2==s||0==n&&0==s}},setupTypeNumber:function(r){for(var e=i.getBCHTypeNumber(this.typeNumber),t=0;t<18;t++){var o=!r&&1==(e>>t&1);this.modules[Math.floor(t/3)][t%3+this.moduleCount-8-3]=o}for(t=0;t<18;t++){o=!r&&1==(e>>t&1);this.modules[t%3+this.moduleCount-8-3][Math.floor(t/3)]=o}},setupTypeInfo:function(r,e){for(var t=this.errorCorrectLevel<<3|e,o=i.getBCHTypeInfo(t),a=0;a<15;a++){var n=!r&&1==(o>>a&1);a<6?this.modules[a][8]=n:a<8?this.modules[a+1][8]=n:this.modules[this.moduleCount-15+a][8]=n}for(a=0;a<15;a++){n=!r&&1==(o>>a&1);a<8?this.modules[8][this.moduleCount-a-1]=n:a<9?this.modules[8][15-a-1+1]=n:this.modules[8][15-a-1]=n}this.modules[this.moduleCount-8][8]=!r},mapData:function(r,e){for(var t=-1,o=this.moduleCount-1,a=7,n=0,s=this.moduleCount-1;s>0;s-=2)for(6==s&&s--;;){for(var h=0;h<2;h++)if(null==this.modules[o][s-h]){var u=!1;n<r.length&&(u=1==(r[n]>>>a&1));var f=i.getMask(e,o,s-h);f&&(u=!u),this.modules[o][s-h]=u,-1==--a&&(n++,a=7)}if((o+=t)<0||this.moduleCount<=o){o-=t,t=-t;break}}}},n.PAD0=236,n.PAD1=17,n.createData=function(e,t,o){for(var a=u[t],h=0,g=0;g<o.length;g++){var f=o[g];h+=8*f.parsedData.length}var l=i.getRSBlocks(e,t),d=new function(r){this.buffer=[],this.getLength=function(){return this.buffer.length},this.get=function(r){var e=Math.floor(r/8);return 1==(this.buffer[e]>>>7-r%8&1)},put:function(r,e){for(var t=0;t<e;t++)this.putBit(1==(r>>>e-t-1&1))},putBit:function(r){var e=Math.floor(this.getLength()/8);this.buffer.length<=e&&this.buffer.push(0),r&&(this.buffer[e]|=128>>>this.getLength()%8)}},v=0;v<o.length;v++){var f=o[v];d.put(4,4),d.put(f.parsedData.length,16);for(g=0;g<f.parsedData.length;g++)d.put(f.parsedData[g],8)}for(v=h=0;v<l.length;v++)h+=l[v].dataCount;if(d.getLength()>8*h)throw new Error("code length overflow. ("+d.getLength()+">"+8*h+")");for(d.getLength()+4<=8*h&&d.put(0,4);d.getLength()%8!=0;)d.putBit(!1);for(;;){if(d.getLength()>=8*h)break;if(d.put(n.PAD0,8),d.getLength()>=8*h)break;d.put(n.PAD1,8)}return function(e,t){for(var o=0,a=0,n=0,s=new Array(t.length),h=new Array(t.length),u=0;u<t.length;u++){var f=t[u].dataCount,l=t[u].totalCount-f;a=Math.max(a,f),n=Math.max(n,l),s[u]=new Array(f);for(var g=0;g<s[u].length;g++)s[u][g]=255&e.buffer[g+o];o+=f;var d=i.getErrorCorrectPolynomial(l),v=new r(s[u],d.getLength()-1).mod(d);h[u]=new Array(d.getLength()-1);for(g=0;g<h[u].length;g++){var p=g+v.getLength()-h[u].length;h[u][g]=p>=0?v.get(p):0}}var m=0;for(g=0;g<t.length;g++)m+=t[g].totalCount;var y=new Array(m),w=0;for(g=0;g<a;g++)for(u=0;u<t.length;u++)g<s[u].length&&(y[w++]=s[u][g]);for(g=0;g<n;g++)for(u=0;u<t.length;u++)g<h[u].length&&(y[w++]=h[u][g]);return y}(d,l)};var u={L:[[1,26,19],[1,44,34],[1,70,55],[1,100,80],[2,134,106,2,134,106],[2,86,68,2,86,68],[2,98,78,2,98,78],[2,121,97,2,121,97],[2,146,116,2,146,116],[2,86,68,4,86,68]],M:[[1,26,16],[1,44,28],[2,70,44],[2,100,64],[2,134,86,2,134,86],[4,86,54,4,86,54],[4,98,66,4,98,66],[2,121,97,4,121,97],[4,146,116,4,146,116],[4,86,68,4,86,68]],Q:[[1,26,13],[1,44,22],[2,70,34,2,70,34],[2,100,48,2,100,48],[4,134,68,4,134,68],[4,86,44,6,86,44],[6,98,56,6,98,56],[4,121,72,8,121,72],[6,146,92,6,146,92],[6,86,44,8,86,44]],H:[[1,26,9],[1,44,16],[2,70,22,2,70,22],[4,100,32,4,100,32],[4,134,48,4,134,48],[4,86,32,8,86,32],[6,98,40,6,98,40],[6,121,56,8,121,56],[8,146,72,6,146,72],[8,86,32,8,86,32]]};var i={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G15:1335,G18:7973,G15_MASK:21522,getBCHTypeInfo:function(r){for(var e=r<<10;i.getBCHDigit(e)-i.getBCHDigit(i.G15)>=0;)e^=i.G15<<i.getBCHDigit(e)-i.getBCHDigit(i.G15);return(r<<10|e)^i.G15_MASK},getBCHTypeNumber:function(r){for(var e=r<<12;i.getBCHDigit(e)-i.getBCHDigit(i.G18)>=0;)e^=i.G18<<i.getBCHDigit(e)-i.getBCHDigit(i.G18);return r<<12|e},getBCHDigit:function(r){for(var e=0;0!=r;)e++,r>>>=1;return e},getPatternPosition:function(r){return i.PATTERN_POSITION_TABLE[r-1]},getMask:function(r,e,t){switch(r){case 0:return(e+t)%2==0;case 1:return e%2==0;case 2:return t%3==0;case 3:return(e+t)%3==0;case 4:return(Math.floor(e/2)+Math.floor(t/3))%2==0;case 5:return e*t%2+e*t%3==0;case 6:return(e*t%2+e*t%3)%2==0;case 7:return(e*t%3+(e+t)%2)%2==0;default:throw new Error("bad maskPattern:"+r)}},getErrorCorrectPolynomial:function(e){for(var t=new r([1],0),n=0;n<e;n++)t=t.multiply(new r([1,a.gexp(n)],0));return t},getRSBlocks:function(e,t){var n=o(t);if(!n)throw new Error("bad rs block: "+e+"/"+t);var s=[];for(var u=0;u<n.length;u+=3){var f=n[u],l=n[u+1],d=n[u+2];for(var v=0;v<f;v++)s.push({totalCount:l,dataCount:d})}return s},getLostPoint:function(r){for(var e=r.getModuleCount(),t=0,o=0;o<e;o++)for(var a=0;a<e;a++){for(var n=0,i=r.isDark(o,a),s=-1;s<=1;s++)if(!(o+s<0||e<=o+s))for(var h=-1;h<=1;h++)a+h<0||e<=a+h||0==s&&0==h||i==r.isDark(o+s,a+h)&&n++;n>5&&(t+=3+n-5)}for(o=0;o<e-1;o++)for(a=0;a<e-1;a++){var u=0;r.isDark(o,a)&&u++,r.isDark(o+1,a)&&u++,r.isDark(o,a+1)&&u++,r.isDark(o+1,a+1)&&u++,0!=u&&4!=u||(t+=3)}for(o=0;o<e;o++)for(a=0;a<e-6;a++)r.isDark(o,a)&&!r.isDark(o,a+1)&&r.isDark(o,a+2)&&r.isDark(o,a+3)&&r.isDark(o,a+4)&&!r.isDark(o,a+5)&&r.isDark(o,a+6)&&(t+=40);for(a=0;a<e;a++)for(o=0;o<e-6;o++)r.isDark(o,a)&&!r.isDark(o+1,a)&&r.isDark(o+2,a)&&r.isDark(o+3,a)&&r.isDark(o+4,a)&&!r.isDark(o+5,a)&&r.isDark(o+6,a)&&(t+=40);var f=0;for(a=0;a<e;a++)for(o=0;o<e;o++)r.isDark(o,a)&&f++;return t+=10*(Math.abs(100*f/e/e-50)/5)}};function o(r){switch(r){case"L":return u.L;case"M":return u.M;case"Q":return u.Q;case"H":return u.H;default:return null}}return function(r,e){for(var t=1;t<40;t++){try{var n=new n(t,e);n.addData(r),n.make();return n}catch(a){continue}}throw new Error("Dados muito grandes")}}();
+</script>
+
+<script>
+// ============ STATE ============
+var state = {
+    ecLevel: 'M',
+    qrSize: 300,
+    currentQR: null,
+    transmitFile: null,
+    transmitChunks: [],
+    receivedChunks: {},
+    receivedFileData: null,
+    cameraStream: null,
+    audioCtx: null,
+    oscillator: null,
+    isTransmitting: false,
+    lightInterval: null,
+    fskReceiveInterval: null
+};
+
+// ============ TABS ============
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(function(t,i){t.classList.remove('active')});
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.tab').forEach(function(t){if(t.textContent.toLowerCase().includes(name==='qr'?'qr code':name==='hash'?'hash':name==='transmit'?'transmitir':name==='receive'?'receber':name==='light'?'luz':'som'))t.classList.add('active')});
+    document.getElementById('panel-'+name).classList.add('active');
+}
+
+// ============ QR CODE ============
+function setECLevel(level) {
+    state.ecLevel = level;
+    document.querySelectorAll('.ec-btn').forEach(function(b){
+        b.classList.remove('active');
+        if(b.getAttribute('data-level')===level) b.classList.add('active');
+    });
+}
+
+function applyQRTemplate(type) {
+    var t = {url:'https://',wifi:'WIFI:T:WPA;S:NomeDaRede;P:Senha;;',email:'mailto:email@exemplo.com',phone:'tel:+5511999999999',vcard:'BEGIN:VCARD\nVERSION:3.0\nFN:Nome\nTEL:+5511999999999\nEMAIL:email@exemplo.com\nEND:VCARD',sms:'smsto:+5511999999999:Mensagem'};
+    document.getElementById('qr-content').value = t[type]||'';
+}
+
+function renderQR(text, size, dark, light, margin) {
+    size = size || 300; dark = dark || '#000'; light = light || '#fff'; margin = margin || 4;
+    var qr = qrcode(0, state.ecLevel);
+    qr.addData(text);
+    qr.make();
+    var mc = qr.getModuleCount();
+    var cs = size / (mc + margin * 2);
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = light;
+    ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = dark;
+    for(var r=0;r<mc;r++) for(var col=0;col<mc;col++) {
+        if(qr.isDark(r,col)) {
+            ctx.fillRect(Math.round((col+margin)*cs),Math.round((r+margin)*cs),Math.ceil(cs),Math.ceil(cs));
+        }
+    }
+    return c;
+}
+
+function generateQR() {
+    var text = document.getElementById('qr-content').value;
+    if(!text.trim()) return alert('Digite algo!');
+    try {
+        var size = parseInt(document.getElementById('qr-size').value);
+        var dark = document.getElementById('qr-dark').value;
+        var light = document.getElementById('qr-light').value;
+        var canvas = renderQR(text, size, dark, light);
+        canvas.id = 'qrcode-canvas';
+        var area = document.getElementById('qr-area');
+        area.innerHTML = '';
+        var container = document.createElement('div');
+        container.className = 'qr-container';
+        container.style.background = light;
+        container.appendChild(canvas);
+        area.appendChild(container);
+        document.getElementById('qr-actions').style.display = 'flex';
+    } catch(e) { alert('Erro: '+e.message); }
+}
+
+function downloadQR() {
+    var c = document.getElementById('qrcode-canvas');
+    if(!c) return;
+    var a = document.createElement('a');
+    a.download = 'qrcode-'+Date.now()+'.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+}
+
+// ============ HASH ============
+async function generateHash(algo) {
+    var text = document.getElementById('hash-input').value;
+    if(!text) return alert('Digite algo!');
+    var data = new TextEncoder().encode(text);
+    var hashBuffer = await crypto.subtle.digest(algo, data);
+    var hashArray = Array.from(new Uint8Array(hashBuffer));
+    var hashHex = hashArray.map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    var result = document.getElementById('hash-result');
+    result.innerHTML = '<label>'+algo+'</label><div class="hash-output">'+hashHex+'</div><div class="btn-row"><button class="btn btn-secondary" onclick="navigator.clipboard.writeText(\''+hashHex+'\')">📋 Copiar</button></div>';
+}
+
+async function hashFile() {
+    var file = document.getElementById('hash-file').files[0];
+    if(!file) return;
+    var buffer = await file.arrayBuffer();
+    var sha256 = await crypto.subtle.digest('SHA-256', buffer);
+    var sha512 = await crypto.subtle.digest('SHA-512', buffer);
+    var h256 = Array.from(new Uint8Array(sha256)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    var h512 = Array.from(new Uint8Array(sha512)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    document.getElementById('hash-result').innerHTML = '<label>SHA-256</label><div class="hash-output" style="margin-bottom:10px">'+h256+'</div><label>SHA-512</label><div class="hash-output">'+h512+'</div><div style="margin-top:8px;font-size:11px;color:#888">Arquivo: '+file.name+' ('+formatSize(file.size)+')</div>';
+}
+
+async function verifyHash(algo) {
+    var hash = document.getElementById('verify-hash').value.trim();
+    var text = document.getElementById('verify-text').value;
+    if(!hash || !text) return alert('Preencha os dois campos!');
+    var data = new TextEncoder().encode(text);
+    var hashBuffer = await crypto.subtle.digest(algo, data);
+    var hashHex = Array.from(new Uint8Array(hashBuffer)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    var match = hashHex === hash.toLowerCase();
+    document.getElementById('verify-result').innerHTML = match ? '<div class="status status-success">✅ Hash CORRETO! Os dados são idênticos.</div>' : '<div class="status status-error">❌ Hash DIFERENTE! Os dados foram alterados.</div>';
+}
+
+// ============ FILE TRANSMIT ============
+function handleFileSelect(e) {
+    var file = e.target.files[0];
+    if(!file) return;
+    state.transmitFile = file;
+    document.getElementById('file-info-area').innerHTML = '<div class="file-info"><div class="icon">📄</div><div class="details"><div class="name">'+file.name+'</div><div class="size">'+formatSize(file.size)+' • '+file.type+'</div></div></div>';
+    document.getElementById('transmit-controls').style.display = 'block';
+}
+
+function formatSize(bytes) {
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+async function startQRTransmit() {
+    if(!state.transmitFile) return alert('Selecione um arquivo!');
+    var status = document.getElementById('transmit-status');
+    status.style.display = 'block';
+    status.className = 'status status-info';
+    status.textContent = '📖 Lendo arquivo...';
+    
+    var buffer = await state.transmitFile.arrayBuffer();
+    var bytes = new Uint8Array(buffer);
+    
+    // Converter para base64
+    var binary = '';
+    for(var i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+    var b64 = btoa(binary);
+    
+    // Header: nome do arquivo + tamanho
+    var header = JSON.stringify({name:state.transmitFile.name,size:state.transmitFile.size,type:state.transmitFile.type});
+    var headerB64 = btoa(unescape(encodeURIComponent(header)));
+    
+    // Dividir em chunks (max ~200 chars por QR com EC L)
+    var chunkSize = 200;
+    var chunks = [];
+    var totalData = headerB64 + '|' + b64;
+    
+    for(var i=0;i<totalData.length;i+=chunkSize) {
+        var chunkNum = Math.floor(i/chunkSize);
+        var totalChunks = Math.ceil(totalData.length/chunkSize);
+        var prefix = 'DL:' + chunkNum + '/' + totalChunks + ':';
+        chunks.push(prefix + totalData.substring(i, i+chunkSize));
+    }
+    
+    state.transmitChunks = chunks;
+    status.textContent = '✅ '+chunks.length+' QR Codes gerados!';
+    status.className = 'status status-success';
+    
+    // Renderizar QR codes
+    var grid = document.getElementById('qr-grid');
+    grid.innerHTML = '';
+    document.getElementById('qr-count').textContent = chunks.length;
+    document.getElementById('qr-transmit-area').style.display = 'block';
+    
+    for(var i=0;i<chunks.length;i++) {
+        var div = document.createElement('div');
+        div.className = 'qr-item';
+        try {
+            var oldEC = state.ecLevel;
+            state.ecLevel = 'L';
+            var canvas = renderQR(chunks[i], 150, '#000', '#fff', 2);
+            state.ecLevel = oldEC;
+            div.appendChild(canvas);
+        } catch(e) {
+            div.innerHTML = '<div style="padding:20px;color:#f87171;font-size:10px">Erro no chunk '+i+'</div>';
+        }
+        var label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = '#'+(i+1)+'/'+chunks.length;
+        div.appendChild(label);
+        grid.appendChild(div);
+    }
+    
+    document.getElementById('transmit-progress').style.width = '100%';
+}
+
+var qrSequenceInterval = null;
+function playQRSequence() {
+    if(!state.transmitChunks.length) return;
+    var grid = document.getElementById('qr-grid');
+    var items = grid.querySelectorAll('.qr-item');
+    var idx = 0;
+    
+    if(qrSequenceInterval) clearInterval(qrSequenceInterval);
+    
+    // Mostrar um por vez
+    items.forEach(function(item){item.style.display='none'});
+    items[0].style.display = 'block';
+    
+    qrSequenceInterval = setInterval(function(){
+        items[idx].style.display = 'none';
+        idx = (idx+1) % items.length;
+        items[idx].style.display = 'block';
+        items[idx].style.border = '2px solid #7c3aed';
+        setTimeout(function(){items[idx].style.border=''}, 200);
+    }, 1500);
+}
+
+function downloadAllQR() {
+    var grid = document.getElementById('qr-grid');
+    var canvases = grid.querySelectorAll('canvas');
+    canvases.forEach(function(c,i){
+        var a = document.createElement('a');
+        a.download = 'qr-'+(i+1)+'.png';
+        a.href = c.toDataURL('image/png');
+        a.click();
+    });
+}
+
+// ============ SOUND TRANSMIT (FSK) ============
+function startSoundTransmitText() {
+    var text = document.getElementById('sound-text').value;
+    if(!text) return alert('Digite algo!');
+    
+    var freq0 = parseInt(document.getElementById('freq-0').value) || 800;
+    var freq1 = parseInt(document.getElementById('freq-1').value) || 1600;
+    var bitDur = parseInt(document.getElementById('bit-duration').value) || 50;
+    
+    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var status = document.getElementById('sound-status');
+    status.style.display = 'block';
+    status.className = 'status status-info';
+    status.textContent = '🔊 Transmitindo...';
+    
+    // Converter texto para bits
+    var bits = [];
+    // Preâmbulo (sincronização)
+    for(var i=0;i<16;i++) bits.push(1,0);
+    // Dados
+    var encoder = new TextEncoder();
+    var bytes = encoder.encode(text);
+    for(var i=0;i<bytes.length;i++) {
+        for(var b=7;b>=0;b--) {
+            bits.push((bytes[i]>>b)&1);
+        }
+    }
+    // Fim
+    for(var i=0;i<8;i++) bits.push(0);
+    
+    var idx = 0;
+    state.isTransmitting = true;
+    
+    function playBit() {
+        if(!state.isTransmitting || idx >= bits.length) {
+            status.textContent = '✅ Transmissão concluída!';
+            status.className = 'status status-success';
+            state.isTransmitting = false;
+            return;
+        }
+        
+        var freq = bits[idx] ? freq1 : freq0;
+        var osc = state.audioCtx.createOscillator();
+        var gain = state.audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.3;
+        osc.connect(gain);
+        gain.connect(state.audioCtx.destination);
+        osc.start();
+        osc.stop(state.audioCtx.currentTime + bitDur/1000);
+        
+        idx++;
+        var progress = (idx/bits.length*100).toFixed(0);
+        document.getElementById('transmit-progress').style.width = progress+'%';
+        
+        setTimeout(playBit, bitDur);
+    }
+    
+    playBit();
+}
+
+function stopSound() {
+    state.isTransmitting = false;
+    if(state.audioCtx) { state.audioCtx.close(); state.audioCtx = null; }
+}
+
+async function startSoundTransmit() {
+    if(!state.transmitFile) return;
+    var buffer = await state.transmitFile.arrayBuffer();
+    var bytes = new Uint8Array(buffer);
+    var binary = '';
+    for(var i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+    var b64 = btoa(binary);
+    
+    // Adicionar header
+    var header = JSON.stringify({name:state.transmitFile.name,size:state.transmitFile.size});
+    var data = btoa(unescape(encodeURIComponent(header))) + '|' + b64;
+    
+    document.getElementById('sound-text').value = 'FILE:' + data;
+    switchTab('sound');
+    startSoundTransmitText();
+}
+
+// ============ FSK RECEIVE ============
+var fskStream = null;
+var fskAnalyser = null;
+var fskData = [];
+var fskLastState = 0;
+var fskLastChange = 0;
+var fskBits = [];
+var fskReceiving = false;
+
+async function startFSKReceive() {
+    try {
+        fskStream = await navigator.mediaDevices.getUserMedia({audio:true});
+        state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var source = state.audioCtx.createMediaStreamSource(fskStream);
+        fskAnalyser = state.audioCtx.createAnalyser();
+        fskAnalyser.fftSize = 2048;
+        source.connect(fskAnalyser);
+        
+        fskReceiving = true;
+        fskBits = [];
+        fskLastState = 0;
+        fskLastChange = performance.now();
+        
+        var status = document.getElementById('fsk-receive-status');
+        status.style.display = 'block';
+        status.className = 'status status-info';
+        status.textContent = '🎤 Escutando... (Aguarde o sinal sonoro)';
+        
+        var freq0 = parseInt(document.getElementById('freq-0').value) || 800;
+        var freq1 = parseInt(document.getElementById('freq-1').value) || 1600;
+        var bitDur = parseInt(document.getElementById('bit-duration').value) || 50;
+        var threshold = (freq0 + freq1) / 2;
+        
+        var dataArray = new Float32Array(fskAnalyser.fftSize);
+        var lastBitTime = 0;
+        
+        function detect() {
+            if(!fskReceiving) return;
+            fskAnalyser.getFloatTimeDomainData(dataArray);
+            
+            // Calcular frequência dominante (autocorrelação simplificada)
+            var correlations = new Array(512).fill(0);
+            for(var lag = 1; lag < 512; lag++) {
+                for(var i = 0; i < dataArray.length - lag; i++) {
+                    correlations[lag] += dataArray[i] * dataArray[i+lag];
+                }
+            }
+            
+            // Encontrar pico
+            var maxCorr = 0, maxLag = 0;
+            for(var lag = 20; lag < 200; lag++) {
+                if(correlations[lag] > maxCorr) {
+                    maxCorr = correlations[lag];
+                    maxLag = lag;
+                }
+            }
+            
+            var sampleRate = state.audioCtx.sampleRate;
+            var freq = maxLag > 0 ? sampleRate / maxLag : 0;
+            
+            // Verificar se há sinal forte o suficiente
+            var rms = 0;
+            for(var i=0;i<dataArray.length;i++) rms += dataArray[i]*dataArray[i];
+            rms = Math.sqrt(rms/dataArray.length);
+            
+            if(rms > 0.01 && freq > 200) {
+                var bit = freq > threshold ? 1 : 0;
+                var now = performance.now();
+                
+                if(now - lastBitTime > bitDur * 0.7) {
+                    fskBits.push(bit);
+                    lastBitTime = now;
+                    
+                    // Tentar decodificar a cada 8 bits
+                    if(fskBits.length >= 8 && fskBits.length % 8 === 0) {
+                        tryDecodeFSK();
+                    }
+                }
+                
+                status.textContent = '🎤 Frequência: '+Math.round(freq)+'Hz | Bits: '+fskBits.length;
+            }
+            
+            requestAnimationFrame(detect);
+        }
+        
+        detect();
+    } catch(e) {
+        alert('Erro ao acessar microfone: '+e.message);
+    }
+}
+
+function tryDecodeFSK() {
+    var bytes = [];
+    for(var i=0;i<fskBits.length-7;i+=8) {
+        var byte = 0;
+        for(var b=0;b<8;b++) {
+            byte = (byte << 1) | fskBits[i+b];
+        }
+        bytes.push(byte);
+    }
+    
+    try {
+        var text = new TextDecoder().decode(new Uint8Array(bytes));
+        // Remover caracteres não imprimíveis
+        text = text.replace(/[^\x20-\x7E\u00C0-\u024F\n]/g, '');
+        if(text.length > 2) {
+            document.getElementById('fsk-received').style.display = 'block';
+            document.getElementById('fsk-received').textContent = text;
+            document.getElementById('fsk-save-btn').style.display = 'flex';
+        }
+    } catch(e) {}
+}
+
+function stopFSKReceive() {
+    fskReceiving = false;
+    if(fskStream) { fskStream.getTracks().forEach(function(t){t.stop()}); fskStream = null; }
+    if(state.audioCtx) { state.audioCtx.close(); state.audioCtx = null; }
+    var status = document.getElementById('fsk-receive-status');
+    status.className = 'status status-warning';
+    status.textContent = '⏹️ Parado';
+}
+
+function saveFSKData() {
+    var text = document.getElementById('fsk-received').textContent;
+    var blob = new Blob([text], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.download = 'dados-recebidos-'+Date.now()+'.txt';
+    a.href = URL.createObjectURL(blob);
+    a.click();
+}
+
+// ============ CAMERA RECEIVE ============
+async function startCamera() {
+    try {
+        state.cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+        var video = document.getElementById('camera-video');
+        video.srcObject = state.cameraStream;
+        document.getElementById('camera-container').style.display = 'block';
+        
+        var status = document.getElementById('receive-status');
+        status.style.display = 'block';
+        status.className = 'status status-info';
+        status.textContent = '📷 Câmera ativa - Aponte para os QR Codes';
+        document.getElementById('receive-log').style.display = 'block';
+        
+        // Iniciar scan contínuo
+        startQRScanning();
+    } catch(e) {
+        alert('Erro ao acessar câmera: '+e.message);
+    }
+}
+
+function stopCamera() {
+    if(state.cameraStream) {
+        state.cameraStream.getTracks().forEach(function(t){t.stop()});
+        state.cameraStream = null;
+    }
+    document.getElementById('camera-container').style.display = 'none';
+    if(state.scanInterval) clearInterval(state.scanInterval);
+}
+
+function startQRScanning() {
+    var video = document.getElementById('camera-video');
+    var canvas = document.getElementById('camera-canvas');
+    var ctx = canvas.getContext('2d');
+    var log = document.getElementById('receive-log');
+    
+    state.receivedChunks = {};
+    var totalExpected = 0;
+    
+    function addLog(msg, type) {
+        var div = document.createElement('div');
+        div.className = type || 'info';
+        div.textContent = '['+new Date().toLocaleTimeString()+'] '+msg;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    }
+    
+    addLog('Iniciando scanner de QR Code...', 'info');
+    
+    // Nota: Scanner QR por câmera requer uma biblioteca como jsQR
+    // Por enquanto, mostramos a câmera e instruímos o usuário
+    addLog('Aponte a câmera para os QR Codes. A decodificação requer a biblioteca jsQR.', 'warn');
+    addLog('Para receber: use a aba "Som" para recepção por áudio, ou escaneie os QR codes com um app leitor e cole os dados aqui.', 'info');
+    
+    // Área para colar dados manualmente
+    var status = document.getElementById('receive-status');
+    status.innerHTML = '📷 Câmera ativa. Para decodificar QR, use um leitor externo e cole os dados abaixo:<br><textarea id="manual-qr-input" placeholder="Cole os dados do QR aqui (formato: DL:X/Y:dados)" style="width:100%;height:60px;margin-top:8px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;color:#fff;font-size:11px;font-family:monospace"></textarea><button class="btn btn-primary" onclick="processManualQR()" style="margin-top:6px">Processar</button>';
+}
+
+function processManualQR() {
+    var input = document.getElementById('manual-qr-input');
+    if(!input) return;
+    var data = input.value.trim();
+    if(!data) return;
+    
+    var lines = data.split('\n');
+    var log = document.getElementById('receive-log');
+    
+    lines.forEach(function(line) {
+        line = line.trim();
+        if(!line) return;
+        
+        // Formato: DL:X/Y:dados
+        var match = line.match(/^DL:(\d+)\/(\d+):(.+)$/);
+        if(match) {
+            var chunkNum = parseInt(match[1]);
+            var totalChunks = parseInt(match[2]);
+            var chunkData = match[3];
+            
+            state.receivedChunks[chunkNum] = chunkData;
+            
+            var div = document.createElement('div');
+            div.className = 'success';
+            div.textContent = '✅ Chunk '+chunkNum+'/'+totalChunks+' recebido';
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+            
+            // Verificar se temos todos
+            if(Object.keys(state.receivedChunks).length >= totalChunks) {
+                assembleFile(totalChunks);
+            }
+            
+            var progress = (Object.keys(state.receivedChunks).length / totalChunks * 100);
+            document.getElementById('receive-progress').style.width = progress + '%';
+        }
+    });
+    
+    input.value = '';
+}
+
+function assembleFile(totalChunks) {
+    var fullData = '';
+    for(var i=0;i<totalChunks;i++) {
+        if(state.receivedChunks[i]) {
+            fullData += state.receivedChunks[i];
+        }
+    }
+    
+    // Separar header e dados
+    var parts = fullData.split('|');
+    if(parts.length < 2) return;
+    
+    try {
+        var header = JSON.parse(decodeURIComponent(escape(atob(parts[0]))));
+        var b64Data = parts[1];
+        
+        // Converter base64 para blob
+        var binary = atob(b64Data);
+        var bytes = new Uint8Array(binary.length);
+        for(var i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+        
+        state.receivedFileData = new Blob([bytes], {type: header.type || 'application/octet-stream'});
+        state.receivedFileName = header.name;
+        
+        document.getElementById('received-file').style.display = 'block';
+        
+        var log = document.getElementById('receive-log');
+        var div = document.createElement('div');
+        div.className = 'success';
+        div.textContent = '🎉 Arquivo completo: '+header.name+' ('+formatSize(header.size)+')';
+        log.appendChild(div);
+    } catch(e) {
+        var log = document.getElementById('receive-log');
+        var div = document.createElement('div');
+        div.className = 'error';
+        div.textContent = '❌ Erro ao montar arquivo: '+e.message;
+        log.appendChild(div);
+    }
+}
+
+function downloadReceivedFile() {
+    if(!state.receivedFileData) return;
+    var a = document.createElement('a');
+    a.download = state.receivedFileName || 'arquivo-recebido';
+    a.href = URL.createObjectURL(state.receivedFileData);
+    a.click();
+}
+
+// ============ LIGHT TRANSMIT ============
+var lightFileData = null;
+var lightTransmitting = false;
+
+function handleLightFile(e) {
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        lightFileData = ev.target.result; // base64
+        var status = document.getElementById('light-status');
+        status.style.display = 'block';
+        status.className = 'status status-info';
+        status.textContent = '📁 Arquivo carregado: '+file.name+' ('+formatSize(file.size)+')';
+    };
+    reader.readAsDataURL(file);
+}
+
+function startLightTransmit() {
+    if(!lightFileData) return alert('Selecione um arquivo!');
+    
+    lightTransmitting = true;
+    var visual = document.getElementById('light-transmit-visual');
+    var progress = document.getElementById('light-progress');
+    var status = document.getElementById('light-status');
+    status.className = 'status status-info';
+    status.textContent = '💡 Transmitindo por luz... (Aponte a tela para a câmera do receptor)';
+    
+    // Converter dados para sequência de bits
+    var b64 = lightFileData.split(',')[1] || lightFileData;
+    var bits = [];
+    
+    // Preâmbulo de sincronização
+    for(var i=0;i<32;i++) bits.push(1,0,1,0);
+    
+    // Dados
+    for(var i=0;i<b64.length;i++) {
+        var code = b64.charCodeAt(i);
+        for(var b=7;b>=0;b--) {
+            bits.push((code>>b)&1);
+        }
+    }
+    
+    // Fim
+    for(var i=0;i<16;i++) bits.push(1,1,1,1);
+    
+    var idx = 0;
+    var speed = 100; // ms por bit
+    
+    state.lightInterval = setInterval(function(){
+        if(!lightTransmitting || idx >= bits.length) {
+            clearInterval(state.lightInterval);
+            visual.style.background = '#333';
+            status.textContent = '✅ Transmissão por luz concluída!';
+            status.className = 'status status-success';
+            lightTransmitting = false;
+            return;
+        }
+        
+        if(bits[idx]) {
+            visual.style.background = '#fff';
+        } else {
+            visual.style.background = '#000';
+        }
+        
+        idx++;
+        progress.style.width = (idx/bits.length*100)+'%';
+    }, speed);
+}
+
+function stopLightTransmit() {
+    lightTransmitting = false;
+    if(state.lightInterval) clearInterval(state.lightInterval);
+    document.getElementById('light-transmit-visual').style.background = '#333';
+}
+
+// ============ LIGHT RECEIVE ============
+var lightStream = null;
+var lightReceiving = false;
+
+async function startLightReceive() {
+    try {
+        lightStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+        var video = document.getElementById('light-camera-video');
+        video.srcObject = lightStream;
+        document.getElementById('light-camera-container').style.display = 'block';
+        
+        lightReceiving = true;
+        var status = document.getElementById('light-receive-status');
+        status.style.display = 'block';
+        status.className = 'status status-info';
+        status.textContent = '📷 Analisando luz... Aponte para a tela transmissora';
+        
+        var canvas = document.createElement('canvas');
+        canvas.width = 10; canvas.height = 10;
+        var ctx = canvas.getContext('2d');
+        
+        var lastBrightness = 0;
+        var bits = [];
+        var lastBitTime = 0;
+        var threshold = 128;
+        
+        function analyze() {
+            if(!lightReceiving) return;
+            
+            ctx.drawImage(video, 0, 0, 10, 10);
+            var data = ctx.getImageData(0,0,10,10).data;
+            
+            // Calcular brilho médio
+            var brightness = 0;
+            for(var i=0;i<data.length;i+=4) {
+                brightness += (data[i]+data[i+1]+data[i+2])/3;
+            }
+            brightness /= (data.length/4);
+            
+            // Detectar mudança
+            var now = performance.now();
+            var bit = brightness > threshold ? 1 : 0;
+            var lastBit = lastBrightness > threshold ? 1 : 0;
+            
+            if(bit !== lastBit && now - lastBitTime > 50) {
+                bits.push(bit);
+                lastBitTime = now;
+            }
+            
+            lastBrightness = brightness;
+            
+            status.textContent = '💡 Brilho: '+Math.round(brightness)+' | Bits: '+bits.length;
+            document.getElementById('light-receive-progress').style.width = Math.min(bits.length/100*100,100)+'%';
+            
+            requestAnimationFrame(analyze);
+        }
+        
+        analyze();
+    } catch(e) {
+        alert('Erro ao acessar câmera: '+e.message);
+    }
+}
+
+function stopLightReceive() {
+    lightReceiving = false;
+    if(lightStream) { lightStream.getTracks().forEach(function(t){t.stop()}); lightStream = null; }
+    document.getElementById('light-camera-container').style.display = 'none';
+    var status = document.getElementById('light-receive-status');
+    status.className = 'status status-warning';
+    status.textContent = '⏹️ Parado';
+}
+
+// ============ DRAG & DROP ============
+var dropZone = document.getElementById('file-drop');
+if(dropZone) {
+    dropZone.addEventListener('dragover', function(e){e.preventDefault();dropZone.classList.add('dragover')});
+    dropZone.addEventListener('dragleave', function(){dropZone.classList.remove('dragover')});
+    dropZone.addEventListener('drop', function(e){
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        var files = e.dataTransfer.files;
+        if(files.length) {
+            state.transmitFile = files[0];
+            document.getElementById('file-info-area').innerHTML = '<div class="file-info"><div class="icon">📄</div><div class="details"><div class="name">'+files[0].name+'</div><div class="size">'+formatSize(files[0].size)+' • '+files[0].type+'</div></div></div>';
+            document.getElementById('transmit-controls').style.display = 'block';
+        }
+    });
+}
+</script>
+</body>
+</html>

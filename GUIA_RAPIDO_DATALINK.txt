@@ -1,0 +1,461 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                    🚀 DATALINK - GUIA RÁPIDO                                 ║
+║                 Transmissão Universal de Dados                               ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 COMO ABRIR
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Windows:
+  → Dê duplo clique em: Abrir-DataLink.bat
+
+Android/Celular:
+  → Copie DataLink.html para o celular
+  → Abra com Chrome/Firefox
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 FUNCIONALIDADES (6 ABAS)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1️⃣  QR CODE                                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ O que faz:                                                                   │
+│   • Gera QR codes de qualquer texto/link/senha                              │
+│   • Modelos prontos: Wi-Fi, E-mail, Telefone, Contato, SMS                  │
+│   • Ajuste correção de erro (L, M, Q, H)                                    │
+│   • Mude cores e tamanho                                                    │
+│   • Salve como PNG                                                          │
+│                                                                              │
+│ Como usar:                                                                   │
+│   1. Digite o conteúdo                                                      │
+│   2. Clique em "⚡ Gerar QR Code"                                            │
+│   3. Clique em "💾 Salvar PNG"                                              │
+│                                                                              │
+│ Exemplo Wi-Fi:                                                               │
+│   • Clique em "📶 Wi-Fi"                                                    │
+│   • Mude "NomeDaRede" para nome do seu Wi-Fi                                │
+│   • Mude "Senha" para senha do seu Wi-Fi                                    │
+│   • Gere o QR code                                                          │
+│   • Visitante escaneia e conecta automaticamente!                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2️⃣  HASH (SHA-256 / SHA-512)                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ O que faz:                                                                   │
+│   • Gera hash SHA-256 (64 caracteres) ou SHA-512 (128 caracteres)           │
+│   • Verifica integridade de arquivos                                        │
+│   • Compara hash com texto original                                         │
+│                                                                              │
+│ Como usar:                                                                   │
+│                                                                              │
+│ GERAR HASH:                                                                  │
+│   1. Digite texto OU selecione arquivo                                      │
+│   2. Clique em "🔒 SHA-256" ou "🔐 SHA-512"                                 │
+│   3. Copie o hash gerado                                                    │
+│                                                                              │
+│ VERIFICAR HASH:                                                              │
+│   1. Cole o hash no campo "Cole o hash aqui"                                │
+│   2. Digite o texto original                                                │
+│   3. Clique em "✓ Verificar SHA-256"                                        │
+│   4. Se bater = ✅ arquivo íntegro                                          │
+│   5. Se não bater = ❌ arquivo corrompido                                   │
+│                                                                              │
+│ Exemplo:                                                                     │
+│   • Baixe um arquivo importante                                             │
+│   • Site fornece hash SHA-256                                               │
+│   • Gere hash do arquivo baixado                                            │
+│   • Compare com hash do site                                                │
+│   • Se bater = download OK!                                                 │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 3️⃣  TRANSMITIR ARQUIVO                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ O que faz:                                                                   │
+│   • Envia arquivos (imagem, música, vídeo, documento)                       │
+│   • Por QR Code: divide em múltiplos QR codes                              │
+│   • Por Som: emite ondas sonoras (FSK)                                      │
+│                                                                              │
+│ COMO TRANSMITIR POR QR CODE:                                                │
+│                                                                              │
+│   1. Clique em "📁 Clique ou arraste um arquivo aqui"                       │
+│   2. Selecione o arquivo (imagem, música, vídeo, etc.)                      │
+│   3. Clique em "📤 Gerar QR Codes"                                          │
+│   4. O arquivo é dividido em múltiplos QR codes                             │
+│   5. Mostre os QR codes para o receptor escanear                            │
+│   6. OU clique em "▶️ Reproduzir Sequência" para mostrar um por vez         │
+│                                                                              │
+│ COMO TRANSMITIR POR SOM:                                                    │
+│                                                                              │
+│   1. Selecione o arquivo                                                    │
+│   2. Clique em "🔊 Transmitir por Som"                                      │
+│   3. O programa emite sons (modulação FSK)                                  │
+│   4. O receptor usa microfone para captar                                   │
+│   5. Dados são decodificados automaticamente                                │
+│                                                                              │
+│ VELOCIDADE:                                                                  │
+│   • QR Code: ~3KB por QR (rápido se tiver poucos QRs)                       │
+│   • Som: ~20 bits/s (MUITO LENTO - 1MB = 11 horas!)                         │
+│                                                                              │
+│ RECOMENDAÇÃO:                                                                │
+│   • Arquivos pequenos (<10KB): Use QR Code                                  │
+│   • Arquivos grandes: Use QR Code com "Reproduzir Sequência"                │
+│   • Som: Apenas para textos pequenos ou configurações                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 4️⃣  RECEBER ARQUIVO                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ O que faz:                                                                   │
+│   • Recebe arquivos via câmera (QR codes)                                   │
+│   • Recebe arquivos via microfone (som)                                     │
+│   • Reconstrói arquivo automaticamente                                      │
+│                                                                              │
+│ COMO RECEBER POR CÂMERA (QR CODE):                                          │
+│                                                                              │
+│   1. Clique em "📷 Iniciar Câmera"                                          │
+│   2. Aponte para os QR codes transmitidos                                   │
+│   3. O programa escaneia automaticamente                                    │
+│   4. Quando todos os chunks são recebidos, arquivo é reconstruído           │
+│   5. Clique em "💾 Baixar Arquivo"                                          │
+│                                                                              │
+│ COMO RECEBER POR SOM:                                                       │
+│                                                                              │
+│   1. Clique em "🎤 Iniciar Microfone"                                       │
+│   2. O programa escuta os sons transmitidos                                 │
+│   3. Decodifica automaticamente (FSK)                                       │
+│   4. Mostra os dados recebidos                                              │
+│   5. Clique em "💾 Salvar Dados"                                            │
+│                                                                              │
+│ RECEBIMENTO MANUAL (se câmera não funcionar):                               │
+│                                                                              │
+│   1. Escaneie os QR codes com app leitor (ex: QR Scanner)                   │
+│   2. Copie os dados (formato: DL:X/Y:dados)                                 │
+│   3. Cole no campo de texto                                                 │
+│   4. Clique em "Processar"                                                  │
+│   5. Arquivo é reconstruído automaticamente                                 │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 5️⃣  LUZ (Transmissão por Brilho da Tela)                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ O que faz:                                                                   │
+│   • Transmite dados variando brilho da tela (branco/preto)                  │
+│   • Silencioso (não emite som)                                              │
+│   • Receptor usa câmera para captar                                         │
+│                                                                              │
+│ COMO TRANSMITIR:                                                            │
+│                                                                              │
+│   1. Selecione um arquivo                                                   │
+│   2. Clique em "▶️ Iniciar Transmissão"                                     │
+│   3. A tela pisca branco/preto (dados em binário)                           │
+│   4. Aponte a tela para a câmera do receptor                                │
+│   5. Receptor decodifica automaticamente                                    │
+│                                                                              │
+│ COMO RECEBER:                                                               │
+│                                                                              │
+│   1. Clique em "📷 Iniciar Câmera"                                          │
+│   2. Aponte para a tela transmissora                                        │
+│   3. Programa analisa variações de brilho                                   │
+│   4. Decodifica dados automaticamente                                       │
+│                                                                              │
+│ VELOCIDADE:                                                                  │
+│   • ~10 bits/s (MUITO LENTO - 1MB = 22 horas!)                              │
+│                                                                              │
+│ RECOMENDAÇÃO:                                                                │
+│   • Use apenas para textos muito pequenos                                   │
+│   • Ambiente escuro melhora recepção                                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 6️⃣  SOM (Transmissão por Ondas Sonoras - FSK)                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ O que faz:                                                                   │
+│   • Transmite dados via ondas sonoras (como modem antigo)                   │
+│   • Frequência 800Hz = bit 0                                                │
+│   • Frequência 1600Hz = bit 1                                               │
+│   • Funciona através de paredes!                                            │
+│                                                                              │
+│ COMO TRANSMITIR:                                                            │
+│                                                                              │
+│   1. Digite texto para transmitir                                           │
+│   2. Ajuste frequências (padrão: 800Hz e 1600Hz)                            │
+│   3. Ajuste duração por bit (padrão: 50ms)                                  │
+│   4. Clique em "▶️ Transmitir"                                              │
+│   5. Programa emite sons modulados                                          │
+│                                                                              │
+│ COMO RECEBER:                                                               │
+│                                                                              │
+│   1. Clique em "🎤 Iniciar Escuta"                                          │
+│   2. Programa analisa áudio do microfone                                    │
+│   3. Detecta frequências (800Hz = 0, 1600Hz = 1)                            │
+│   4. Decodifica bits automaticamente                                        │
+│   5. Mostra texto recebido                                                  │
+│   6. Clique em "💾 Salvar Dados"                                            │
+│                                                                              │
+│ VELOCIDADE:                                                                  │
+│   • ~20 bits/s (LENTO - 1MB = 11 horas!)                                    │
+│                                                                              │
+│ RECOMENDAÇÃO:                                                                │
+│   • Use para textos pequenos (senhas, configurações)                        │
+│   • Aumente volume para melhor recepção                                     │
+│   • Funciona através de paredes!                                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 COMO USAR NO ANDROID
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MÉTODO 1: Arquivo Local (MAIS FÁCIL)
+─────────────────────────────────────
+
+1. Copie DataLink.html para o celular:
+   • Via USB
+   • Via Bluetooth
+   • Via e-mail (envie para você mesmo)
+
+2. No celular, abra o arquivo:
+   • Use Chrome, Firefox ou qualquer navegador
+   • Funciona 100% offline!
+
+3. Pronto! Todas as funcionalidades disponíveis.
+
+
+MÉTODO 2: Servidor Local (AVANÇADO)
+─────────────────────────────────────
+
+1. No PC, abra servidor HTTP:
+   python -m http.server 8000
+
+2. No celular (mesma rede WiFi):
+   http://IP-DO-PC:8000/public/DataLink.html
+
+3. Substitua IP-DO-PC pelo IP do seu computador
+
+
+MÉTODO 3: Hospedar Online
+─────────────────────────────────────
+
+1. Faça upload de DataLink.html para:
+   • GitHub Pages
+   • Netlify
+   • Vercel
+
+2. Acesse pelo celular via URL
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 CASOS DE USO PRÁTICOS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. COMPARTILHAR WI-FI
+   ━━━━━━━━━━━━━━━━━━━
+   • Gere QR code com modelo "Wi-Fi"
+   • Visitante escaneia e conecta automaticamente
+   • Não precisa digitar senha!
+
+2. VERIFICAR INTEGRIDADE DE ARQUIVO
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   • Gere hash SHA-256 do arquivo
+   • Envie arquivo + hash separadamente
+   • Destinatário verifica se arquivo não foi corrompido
+
+3. TRANSFERIR ARQUIVO SEM INTERNET
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   • Use transmissão por QR Code (rápido)
+   • Ou por som (lento, mas funciona através de paredes)
+
+4. BACKUP FÍSICO DE SENHAS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━
+   • Gere QR code com senhas importantes
+   • Imprima e guarde em local seguro
+   • Backup físico, impossível de hackear
+
+5. TRANSMITIR DADOS SILENCIOSAMENTE
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   • Use transmissão por luz
+   • Não emite som
+   • Ideal para bibliotecas, reuniões
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚙️ CONFIGURAÇÕES IMPORTANTES
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CORREÇÃO DE ERRO (QR Code)
+────────────────────────────
+
+L (Low):      ~7% recuperação  → Mais dados, menos proteção
+M (Medium):   ~15% recuperação → Balanceado (PADRÃO)
+Q (Quartile): ~25% recuperação → Mais proteção
+H (High):     ~30% recuperação → Máxima proteção
+
+Recomendação: Use M para maioria dos casos
+
+
+FSK (Som)
+─────────
+
+Frequência 0: 800Hz  (padrão)
+Frequência 1: 1600Hz (padrão)
+Duração bit:  50ms   (padrão)
+
+Velocidade: ~20 bits/s
+
+Recomendação: Não altere a menos que tenha problemas
+
+
+LUZ
+───
+
+Velocidade: 100ms por bit (padrão)
+
+Velocidade: ~10 bits/s
+
+Recomendação: Use apenas para textos muito pequenos
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🐛 SOLUÇÃO DE PROBLEMAS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEMA: QR Code não gera
+SOLUÇÃO:  Texto muito longo → Use correção L ou divida em partes
+
+
+PROBLEMA: Som não é recebido
+SOLUÇÃO:  Aumente volume, aproxime dispositivos
+ALTERNATIVA: Use fones de ouvido para transmitir
+
+
+PROBLEMA: Luz não é recebida
+SOLUÇÃO:  Escureça ambiente ou aproxime dispositivos
+ALTERNATIVA: Aumente contraste
+
+
+PROBLEMA: Câmera não funciona
+SOLUÇÃO:  Permita acesso à câmera no navegador
+ALTERNATIVA: Use transmissão manual (copiar/colar QR codes)
+
+
+PROBLEMA: Arquivo não reconstrói
+SOLUÇÃO:  Escaneie QR codes na ordem correta (1/10, 2/10, 3/10...)
+ALTERNATIVA: Use transmissão por som ou luz
+
+
+PROBLEMA: Transmissão por som muito lenta
+SOLUÇÃO:  É normal! ~20 bits/s
+ALTERNATIVA: Use QR Code (muito mais rápido)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 COMPARAÇÃO DE VELOCIDADE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────┬──────────────┬──────────────────────────────────────────┐
+│ Método           │ Velocidade   │ Tempo para 1MB                         │
+├──────────────────┼──────────────┼──────────────────────────────────────────┤
+│ QR Code          │ ~3KB/QR      │ Depende do número de QRs               │
+│ Som (FSK)        │ ~20 bits/s   │ ~11 horas                              │
+│ Luz              │ ~10 bits/s   │ ~22 horas                              │
+│ Vídeo            │ ~3KB/frame   │ ~5 minutos (30 FPS)                    │
+└──────────────────┴──────────────┴──────────────────────────────────────────┘
+
+RECOMENDAÇÃO:
+• Arquivos pequenos (<10KB): QR Code
+• Arquivos médios (10KB-1MB): QR Code com "Reproduzir Sequência"
+• Arquivos grandes (>1MB): Divida em partes menores
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔒 SEGURANÇA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DADOS TRANSMITIDOS:
+• QR Code: Visível para qualquer pessoa
+• Som: Audível para qualquer pessoa nearby
+• Luz: Visível para qualquer pessoa nearby
+• Vídeo: Visível para qualquer pessoa nearby
+
+CRIPTOGRAFIA:
+• Atual: Nenhuma (dados em claro)
+• Recomendação: Criptografe arquivos antes de transmitir
+• Sugestão: Use 7-Zip com senha antes de transmitir
+
+HASH:
+• SHA-256: Seguro para verificação de integridade
+• SHA-512: Mais seguro, mas mais longo
+• Uso: Verificar se arquivo não foi alterado
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 PRONTO PARA USAR!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DataLink está pronto!
+
+Funcionalidades:
+✓ QR Code (gerar e escanear)
+✓ Hash SHA-256/SHA-512 (gerar e verificar)
+✓ Transmissão por QR Code (arquivos divididos)
+✓ Transmissão por Som (FSK)
+✓ Transmissão por Luz (brilho da tela)
+✓ Recepção por Câmera (QR, luz, vídeo)
+✓ Recepção por Microfone (som)
+✓ Funciona no Android (via navegador)
+✓ 100% offline
+✓ Sem instalação
+
+Abra o programa e comece a transmitir dados de qualquer forma!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚀 DataLink - Transmita dados de qualquer forma, em qualquer lugar!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
