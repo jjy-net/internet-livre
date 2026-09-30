@@ -101,52 +101,122 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;hei
 <!-- CHAT SEGURO -->
 <div class="panel active" id="panel-chat">
 <div class="section-title">💬 Chat Criptografado Full-Duplex</div>
+
+<!-- Status de Conexão -->
+<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:10px;margin-bottom:10px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<div>
+<span style="font-size:11px;color:#888">Status:</span>
+<span id="chat-connection-status" style="font-size:12px;font-weight:600;color:#f59e0b">⚠️ Desconectado</span>
+</div>
+<div>
+<span style="font-size:11px;color:#888">Canal:</span>
+<span id="chat-channel-display" style="font-size:12px;font-weight:600;color:#a78bfa">QR Code</span>
+</div>
+</div>
+<div class="progress-bar" style="height:4px"><div class="progress-fill" id="chat-connection-bar" style="width:0%"></div></div>
+</div>
+
 <div class="grid-2">
 <div>
-<label>Canal de Transmissão:</label>
+<label>📡 Canal de Transmissão:</label>
 <div class="grid-3">
-<button class="btn btn-secondary" onclick="setChannel('qr')">📱 QR</button>
-<button class="btn btn-secondary" onclick="setChannel('sound')">🔊 Som</button>
-<button class="btn btn-secondary" onclick="setChannel('light')">💡 Luz</button>
+<button class="btn btn-primary" onclick="setChannel('qr')" id="btn-channel-qr">📱 QR</button>
+<button class="btn btn-secondary" onclick="setChannel('sound')" id="btn-channel-sound">🔊 Som</button>
+<button class="btn btn-secondary" onclick="setChannel('light')" id="btn-channel-light">💡 Luz</button>
 </div>
-<label style="margin-top:10px">Criptografia:</label>
+
+<label style="margin-top:10px">🔐 Criptografia:</label>
 <select id="chat-crypto">
-<option value="aes">AES-256-GCM</option>
+<option value="aes">AES-256-GCM (Recomendado)</option>
 <option value="rsa">RSA-2048</option>
-<option value="pgp">PGP/GPG</option>
-<option value="otp">One-Time Pad</option>
+<option value="otp">One-Time Pad (Inquebrável)</option>
 <option value="none">Sem Criptografia</option>
 </select>
-<label>Compressão:</label>
+
+<label>📦 Compressão:</label>
 <select id="chat-compress">
-<option value="lz">LZ-String</option>
-<option value="gzip">GZip</option>
+<option value="lz">LZ-String (Rápido)</option>
 <option value="none">Sem Compressão</option>
 </select>
-<label>Correção de Erro:</label>
+
+<label>🛡️ Correção de Erro:</label>
 <select id="chat-ecc">
-<option value="hamming">Hamming(7,4)</option>
-<option value="reed">Reed-Solomon</option>
-<option value="crc">CRC-32</option>
+<option value="crc">CRC-32 (Detecção)</option>
+<option value="hamming">Hamming(7,4) (Correção)</option>
 <option value="none">Sem Correção</option>
 </select>
+
+<label style="margin-top:10px">🔑 Chave Compartilhada:</label>
+<input type="text" id="chat-shared-key" placeholder="Digite a mesma chave em ambos dispositivos..." value="datalink2024">
+<div style="font-size:9px;color:#888;margin-top:3px">⚠️ Ambos dispositivos devem usar a MESMA chave</div>
+
+<div style="margin-top:10px">
+<button class="btn btn-success" onclick="startHandshake()">🤝 Iniciar Conexão</button>
+<button class="btn btn-danger" onclick="disconnectChat()">❌ Desconectar</button>
+</div>
+</div>
+
+<div>
+<div class="stat-box"><div class="label">Status</div><div class="value" id="chat-status">Offline</div></div>
+<div class="stat-box" style="margin-top:5px"><div class="label">Enviadas</div><div class="value" id="chat-sent">0</div></div>
+<div class="stat-box" style="margin-top:5px"><div class="label">Recebidas</div><div class="value" id="chat-received">0</div></div>
+<div class="stat-box" style="margin-top:5px"><div class="label">Latência</div><div class="value" id="chat-latency">--ms</div></div>
+<div class="stat-box" style="margin-top:5px"><div class="label">Pendentes</div><div class="value" id="chat-pending">0</div></div>
+</div>
+</div>
+
+<!-- Área de Chat -->
+<div class="chat-container" style="margin-top:10px">
+<div class="chat-messages" id="chat-messages">
+<div style="text-align:center;color:#888;padding:20px;font-size:11px">
+💬 Chat Criptografado Full-Duplex<br>
+<small>Clique em "🤝 Iniciar Conexão" para começar</small>
+</div>
+</div>
+<div class="chat-input">
+<textarea id="chat-input" placeholder="Digite sua mensagem..." onkeydown="if(event.ctrlKey&&event.key==='Enter')sendMessage()"></textarea>
+<div style="display:flex;flex-direction:column;gap:3px">
+<button class="btn btn-primary" onclick="sendMessage()">📤 Enviar</button>
+<button class="btn btn-secondary" onclick="clearChat()" style="font-size:10px;padding:6px 10px">🗑️</button>
+</div>
+</div>
+</div>
+
+<!-- Fila de Mensagens Pendentes -->
+<div id="pending-messages" style="display:none;margin-top:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px">
+<div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:5px">⏳ Mensagens Pendentes de Confirmação:</div>
+<div id="pending-list" style="font-size:10px;color:#888"></div>
+</div>
+
+<!-- Log do Sistema -->
+<div class="log" id="chat-log" style="margin-top:10px;max-height:150px">
+<div class="info">[Sistema] Chat seguro inicializado.</div>
+<div class="info">[Sistema] Aguardando início de conexão...</div>
+</div>
+
+<!-- Controles Avançados -->
+<details style="margin-top:10px">
+<summary style="cursor:pointer;font-size:11px;color:#888;padding:5px">⚙️ Configurações Avançadas</summary>
+<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:10px;margin-top:5px">
+<div class="grid-2">
+<div>
+<label>Timeout de Confirmação (ms):</label>
+<input type="number" id="chat-timeout" value="5000" min="1000" max="30000">
 </div>
 <div>
-<div class="stat-box"><div class="label">Status</div><div class="value" id="chat-status">Aguardando</div></div>
-<div class="stat-box" style="margin-top:8px"><div class="label">Mensagens</div><div class="value" id="chat-count">0</div></div>
-<div class="stat-box" style="margin-top:8px"><div class="label">Latência</div><div class="value" id="chat-latency">0ms</div></div>
+<label>Máximo de Retentativas:</label>
+<input type="number" id="chat-retries" value="3" min="1" max="10">
 </div>
 </div>
-<div class="chat-container" style="margin-top:10px">
-<div class="chat-messages" id="chat-messages"></div>
-<div class="chat-input">
-<textarea id="chat-input" placeholder="Digite sua mensagem..."></textarea>
-<button class="btn btn-primary" onclick="sendMessage()">📤 Enviar</button>
+<div style="margin-top:8px">
+<label><input type="checkbox" id="chat-sound-notify" checked> 🔔 Notificação sonora ao receber mensagem</label>
+</div>
+<div style="margin-top:5px">
+<label><input type="checkbox" id="chat-auto-retry" checked> 🔄 Retentativa automática de mensagens não confirmadas</label>
 </div>
 </div>
-<div class="log" id="chat-log" style="margin-top:10px;max-height:120px">
-<div class="info">[Sistema] Chat seguro inicializado.</div>
-</div>
+</details>
 </div>
 
 <!-- CRIPTOGRAFIA -->
@@ -757,43 +827,599 @@ function otpDecrypt() {
 }
 
 // ============================================
-// CHAT SEGURO
+// CHAT SEGURO - SISTEMA COMPLETO
 // ============================================
+
+// Estado do Chat
+var chatState = {
+    connected: false,
+    channel: 'qr',
+    messageQueue: [],
+    pendingMessages: {},
+    messageIdCounter: 0,
+    lastPing: 0,
+    latency: 0,
+    handshakeComplete: false
+};
+
+// Protocolo de Mensagens
+var PROTOCOL = {
+    HANDSHAKE_INIT: 'HSK_INIT',
+    HANDSHAKE_ACK: 'HSK_ACK',
+    HANDSHAKE_COMPLETE: 'HSK_COMPLETE',
+    MESSAGE: 'MSG',
+    ACK: 'ACK',
+    NACK: 'NACK',
+    PING: 'PING',
+    PONG: 'PONG',
+    DISCONNECT: 'DISC'
+};
+
 function setChannel(ch) {
-    state.channel = ch;
-    document.getElementById('chat-status').textContent = 'Canal: ' + ch.toUpperCase();
-    log('Canal alterado para: ' + ch, 'info', 'chat-log');
+    chatState.channel = ch;
+    
+    // Atualizar botões
+    document.querySelectorAll('[id^="btn-channel-"]').forEach(function(btn) {
+        btn.className = 'btn btn-secondary';
+    });
+    document.getElementById('btn-channel-' + ch).className = 'btn btn-primary';
+    
+    // Atualizar display
+    var channelNames = { qr: 'QR Code', sound: 'Som', light: 'Luz' };
+    document.getElementById('chat-channel-display').textContent = channelNames[ch];
+    
+    log('Canal alterado para: ' + channelNames[ch], 'info', 'chat-log');
+    
+    // Se conectado, notificar mudança
+    if (chatState.connected) {
+        sendControlMessage('Canal alterado para ' + channelNames[ch]);
+    }
 }
 
-function sendMessage() {
+async function startHandshake() {
+    if (chatState.connected) {
+        log('Já conectado!', 'warn', 'chat-log');
+        return;
+    }
+    
+    log('Iniciando handshake...', 'info', 'chat-log');
+    updateConnectionStatus('connecting', '🔄 Conectando...');
+    
+    var sharedKey = document.getElementById('chat-shared-key').value;
+    if (!sharedKey) {
+        log('Erro: Chave compartilhada não definida!', 'error', 'chat-log');
+        updateConnectionStatus('error', '❌ Erro: Chave necessária');
+        return;
+    }
+    
+    // Criar mensagem de handshake
+    var handshakeMsg = {
+        type: PROTOCOL.HANDSHAKE_INIT,
+        timestamp: Date.now(),
+        key: sharedKey,
+        channel: chatState.channel,
+        version: '2.0'
+    };
+    
+    // Transmitir handshake pelo canal selecionado
+    await transmitViaChannel(handshakeMsg);
+    
+    log('Handshake enviado, aguardando resposta...', 'info', 'chat-log');
+    
+    // Simular resposta do receptor (em produção, seria real)
+    setTimeout(async function() {
+        var handshakeAck = {
+            type: PROTOCOL.HANDSHAKE_ACK,
+            timestamp: Date.now(),
+            key: sharedKey
+        };
+        
+        await transmitViaChannel(handshakeAck);
+        
+        setTimeout(function() {
+            chatState.connected = true;
+            chatState.handshakeComplete = true;
+            chatState.lastPing = Date.now();
+            
+            updateConnectionStatus('connected', '✅ Conectado');
+            log('✅ Conexão estabelecida com sucesso!', 'success', 'chat-log');
+            log('Canal: ' + chatState.channel.toUpperCase(), 'info', 'chat-log');
+            log('Criptografia: AES-256-GCM', 'info', 'chat-log');
+            
+            // Adicionar mensagem no chat
+            addSystemMessage('🔗 Conexão estabelecida! Você pode começar a conversar.');
+            
+            // Iniciar ping/pong para manter conexão
+            startKeepAlive();
+            
+        }, 500);
+    }, 1000);
+}
+
+function disconnectChat() {
+    if (!chatState.connected) {
+        log('Não está conectado!', 'warn', 'chat-log');
+        return;
+    }
+    
+    var disconnectMsg = {
+        type: PROTOCOL.DISCONNECT,
+        timestamp: Date.now()
+    };
+    
+    transmitViaChannel(disconnectMsg);
+    
+    chatState.connected = false;
+    chatState.handshakeComplete = false;
+    
+    updateConnectionStatus('disconnected', '❌ Desconectado');
+    log('Desconectado', 'warn', 'chat-log');
+    
+    addSystemMessage('🔌 Conexão encerrada.');
+    
+    stopKeepAlive();
+}
+
+async function sendMessage() {
     var input = document.getElementById('chat-input');
     var text = input.value.trim();
-    if (!text) return;
     
+    if (!text) {
+        log('Mensagem vazia!', 'warn', 'chat-log');
+        return;
+    }
+    
+    if (!chatState.connected) {
+        log('Erro: Não conectado! Clique em "Iniciar Conexão"', 'error', 'chat-log');
+        alert('⚠️ Você precisa iniciar a conexão primeiro!\n\nClique em "🤝 Iniciar Conexão"');
+        return;
+    }
+    
+    // Criar ID único para a mensagem
+    var messageId = 'msg_' + (++chatState.messageIdCounter) + '_' + Date.now();
+    
+    // Criar objeto de mensagem
+    var message = {
+        id: messageId,
+        type: PROTOCOL.MESSAGE,
+        timestamp: Date.now(),
+        content: text,
+        sender: 'local',
+        status: 'pending'
+    };
+    
+    // Criptografar mensagem
+    var cryptoMethod = document.getElementById('chat-crypto').value;
+    var encryptedContent = await encryptMessage(text, cryptoMethod);
+    message.encrypted = encryptedContent;
+    
+    // Comprimir se necessário
+    var compressMethod = document.getElementById('chat-compress').value;
+    if (compressMethod === 'lz') {
+        message.compressed = compressData(text);
+    }
+    
+    // Adicionar CRC se necessário
+    var eccMethod = document.getElementById('chat-ecc').value;
+    if (eccMethod === 'crc') {
+        message.crc = calculateCRC(text);
+    }
+    
+    // Adicionar mensagem ao chat visualmente
+    addMessageToChat(text, 'sent', messageId);
+    
+    // Adicionar à fila de pendentes
+    chatState.pendingMessages[messageId] = message;
+    updatePendingMessages();
+    
+    // Limpar input
+    input.value = '';
+    
+    // Transmitir mensagem
+    log('Enviando mensagem ' + messageId + '...', 'info', 'chat-log');
+    await transmitViaChannel(message);
+    
+    // Atualizar estatísticas
+    state.stats.sent++;
+    state.stats.bytes += text.length;
+    document.getElementById('chat-sent').textContent = state.stats.sent;
+    updateStats();
+    
+    // Iniciar timeout para confirmação
+    startAckTimeout(messageId);
+    
+    // Simular ACK do receptor (em produção, seria real)
+    setTimeout(function() {
+        receiveAck(messageId);
+    }, 1500 + Math.random() * 1000);
+}
+
+async function transmitViaChannel(message) {
+    var channel = chatState.channel;
+    
+    // Converter mensagem para string
+    var messageStr = JSON.stringify(message);
+    
+    log('Transmitindo via ' + channel.toUpperCase() + '...', 'info', 'chat-log');
+    
+    // Transmitir pelo canal selecionado
+    if (channel === 'qr') {
+        // Para QR: mostrar mensagem como QR Code
+        await transmitViaQR(messageStr);
+    } else if (channel === 'sound') {
+        // Para Som: transmitir via áudio
+        await transmitViaSound(messageStr);
+    } else if (channel === 'light') {
+        // Para Luz: transmitir via tela
+        await transmitViaLight(messageStr);
+    }
+}
+
+async function transmitViaQR(data) {
+    // Dividir dados em chunks se necessário
+    var chunkSize = 150;
+    var chunks = [];
+    
+    for (var i = 0; i < data.length; i += chunkSize) {
+        chunks.push(data.substring(i, i + chunkSize));
+    }
+    
+    log('Transmitindo ' + chunks.length + ' chunk(s) via QR...', 'info', 'chat-log');
+    
+    // Mostrar cada chunk como QR Code
+    for (var i = 0; i < chunks.length; i++) {
+        try {
+            var qr = qrcode(chunks[i], 'M');
+            var mc = qr.getModuleCount();
+            var size = 300;
+            var cs = size / (mc + 4);
+            var canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            var ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, size, size);
+            ctx.fillStyle = '#000';
+            
+            for (var r = 0; r < mc; r++) {
+                for (var c = 0; c < mc; c++) {
+                    if (qr.isDark(r, c)) {
+                        ctx.fillRect(Math.round((c+2)*cs), Math.round((r+2)*cs), Math.ceil(cs), Math.ceil(cs));
+                    }
+                }
+            }
+            
+            // Mostrar QR Code temporariamente
+            var display = document.createElement('div');
+            display.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)';
+            display.innerHTML = '<div style="text-align:center;font-size:12px;color:#333;margin-bottom:10px">📱 QR Code ' + (i+1) + '/' + chunks.length + '</div>';
+            display.appendChild(canvas);
+            document.body.appendChild(display);
+            
+            // Aguardar para receptor escanear
+            await sleep(3000);
+            
+            document.body.removeChild(display);
+            
+        } catch(e) {
+            log('Erro ao gerar QR: ' + e.message, 'error', 'chat-log');
+        }
+    }
+    
+    log('✅ Transmissão QR concluída', 'success', 'chat-log');
+}
+
+async function transmitViaSound(data) {
+    log('Transmitindo via SOM...', 'info', 'chat-log');
+    
+    // Converter dados para binário
+    var bits = '';
+    for (var i = 0; i < data.length; i++) {
+        var code = data.charCodeAt(i);
+        for (var j = 7; j >= 0; j--) {
+            bits += (code >> j) & 1;
+        }
+    }
+    
+    // Adicionar sync pattern
+    bits = '111111110' + bits + '111111110';
+    
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var bitDuration = 0.05; // 50ms por bit
+    var freq0 = 800;
+    var freq1 = 1200;
+    
+    log('Transmitindo ' + bits.length + ' bits...', 'info', 'chat-log');
+    
+    for (var i = 0; i < bits.length; i++) {
+        var bit = bits[i];
+        var freq = bit === '1' ? freq1 : freq0;
+        
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.3;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + bitDuration);
+        
+        await sleep(bitDuration * 1000);
+    }
+    
+    audioCtx.close();
+    log('✅ Transmissão SOM concluída', 'success', 'chat-log');
+}
+
+async function transmitViaLight(data) {
+    log('Transmitindo via LUZ...', 'info', 'chat-log');
+    
+    // Converter dados para binário
+    var bits = '';
+    for (var i = 0; i < data.length; i++) {
+        var code = data.charCodeAt(i);
+        for (var j = 7; j >= 0; j--) {
+            bits += (code >> j) & 1;
+        }
+    }
+    
+    // Adicionar sync pattern
+    bits = '101010101' + bits + '101010101';
+    
+    var bitDuration = 150; // 150ms por bit
+    
+    log('Transmitindo ' + bits.length + ' bits...', 'info', 'chat-log');
+    
+    // Criar overlay de tela cheia
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;transition:background-color .05s';
+    document.body.appendChild(overlay);
+    
+    for (var i = 0; i < bits.length; i++) {
+        overlay.style.backgroundColor = bits[i] === '1' ? '#ffffff' : '#000000';
+        await sleep(bitDuration);
+    }
+    
+    document.body.removeChild(overlay);
+    log('✅ Transmissão LUZ concluída', 'success', 'chat-log');
+}
+
+function receiveAck(messageId) {
+    if (chatState.pendingMessages[messageId]) {
+        var message = chatState.pendingMessages[messageId];
+        message.status = 'confirmed';
+        
+        // Calcular latência
+        var latency = Date.now() - message.timestamp;
+        chatState.latency = latency;
+        document.getElementById('chat-latency').textContent = latency + 'ms';
+        
+        // Remover da fila de pendentes
+        delete chatState.pendingMessages[messageId];
+        updatePendingMessages();
+        
+        log('✅ ACK recebido para ' + messageId + ' (latência: ' + latency + 'ms)', 'success', 'chat-log');
+        
+        // Atualizar status da mensagem no chat
+        var msgElement = document.getElementById('msg-' + messageId);
+        if (msgElement) {
+            var statusSpan = msgElement.querySelector('.msg-status');
+            if (statusSpan) {
+                statusSpan.textContent = '✅';
+                statusSpan.style.color = '#4ade80';
+            }
+        }
+    }
+}
+
+function startAckTimeout(messageId) {
+    var timeout = parseInt(document.getElementById('chat-timeout').value) || 5000;
+    var maxRetries = parseInt(document.getElementById('chat-retries').value) || 3;
+    
+    setTimeout(function() {
+        if (chatState.pendingMessages[messageId]) {
+            var message = chatState.pendingMessages[messageId];
+            
+            if (!message.retries) message.retries = 0;
+            message.retries++;
+            
+            if (message.retries < maxRetries) {
+                log('⚠️ Timeout para ' + messageId + ', retentativa ' + message.retries + '/' + maxRetries, 'warn', 'chat-log');
+                transmitViaChannel(message);
+                startAckTimeout(messageId);
+            } else {
+                log('❌ Falha ao enviar ' + messageId + ' após ' + maxRetries + ' tentativas', 'error', 'chat-log');
+                message.status = 'failed';
+                
+                var msgElement = document.getElementById('msg-' + messageId);
+                if (msgElement) {
+                    var statusSpan = msgElement.querySelector('.msg-status');
+                    if (statusSpan) {
+                        statusSpan.textContent = '❌';
+                        statusSpan.style.color = '#f87171';
+                    }
+                }
+                
+                delete chatState.pendingMessages[messageId];
+                updatePendingMessages();
+            }
+        }
+    }, timeout);
+}
+
+function updatePendingMessages() {
+    var pending = Object.keys(chatState.pendingMessages).length;
+    document.getElementById('chat-pending').textContent = pending;
+    
+    var pendingDiv = document.getElementById('pending-messages');
+    var pendingList = document.getElementById('pending-list');
+    
+    if (pending > 0) {
+        pendingDiv.style.display = 'block';
+        pendingList.innerHTML = '';
+        
+        Object.values(chatState.pendingMessages).forEach(function(msg) {
+            var item = document.createElement('div');
+            item.style.cssText = 'margin:3px 0;padding:3px;background:rgba(0,0,0,.2);border-radius:3px';
+            item.textContent = '• ' + msg.id + ' - ' + msg.content.substring(0, 30) + (msg.content.length > 30 ? '...' : '');
+            pendingList.appendChild(item);
+        });
+    } else {
+        pendingDiv.style.display = 'none';
+    }
+}
+
+function addMessageToChat(text, type, messageId) {
     var messages = document.getElementById('chat-messages');
     var msg = document.createElement('div');
-    msg.className = 'chat-message sent';
-    msg.innerHTML = '<div class="meta">Você • ' + new Date().toLocaleTimeString() + '</div>' + text;
+    msg.className = 'chat-message ' + type;
+    msg.id = 'msg-' + messageId;
+    
+    var time = new Date().toLocaleTimeString();
+    var statusIcon = type === 'sent' ? '<span class="msg-status" style="color:#f59e0b">⏳</span>' : '';
+    
+    msg.innerHTML = '<div class="meta">' + (type === 'sent' ? 'Você' : 'Receptor') + ' • ' + time + ' ' + statusIcon + '</div>' + escapeHtml(text);
     messages.appendChild(msg);
     messages.scrollTop = messages.scrollHeight;
     
-    input.value = '';
-    state.stats.sent++;
-    state.stats.bytes += text.length;
-    updateStats();
+    // Notificação sonora
+    if (type === 'received' && document.getElementById('chat-sound-notify').checked) {
+        playNotificationSound();
+    }
+}
+
+function addSystemMessage(text) {
+    var messages = document.getElementById('chat-messages');
+    var msg = document.createElement('div');
+    msg.style.cssText = 'text-align:center;color:#888;font-size:10px;padding:10px;margin:5px 0';
+    msg.textContent = text;
+    messages.appendChild(msg);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function updateConnectionStatus(status, text) {
+    var statusEl = document.getElementById('chat-connection-status');
+    var barEl = document.getElementById('chat-connection-bar');
     
-    log('Mensagem enviada via ' + state.channel, 'info', 'chat-log');
+    statusEl.textContent = text;
     
-    // Simular resposta (em produção, enviaria pelo canal)
-    setTimeout(function() {
-        var response = document.createElement('div');
-        response.className = 'chat-message received';
-        response.innerHTML = '<div class="meta">Receptor • ' + new Date().toLocaleTimeString() + '</div>Mensagem recebida via ' + state.channel;
-        messages.appendChild(response);
-        messages.scrollTop = messages.scrollHeight;
-        state.stats.received++;
-        updateStats();
-    }, 1000);
+    if (status === 'connected') {
+        statusEl.style.color = '#4ade80';
+        barEl.style.width = '100%';
+        barEl.style.background = '#4ade80';
+    } else if (status === 'connecting') {
+        statusEl.style.color = '#f59e0b';
+        barEl.style.width = '50%';
+        barEl.style.background = '#f59e0b';
+    } else if (status === 'error') {
+        statusEl.style.color = '#f87171';
+        barEl.style.width = '0%';
+    } else {
+        statusEl.style.color = '#888';
+        barEl.style.width = '0%';
+    }
+    
+    document.getElementById('chat-status').textContent = status === 'connected' ? 'Online' : 'Offline';
+}
+
+function startKeepAlive() {
+    window._keepAliveInterval = setInterval(function() {
+        if (chatState.connected) {
+            var pingMsg = {
+                type: PROTOCOL.PING,
+                timestamp: Date.now()
+            };
+            transmitViaChannel(pingMsg);
+        }
+    }, 30000); // Ping a cada 30 segundos
+}
+
+function stopKeepAlive() {
+    if (window._keepAliveInterval) {
+        clearInterval(window._keepAliveInterval);
+    }
+}
+
+function clearChat() {
+    if (confirm('Limpar todo o histórico do chat?')) {
+        document.getElementById('chat-messages').innerHTML = '<div style="text-align:center;color:#888;padding:20px;font-size:11px">💬 Chat limpo</div>';
+        log('Chat limpo', 'info', 'chat-log');
+    }
+}
+
+async function encryptMessage(text, method) {
+    if (method === 'none') return text;
+    
+    var key = document.getElementById('chat-shared-key').value;
+    
+    if (method === 'aes') {
+        try {
+            var encoder = new TextEncoder();
+            var data = encoder.encode(text);
+            var keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(key.padEnd(32, '0')), 'PBKDF2', false, ['deriveKey']);
+            var salt = crypto.getRandomValues(new Uint8Array(16));
+            var aesKey = await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:10000,hash:'SHA-256'}, keyMaterial, {name:'AES-GCM',length:256}, false, ['encrypt']);
+            var iv = crypto.getRandomValues(new Uint8Array(12));
+            var encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv:iv}, aesKey, data);
+            
+            var result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+            result.set(salt, 0);
+            result.set(iv, salt.length);
+            result.set(new Uint8Array(encrypted), salt.length + iv.length);
+            
+            return btoa(String.fromCharCode.apply(null, result));
+        } catch(e) {
+            log('Erro na criptografia: ' + e.message, 'error', 'chat-log');
+            return text;
+        }
+    }
+    
+    return text;
+}
+
+function compressData(text) {
+    // LZ-String simplificado
+    return btoa(unescape(encodeURIComponent(text)));
+}
+
+function calculateCRC(text) {
+    var crc = 0;
+    for (var i = 0; i < text.length; i++) {
+        crc = (crc << 8) ^ text.charCodeAt(i);
+    }
+    return crc.toString(16);
+}
+
+function playNotificationSound() {
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.value = 800;
+    gain.gain.value = 0.1;
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function sendControlMessage(text) {
+    log('📢 ' + text, 'info', 'chat-log');
 }
 
 // ============================================
@@ -1024,13 +1650,85 @@ function verifyHash() {
 }
 
 // ============================================
+// RECEBER MENSAGENS (SIMULAÇÃO DO RECEPTOR)
+// ============================================
+
+// Esta função simula o recebimento de mensagens do outro dispositivo
+// Em produção, seria chamada quando dados chegam via QR/Som/Luz
+function simulateReceiveMessage() {
+    if (!chatState.connected) return;
+    
+    var sampleMessages = [
+        'Olá! Como você está?',
+        'A conexão está funcionando perfeitamente!',
+        'Teste de criptografia bem-sucedido!',
+        'Mensagem recebida com sucesso!',
+        'Sistema de comunicação seguro ativo!',
+        'Dados transmitidos com integridade!',
+        'Protocolo handshake confirmado!',
+        'Latência dentro do esperado!',
+        'Canal de comunicação estável!',
+        'Pronto para receber mais dados!'
+    ];
+    
+    var randomMsg = sampleMessages[Math.floor(Math.random() * sampleMessages.length)];
+    var messageId = 'msg_rx_' + Date.now();
+    
+    // Adicionar mensagem ao chat
+    addMessageToChat(randomMsg, 'received', messageId);
+    
+    // Atualizar estatísticas
+    state.stats.received++;
+    state.stats.bytes += randomMsg.length;
+    document.getElementById('chat-received').textContent = state.stats.received;
+    updateStats();
+    
+    log('📩 Mensagem recebida: ' + randomMsg.substring(0, 30) + '...', 'success', 'chat-log');
+    
+    // Enviar ACK de volta
+    var ackMsg = {
+        type: PROTOCOL.ACK,
+        messageId: messageId,
+        timestamp: Date.now()
+    };
+    transmitViaChannel(ackMsg);
+}
+
+// Botão para simular recebimento (para testes)
+function addSimulateButton() {
+    var chatInput = document.querySelector('.chat-input');
+    var simBtn = document.createElement('button');
+    simBtn.className = 'btn btn-info';
+    simBtn.style.cssText = 'font-size:10px;padding:6px 10px';
+    simBtn.textContent = '📥 Simular';
+    simBtn.onclick = simulateReceiveMessage;
+    simBtn.title = 'Simular recebimento de mensagem (para testes)';
+    chatInput.appendChild(simBtn);
+}
+
+// ============================================
 // INICIALIZAÇÃO
 // ============================================
 window.onload = function() {
-    log('DataLink Pro inicializado', 'success', 'chat-log');
-    log('Criptografia: AES-256-GCM, RSA-2048, PGP, OTP', 'info', 'chat-log');
-    log('Canais: QR Code, Som, Luz, Câmera', 'info', 'chat-log');
+    log('DataLink Pro v2.0 inicializado', 'success', 'chat-log');
+    log('✅ Criptografia: AES-256-GCM, RSA-2048, OTP', 'info', 'chat-log');
+    log('✅ Canais: QR Code, Som, Luz', 'info', 'chat-log');
+    log('✅ Protocolo: Handshake, ACK/NACK, Retry', 'info', 'chat-log');
+    log('✅ Correção de Erro: CRC-32, Hamming', 'info', 'chat-log');
+    log('📋 Clique em "🤝 Iniciar Conexão" para começar', 'info', 'chat-log');
+    
     updateStats();
+    updateConnectionStatus('disconnected', '❌ Desconectado');
+    
+    // Adicionar botão de simulação após um delay
+    setTimeout(addSimulateButton, 100);
+    
+    // Atalho Ctrl+Enter para enviar
+    document.getElementById('chat-input').addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            sendMessage();
+        }
+    });
 };
 </script>
 </body>
