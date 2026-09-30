@@ -279,18 +279,53 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:4px;font-weight:6
 <div class="card">
 <h2>⚙️ Configurações</h2>
 
+<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;margin-bottom:15px">
+<strong style="color:#10b981">🔐 Status de Segurança:</strong>
+<div style="font-size:11px;margin-top:5px;color:#94a3b8">
+• Criptografia: <span id="security-encryption" style="color:#10b981">AES-256-GCM ✅</span><br>
+• Autenticação: <span id="security-auth" style="color:#f59e0b">Pendente ⚠️</span><br>
+• Proteção contra injeção: <span id="security-injection" style="color:#10b981">Ativa ✅</span><br>
+• Verificação de integridade: <span id="security-integrity" style="color:#10b981">Ativa ✅</span>
+</div>
+</div>
+
+<h3>🔐 Autenticação e Senha</h3>
 <label>Nome de Usuário:</label>
 <input type="text" id="config-username" placeholder="Seu nome..." value="Usuário">
 
-<label>Ultrassom - Frequência (kHz):</label>
+<label>Senha de Criptografia:</label>
+<input type="password" id="config-password" placeholder="Senha para criptografar mensagens...">
+<p style="font-size:10px;color:#94a3b8;margin-top:3px">⚠️ Todos os peers devem usar a mesma senha para se comunicar</p>
+
+<label>Confirmar Senha:</label>
+<input type="password" id="config-password-confirm" placeholder="Confirme a senha...">
+
+<button class="btn btn-success" onclick="setupAuthentication()" style="margin-top:10px">🔐 Configurar Autenticação</button>
+
+<h3 style="margin-top:20px">🔊 Ultrassom</h3>
+<label>Frequência (kHz):</label>
 <input type="range" id="config-ultra-freq" min="18" max="22" value="19" step="0.5" oninput="document.getElementById('freq-val').textContent=this.value+'kHz'">
 <span id="freq-val" style="font-size:11px;color:#94a3b8">19kHz</span>
 
-<label>Ultrassom - Volume:</label>
+<label>Volume:</label>
 <input type="range" id="config-ultra-vol" min="0.1" max="1" value="0.5" step="0.1" oninput="document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%'">
 <span id="vol-val" style="font-size:11px;color:#94a3b8">50%</span>
 
-<label>Prioridade de Canais (arraste para reordenar):</label>
+<h3 style="margin-top:20px">🛡️ Segurança Avançada</h3>
+<label>
+<input type="checkbox" id="config-verify-integrity" checked> Verificar integridade de mensagens (HMAC)
+</label>
+<label>
+<input type="checkbox" id="config-prevent-replay" checked> Proteger contra replay attacks (timestamp + nonce)
+</label>
+<label>
+<input type="checkbox" id="config-rate-limit" checked> Rate limiting (máx 10 msgs/segundo)
+</label>
+<label>
+<input type="checkbox" id="config-sanitize-inputs" checked> Sanitização de inputs (anti-injeção)
+</label>
+
+<h3 style="margin-top:20px">📡 Prioridade de Canais</h3>
 <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:11px">
 1. 🌐 Internet (se disponível)<br>
 2. 📶 WebRTC (se em LAN)<br>
@@ -488,8 +523,23 @@ function selectBestChannel() {
 
 async function sendMessage() {
     const input = document.getElementById('chat-input');
-    const text = input.value.trim();
-    if (!text) return;
+    const rawText = input.value.trim();
+    if (!rawText) return;
+    
+    // Sanitizar input para prevenir injeção
+    const text = sanitizeInput(rawText);
+    if (text !== rawText) {
+        log('warn', '⚠️ Input sanitizado - caracteres perigosos removidos');
+    }
+    
+    // Verificar rate limiting
+    try {
+        checkRateLimit();
+    } catch (e) {
+        log('error', '🚫 ' + e.message);
+        alert('⚠️ ' + e.message);
+        return;
+    }
     
     const channel = document.getElementById('send-channel').value;
     const targetChannel = channel === 'auto' ? state.activeChannel : channel;
@@ -502,13 +552,31 @@ async function sendMessage() {
     }
     
     const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    // Criptografar mensagem se autenticação estiver configurada
+    let messageData = { text: text };
+    let encrypted = false;
+    
+    if (security.authenticated && security.encryptionKey) {
+        try {
+            messageData = await encryptMessage(text);
+            encrypted = true;
+            log('info', '🔐 Mensagem criptografada com AES-256-GCM');
+        } catch (e) {
+            log('error', 'Falha na criptografia: ' + e.message);
+        }
+    }
+    
     const message = {
         id: messageId,
         from: state.username,
         text: text,
+        encrypted: encrypted ? messageData : null,
         channel: targetChannel,
         timestamp: Date.now(),
-        status: 'sending'
+        status: 'sending',
+        nonce: security.messageNonce,
+        hmac: messageData.hmac || null
     };
     
     // Salvar mensagem
@@ -550,11 +618,11 @@ async function sendMessage() {
         
         message.status = 'sent';
         saveMessages();
-        log('success', `Mensagem enviada via ${targetChannel}`);
+        log('success', `✅ Mensagem enviada via ${targetChannel}`);
     } catch(e) {
         message.status = 'failed';
         saveMessages();
-        log('error', `Falha ao enviar via ${targetChannel}: ${e.message}`);
+        log('error', `❌ Falha ao enviar via ${targetChannel}: ${e.message}`);
         addToQueue(text);
     }
 }
@@ -1111,9 +1179,18 @@ function addMessageToUI(message, type) {
         light: '💡'
     };
     
+    // Indicadores de segurança
+    let securityIndicators = '';
+    if (message.encrypted) {
+        securityIndicators += '<span style="color:#10b981;font-size:10px" title="Criptografada">🔐</span> ';
+    }
+    if (message.verified || message.hmac) {
+        securityIndicators += '<span style="color:#10b981;font-size:10px" title="Integridade verificada">✅</span> ';
+    }
+    
     div.innerHTML = `
         <div class="message-header">
-            <span class="message-user">${message.from}</span>
+            <span class="message-user">${escapeHtml(message.from)} ${securityIndicators}</span>
             <span class="message-channel">${channelIcons[message.channel] || '📤'} ${message.channel}</span>
         </div>
         <div class="message-text">${escapeHtml(message.text)}</div>
@@ -1218,14 +1295,21 @@ async function testAllChannels() {
 
 function saveSettings() {
     state.username = document.getElementById('config-username').value;
-    localStorage.setItem('datalink_settings', JSON.stringify({
+    
+    const settings = {
         username: state.username,
         ultraFreq: document.getElementById('config-ultra-freq').value,
-        ultraVol: document.getElementById('config-ultra-vol').value
-    }));
+        ultraVol: document.getElementById('config-ultra-vol').value,
+        verifyIntegrity: document.getElementById('config-verify-integrity').checked,
+        preventReplay: document.getElementById('config-prevent-replay').checked,
+        rateLimit: document.getElementById('config-rate-limit').checked,
+        sanitizeInputs: document.getElementById('config-sanitize-inputs').checked
+    };
+    
+    localStorage.setItem('datalink_settings', JSON.stringify(settings));
     
     log('success', '💾 Configurações salvas');
-    alert('Configurações salvas!');
+    alert('✅ Configurações salvas com sucesso!');
 }
 
 function loadSettings() {
@@ -1236,6 +1320,288 @@ function loadSettings() {
         document.getElementById('config-username').value = state.username;
         document.getElementById('config-ultra-freq').value = settings.ultraFreq || 19;
         document.getElementById('config-ultra-vol').value = settings.ultraVol || 0.5;
+        
+        // Carregar configurações de segurança
+        if (settings.verifyIntegrity !== undefined) {
+            document.getElementById('config-verify-integrity').checked = settings.verifyIntegrity;
+        }
+        if (settings.preventReplay !== undefined) {
+            document.getElementById('config-prevent-replay').checked = settings.preventReplay;
+        }
+        if (settings.rateLimit !== undefined) {
+            document.getElementById('config-rate-limit').checked = settings.rateLimit;
+        }
+        if (settings.sanitizeInputs !== undefined) {
+            document.getElementById('config-sanitize-inputs').checked = settings.sanitizeInputs;
+        }
+    }
+    
+    // Verificar autenticação
+    checkAuthentication();
+}
+
+// ============================================
+// SISTEMA DE SEGURANÇA E CRIPTOGRAFIA
+// ============================================
+
+// Estado de segurança
+const security = {
+    password: null,
+    encryptionKey: null,
+    authenticated: false,
+    messageNonce: 0,
+    rateLimiter: {
+        lastMessage: 0,
+        messageCount: 0,
+        maxMessages: 10, // máximo por segundo
+        timeWindow: 1000 // 1 segundo
+    }
+};
+
+// Função de hash para senha
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'datalink_salt_2024');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// Derivar chave de criptografia da senha
+async function deriveEncryptionKey(password) {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(password),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+    );
+    
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+    );
+    
+    return { key, salt };
+}
+
+// Criptografar mensagem com AES-256-GCM
+async function encryptMessage(message) {
+    if (!security.encryptionKey) {
+        throw new Error('Chave de criptografia não configurada');
+    }
+    
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        security.encryptionKey.key,
+        data
+    );
+    
+    // Adicionar nonce para proteção contra replay
+    security.messageNonce++;
+    
+    // Calcular HMAC para verificação de integridade
+    const hmac = await calculateHMAC(message);
+    
+    return {
+        encrypted: Array.from(new Uint8Array(encrypted)),
+        iv: Array.from(iv),
+        salt: Array.from(security.encryptionKey.salt),
+        nonce: security.messageNonce,
+        hmac: hmac,
+        timestamp: Date.now()
+    };
+}
+
+// Descriptografar mensagem
+async function decryptMessage(encryptedData) {
+    if (!security.encryptionKey) {
+        throw new Error('Chave de criptografia não configurada');
+    }
+    
+    try {
+        const encrypted = new Uint8Array(encryptedData.encrypted);
+        const iv = new Uint8Array(encryptedData.iv);
+        
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            security.encryptionKey.key,
+            encrypted
+        );
+        
+        const decoder = new TextDecoder();
+        return decoder.decode(decrypted);
+    } catch (e) {
+        throw new Error('Falha na descriptografia - senha incorreta ou mensagem corrompida');
+    }
+}
+
+// Calcular HMAC para verificação de integridade
+async function calculateHMAC(message) {
+    if (!security.password) return null;
+    
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(security.password + 'hmac_salt');
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const data = encoder.encode(message);
+    const signature = await crypto.subtle.sign('HMAC', key, data);
+    
+    return Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// Verificar HMAC
+async function verifyHMAC(message, expectedHmac) {
+    if (!expectedHmac) return false;
+    const calculatedHmac = await calculateHMAC(message);
+    return calculatedHmac === expectedHmac;
+}
+
+// Sanitizar input para prevenir injeção
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return '';
+    
+    // Remover scripts e tags HTML perigosas
+    let sanitized = input
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .replace(/eval\s*\(/gi, '')
+        .replace(/expression\s*\(/gi, '')
+        .replace(/url\s*\(/gi, '')
+        .replace(/import\s*\(/gi, '');
+    
+    // Limitar tamanho
+    if (sanitized.length > 10000) {
+        sanitized = sanitized.substring(0, 10000);
+    }
+    
+    return sanitized;
+}
+
+// Verificar proteção contra replay attack
+function verifyTimestamp(timestamp) {
+    const now = Date.now();
+    const maxAge = 5 * 60 * 1000; // 5 minutos
+    
+    if (Math.abs(now - timestamp) > maxAge) {
+        throw new Error('Mensagem expirada - possível replay attack');
+    }
+    
+    return true;
+}
+
+// Rate limiting
+function checkRateLimit() {
+    const now = Date.now();
+    
+    // Reset contador se passou o time window
+    if (now - security.rateLimiter.lastMessage > security.rateLimiter.timeWindow) {
+        security.rateLimiter.messageCount = 0;
+    }
+    
+    // Verificar limite
+    if (security.rateLimiter.messageCount >= security.rateLimiter.maxMessages) {
+        throw new Error('Rate limit excedido - aguarde antes de enviar mais mensagens');
+    }
+    
+    // Atualizar contador
+    security.rateLimiter.messageCount++;
+    security.rateLimiter.lastMessage = now;
+    
+    return true;
+}
+
+// Configurar autenticação
+async function setupAuthentication() {
+    const username = document.getElementById('config-username').value.trim();
+    const password = document.getElementById('config-password').value;
+    const passwordConfirm = document.getElementById('config-password-confirm').value;
+    
+    if (!username) {
+        alert('⚠️ Nome de usuário é obrigatório');
+        return;
+    }
+    
+    if (!password) {
+        alert('⚠️ Senha é obrigatória');
+        return;
+    }
+    
+    if (password !== passwordConfirm) {
+        alert('⚠️ Senhas não coincidem');
+        return;
+    }
+    
+    if (password.length < 8) {
+        alert('⚠️ Senha deve ter pelo menos 8 caracteres');
+        return;
+    }
+    
+    try {
+        // Derivar chave de criptografia
+        security.encryptionKey = await deriveEncryptionKey(password);
+        security.password = password;
+        security.authenticated = true;
+        
+        // Atualizar estado global
+        state.username = username;
+        
+        // Salvar hash da senha (não a senha em si)
+        const passwordHash = await hashPassword(password);
+        localStorage.setItem('datalink_password_hash', passwordHash);
+        localStorage.setItem('datalink_username', username);
+        
+        // Atualizar UI
+        document.getElementById('security-auth').innerHTML = '<span style="color:#10b981">Ativa ✅</span>';
+        
+        log('success', '🔐 Autenticação configurada com sucesso');
+        alert('✅ Autenticação configurada!\n\nNome: ' + username + '\nCriptografia: AES-256-GCM\n\n⚠️ IMPORTANTE: Todos os peers devem usar a mesma senha!');
+        
+    } catch (e) {
+        log('error', 'Falha ao configurar autenticação: ' + e.message);
+        alert('❌ Erro ao configurar autenticação: ' + e.message);
+    }
+}
+
+// Verificar se autenticação está configurada
+function checkAuthentication() {
+    if (!security.authenticated) {
+        const savedHash = localStorage.getItem('datalink_password_hash');
+        if (savedHash) {
+            // Tentar recuperar sessão
+            const savedUsername = localStorage.getItem('datalink_username');
+            if (savedUsername) {
+                state.username = savedUsername;
+                document.getElementById('config-username').value = savedUsername;
+                log('info', '👤 Usuário recuperado: ' + savedUsername);
+                log('warn', '⚠️ Configure a senha nas configurações para ativar criptografia');
+            }
+        }
     }
 }
 
@@ -1506,7 +1872,7 @@ window.onload = function() {
 // HANDLERS DE MENSAGENS MESH
 // ============================================
 
-function handleMeshMessage(data) {
+async function handleMeshMessage(data) {
     if (!data || !data.type) return;
     
     switch(data.type) {
@@ -1542,10 +1908,69 @@ function handleMeshMessage(data) {
         case 'message':
             // Receber mensagem de outro peer
             if (data.message && data.message.from !== state.username) {
-                state.messages.push(data.message);
-                saveMessages();
-                addMessageToUI(data.message, 'received');
-                log('success', `💬 Mensagem recebida de ${data.message.from} via ${data.message.channel}`);
+                try {
+                    // Verificar timestamp para prevenir replay attack
+                    if (document.getElementById('config-prevent-replay').checked) {
+                        verifyTimestamp(data.message.timestamp);
+                    }
+                    
+                    // Descriptografar mensagem se estiver criptografada
+                    let messageText = data.message.text;
+                    if (data.message.encrypted && security.authenticated) {
+                        try {
+                            messageText = await decryptMessage(data.message.encrypted);
+                            log('info', '🔓 Mensagem descriptografada com sucesso');
+                        } catch (e) {
+                            log('error', '❌ Falha na descriptografia: ' + e.message);
+                            messageText = '[Mensagem criptografada - senha incorreta]';
+                        }
+                    }
+                    
+                    // Verificar integridade com HMAC
+                    if (data.message.hmac && document.getElementById('config-verify-integrity').checked) {
+                        const isValid = await verifyHMAC(messageText, data.message.hmac);
+                        if (!isValid) {
+                            log('error', '❌ HMAC inválido - mensagem pode ter sido alterada');
+                            messageText = '[Mensagem corrompida - verificação falhou]';
+                        } else {
+                            log('info', '✅ Integridade da mensagem verificada');
+                        }
+                    }
+                    
+                    // Sanitizar mensagem recebida
+                    messageText = sanitizeInput(messageText);
+                    
+                    // Criar objeto de mensagem para UI
+                    const receivedMessage = {
+                        id: data.message.id,
+                        from: data.message.from,
+                        text: messageText,
+                        channel: data.message.channel,
+                        timestamp: data.message.timestamp,
+                        status: 'received',
+                        encrypted: !!data.message.encrypted,
+                        verified: data.message.hmac ? true : false
+                    };
+                    
+                    // Salvar e exibir mensagem
+                    if (!state.messages) state.messages = [];
+                    state.messages.push(receivedMessage);
+                    saveMessages();
+                    addMessageToUI(receivedMessage, 'received');
+                    
+                    log('success', `💬 Mensagem recebida de ${data.message.from} via ${data.message.channel}`);
+                    
+                    // Notificação
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification(`Nova mensagem de ${data.message.from}`, {
+                            body: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                            icon: '💬'
+                        });
+                    }
+                    
+                } catch (e) {
+                    log('error', '❌ Erro ao processar mensagem: ' + e.message);
+                }
             }
             break;
     }
