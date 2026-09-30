@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>DataLink</title>
+<style>
+body{font-family:Arial;margin:0;padding:20px;background:#1a1a2e;color:#fff}
+.box{max-width:500px;margin:0 auto;background:#16213e;padding:20px;border-radius:10px}
+input{width:100%;padding:10px;margin:5px 0;border:1px solid #0f3460;border-radius:5px;background:#0f3460;color:#fff}
+button{width:100%;padding:12px;margin:5px 0;border:none;border-radius:5px;background:#e94560;color:#fff;cursor:pointer;font-size:16px}
+.msg{padding:10px;margin:5px 0;border-radius:5px;background:#0f3460}
+.sent{margin-left:30px;background:#533483}
+.hidden{display:none}
+.error{background:#e94560;padding:10px;border-radius:5px;margin:10px 0}
+</style>
+</head>
+<body>
+
+<div id="login" class="box">
+<h1>🌐 DataLink</h1>
+<input type="text" id="user" placeholder="Nome (mínimo 2)">
+<input type="password" id="pass" placeholder="Senha (mínimo 8)">
+<input type="password" id="pass2" placeholder="Confirmar senha">
+<label><input type="checkbox" id="temp" style="width:auto"> Modo Temporário</label>
+<button onclick="entrar()">ENTRAR</button>
+<div id="err" class="error hidden"></div>
+<div id="log" style="font-size:10px;color:#888;margin-top:10px"></div>
+</div>
+
+<div id="main" class="box hidden">
+<h1>💬 Chat - <span id="uname"></span></h1>
+<div id="msgs" style="min-height:300px;max-height:400px;overflow-y:auto;background:#0f3460;padding:10px;border-radius:5px;margin:10px 0">
+<p style="text-align:center;color:#888">Nenhuma mensagem</p>
+</div>
+<input type="text" id="msg" placeholder="Digite..." onkeypress="if(event.key==='Enter')enviar()">
+<button onclick="enviar()">ENVIAR</button>
+<button onclick="limpar()" style="background:#f59e0b">LIMPAR</button>
+<button onclick="sair()" style="background:#dc2626">SAIR</button>
+</div>
+
+<script>
+var nome='',senha='',temporario=false,mensagens=[],canal=null;
+
+function log(m){document.getElementById('log').innerHTML+='<br>'+m;console.log(m)}
+
+function erro(m){
+    var e=document.getElementById('err');
+    e.innerHTML='⚠️ '+m;
+    e.className='error';
+    log('ERRO: '+m);
+    setTimeout(function(){e.className='error hidden'},3000);
+}
+
+function entrar(){
+    log('Clicou em entrar');
+    
+    var u=document.getElementById('user').value;
+    var p=document.getElementById('pass').value;
+    var p2=document.getElementById('pass2').value;
+    var t=document.getElementById('temp').checked;
+    
+    log('Nome: '+u+' ('+u.length+' chars)');
+    log('Senha: '+p.length+' chars');
+    
+    if(u.length<2){erro('Nome muito curto');return}
+    if(p.length<8){erro('Senha muito curta');return}
+    if(p!=p2){erro('Senhas diferentes');return}
+    
+    log('Validações OK');
+    
+    nome=u;
+    senha=p;
+    temporario=t;
+    
+    localStorage.setItem('n',u);
+    localStorage.setItem('s',btoa(p));
+    localStorage.setItem('t',t?'1':'0');
+    
+    log('Salvo no localStorage');
+    
+    try{
+        canal=new BroadcastChannel('dl');
+        canal.onmessage=receber;
+        log('Canal OK');
+    }catch(e){log('Canal: '+e.message)}
+    
+    document.getElementById('login').className='box hidden';
+    document.getElementById('main').className='box';
+    document.getElementById('uname').innerHTML=u+(t?' 🕐':'');
+    
+    carregar();
+    log('✅ PRONTO!');
+}
+
+function enviar(){
+    var t=document.getElementById('msg').value;
+    if(!t)return;
+    
+    var m={id:Date.now(),de:nome,texto:t,hora:new Date().toLocaleTimeString()};
+    mensagens.push(m);
+    salvar();
+    mostrar(m,'sent');
+    
+    if(canal)canal.postMessage(m);
+    
+    document.getElementById('msg').value='';
+    log('Enviou: '+t);
+}
+
+function receber(e){
+    var m=e.data;
+    if(m.de!=nome){
+        mensagens.push(m);
+        salvar();
+        mostrar(m,'received');
+        log('Recebeu de '+m.de);
+    }
+}
+
+function mostrar(m,tipo){
+    var c=document.getElementById('msgs');
+    if(c.querySelector('p'))c.innerHTML='';
+    
+    var d=document.createElement('div');
+    d.className='msg '+tipo;
+    d.innerHTML='<b>'+m.de+'</b> ('+m.hora+')<br>'+m.texto;
+    c.appendChild(d);
+    c.scrollTop=c.scrollHeight;
+}
+
+function salvar(){
+    localStorage.setItem('m',JSON.stringify(mensagens.slice(-50)));
+}
+
+function carregar(){
+    var d=localStorage.getItem('m');
+    if(d){
+        mensagens=JSON.parse(d);
+        mensagens.forEach(function(m){mostrar(m,m.de==nome?'sent':'received')});
+        log('Carregou '+mensagens.length+' msgs');
+    }
+}
+
+function limpar(){
+    if(confirm('Limpar tudo?')){
+        mensagens=[];
+        salvar();
+        document.getElementById('msgs').innerHTML='<p style="text-align:center;color:#888">Limpo</p>';
+    }
+}
+
+function sair(){
+    if(temporario){
+        if(confirm('MODO TEMPORÁRIO\nApagar tudo?')){
+            localStorage.clear();
+            location.reload();
+        }
+    }else{
+        if(confirm('Sair?')){
+            localStorage.clear();
+            location.reload();
+        }
+    }
+}
+
+window.onload=function(){
+    log('Página carregou');
+    
+    var u=localStorage.getItem('n');
+    var p=localStorage.getItem('s');
+    var t=localStorage.getItem('t')=='1';
+    
+    if(u&&p){
+        nome=u;
+        senha=atob(p);
+        temporario=t;
+        
+        try{
+            canal=new BroadcastChannel('dl');
+            canal.onmessage=receber;
+        }catch(e){}
+        
+        document.getElementById('login').className='box hidden';
+        document.getElementById('main').className='box';
+        document.getElementById('uname').innerHTML=u+(t?' 🕐':'');
+        
+        carregar();
+        log('✅ Auto-login OK');
+    }else{
+        log('Aguardando login');
+    }
+};
+</script>
+</body>
+</html>

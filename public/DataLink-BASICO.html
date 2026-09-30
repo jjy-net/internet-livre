@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>DataLink</title>
+<style>
+body{font-family:Arial;margin:0;padding:20px;background:#1a1a2e;color:#fff}
+.box{max-width:400px;margin:50px auto;background:#16213e;padding:30px;border-radius:10px}
+input{width:100%;padding:12px;margin:8px 0;border:1px solid #0f3460;border-radius:5px;background:#0f3460;color:#fff;font-size:16px}
+button{width:100%;padding:15px;margin:10px 0;border:none;border-radius:5px;background:#e94560;color:#fff;cursor:pointer;font-size:18px;font-weight:bold}
+button:hover{background:#d63447}
+.error{background:#e94560;padding:10px;border-radius:5px;margin:10px 0;display:none}
+.msg{padding:10px;margin:5px 0;border-radius:5px;background:#0f3460}
+.sent{margin-left:30px;background:#533483}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<div id="tela1" class="box">
+<h1 style="text-align:center">🌐 DataLink</h1>
+<input type="text" id="nome" placeholder="Seu nome">
+<input type="password" id="senha" placeholder="Senha (mínimo 8)">
+<input type="password" id="senha2" placeholder="Confirmar senha">
+<button onclick="entrar()">ENTRAR</button>
+<div id="erro" class="error"></div>
+</div>
+
+<div id="tela2" class="box hidden">
+<h1>💬 Chat - <span id="usuario"></span></h1>
+<div id="mensagens" style="min-height:300px;max-height:400px;overflow-y:auto;background:#0f3460;padding:10px;border-radius:5px;margin:10px 0">
+<p style="text-align:center;color:#888">Nenhuma mensagem</p>
+</div>
+<input type="text" id="texto" placeholder="Digite sua mensagem..." onkeypress="if(event.key==='Enter')enviar()">
+<button onclick="enviar()">ENVIAR</button>
+<button onclick="limpar()" style="background:#f59e0b">LIMPAR</button>
+<button onclick="sair()" style="background:#dc2626">SAIR</button>
+</div>
+
+<script>
+var meuNome='';
+var msgs=[];
+
+function entrar(){
+    var n=document.getElementById('nome').value;
+    var s=document.getElementById('senha').value;
+    var s2=document.getElementById('senha2').value;
+    
+    if(n.length<2){
+        mostrarErro('Nome muito curto (mínimo 2)');
+        return;
+    }
+    
+    if(s.length<8){
+        mostrarErro('Senha muito curta (mínimo 8)');
+        return;
+    }
+    
+    if(s!=s2){
+        mostrarErro('Senhas não coincidem');
+        return;
+    }
+    
+    meuNome=n;
+    localStorage.setItem('nome',n);
+    localStorage.setItem('senha',s);
+    
+    document.getElementById('tela1').className='box hidden';
+    document.getElementById('tela2').className='box';
+    document.getElementById('usuario').textContent=n;
+    
+    carregarMsgs();
+}
+
+function enviar(){
+    var t=document.getElementById('texto').value;
+    if(!t)return;
+    
+    var msg={
+        de:meuNome,
+        texto:t,
+        hora:new Date().toLocaleTimeString()
+    };
+    
+    msgs.push(msg);
+    localStorage.setItem('msgs',JSON.stringify(msgs));
+    
+    mostrarMsg(msg,true);
+    document.getElementById('texto').value='';
+}
+
+function mostrarMsg(msg,enviado){
+    var c=document.getElementById('mensagens');
+    
+    if(c.querySelector('p')){
+        c.innerHTML='';
+    }
+    
+    var div=document.createElement('div');
+    div.className='msg'+(enviado?' sent':'');
+    div.innerHTML='<b>'+msg.de+'</b> ('+msg.hora+')<br>'+msg.texto;
+    c.appendChild(div);
+    c.scrollTop=c.scrollHeight;
+}
+
+function carregarMsgs(){
+    var dados=localStorage.getItem('msgs');
+    if(dados){
+        msgs=JSON.parse(dados);
+        msgs.forEach(function(m){
+            mostrarMsg(m,m.de==meuNome);
+        });
+    }
+}
+
+function limpar(){
+    if(confirm('Limpar todas as mensagens?')){
+        msgs=[];
+        localStorage.setItem('msgs','[]');
+        document.getElementById('mensagens').innerHTML='<p style="text-align:center;color:#888">Nenhuma mensagem</p>';
+    }
+}
+
+function sair(){
+    if(confirm('Sair e limpar tudo?')){
+        localStorage.clear();
+        location.reload();
+    }
+}
+
+function mostrarErro(msg){
+    var e=document.getElementById('erro');
+    e.textContent='⚠️ '+msg;
+    e.style.display='block';
+    setTimeout(function(){e.style.display='none'},3000);
+}
+
+window.onload=function(){
+    var n=localStorage.getItem('nome');
+    if(n){
+        meuNome=n;
+        document.getElementById('tela1').className='box hidden';
+        document.getElementById('tela2').className='box';
+        document.getElementById('usuario').textContent=n;
+        carregarMsgs();
+    }
+};
+</script>
+</body>
+</html>

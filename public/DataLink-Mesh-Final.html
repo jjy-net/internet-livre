@@ -9,13 +9,13 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#0f172a,#1e293b);min-height:100vh;color:#fff;padding:10px}
 .container{max-width:600px;margin:0 auto}
 .card{background:rgba(30,41,59,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:15px;margin-bottom:12px}
-h1{font-size:18px;margin-bottom:3px;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+h1{font-size:18px;margin-bottom:3px;color:#60a5fa}
 .subtitle{font-size:10px;color:#94a3b8;margin-bottom:12px}
-.btn{padding:10px 14px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin:2px}
+.btn{padding:10px 14px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin:2px;width:100%}
 .btn-primary{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff}
 .btn-danger{background:#ef4444;color:#fff}
 .btn-warning{background:#f59e0b;color:#000}
-input,select{width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;color:#fff;font-size:13px;outline:none;margin-bottom:8px}
+input{width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;color:#fff;font-size:13px;outline:none;margin-bottom:8px}
 input:focus{border-color:#3b82f6}
 label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:600}
 .message{background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid #3b82f6}
@@ -24,13 +24,13 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:6
 .hidden{display:none}
 .setup-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0f172a,#1e293b);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
 .setup-card{background:rgba(30,41,59,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:15px;padding:25px;max-width:400px;width:100%}
-.alert{padding:10px;border-radius:8px;margin-bottom:10px;font-size:11px}
-.alert-warning{background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.3);color:#f59e0b}
-.tabs{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto}
-.tab{padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;color:#94a3b8;white-space:nowrap}
+.error-box{padding:10px;border-radius:8px;margin-top:10px;font-size:11px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);color:#f87171;display:none}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;color:#94a3b8}
 .tab.active{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border-color:transparent}
 .tab-content{display:none}
 .tab-content.active{display:block}
+.debug-box{background:rgba(0,0,0,0.5);border-radius:6px;padding:8px;font-family:monospace;font-size:9px;max-height:100px;overflow-y:auto;color:#94a3b8;margin-top:10px}
 </style>
 </head>
 <body>
@@ -42,22 +42,26 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:6
 <p class="subtitle" style="text-align:center">Configuração Inicial</p>
 
 <label>👤 Nome:</label>
-<input type="text" id="setup-username" placeholder="Seu nome" maxlength="20">
+<input type="text" id="setup-username" placeholder="Seu nome">
 
 <label>🔐 Senha (mínimo 8 caracteres):</label>
-<input type="password" id="setup-password" placeholder="Crie uma senha forte">
+<input type="password" id="setup-password" placeholder="Crie uma senha">
 
 <label>🔐 Confirmar Senha:</label>
 <input type="password" id="setup-password-confirm" placeholder="Repita a senha">
 
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#f59e0b;margin:10px 0">
 <input type="checkbox" id="setup-temporary" style="width:auto;margin:0">
-<span style="font-size:11px">🕐 Modo Temporário (apaga dados ao sair)</span>
+<span style="font-size:11px">🕐 Modo Temporário</span>
 </label>
 
-<button class="btn btn-primary" onclick="startSetup()" style="width:100%;margin-top:10px">🚀 Iniciar</button>
+<button class="btn btn-primary" onclick="startSetup()" style="margin-top:10px">🚀 Iniciar DataLink Mesh</button>
 
-<div id="setup-error" class="alert alert-warning hidden" style="margin-top:10px"></div>
+<div class="error-box" id="setup-error"></div>
+
+<div class="debug-box" id="debug-log">
+[Debug] Aguardando configuração...
+</div>
 </div>
 </div>
 
@@ -76,267 +80,279 @@ label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:6
 <div class="tab-content active" id="tab-chat">
 <div class="card">
 <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;min-height:200px;max-height:300px;overflow-y:auto;margin-bottom:10px" id="chat-messages">
-<div style="text-align:center;color:#64748b;font-size:11px;padding:20px">💬 Nenhuma mensagem</div>
+<div style="text-align:center;color:#64748b;font-size:11px;padding:20px">💬 Nenhuma mensagem ainda</div>
 </div>
 
 <div style="display:flex;gap:5px">
 <input type="text" id="chat-input" placeholder="Digite sua mensagem..." style="flex:1;margin:0" onkeypress="if(event.key==='Enter')sendMessage()">
-<button class="btn btn-primary" onclick="sendMessage()" style="margin:0">📤</button>
+<button class="btn btn-primary" onclick="sendMessage()" style="width:auto;margin:0;padding:10px 15px">📤</button>
 </div>
 
-<div style="margin-top:8px;display:flex;gap:5px">
-<button class="btn btn-warning" onclick="clearChat()" style="flex:1;font-size:10px">🧹 Limpar</button>
+<div style="margin-top:8px">
+<button class="btn btn-warning" onclick="clearChat()" style="font-size:10px">🧹 Limpar Chat</button>
 </div>
 </div>
 </div>
 
 <div class="tab-content" id="tab-settings">
 <div class="card">
-<h2 style="font-size:15px;margin-bottom:10px;color:#60a5fa">⚙️ Configurações</h2>
+<h1 style="margin-bottom:10px">⚙️ Configurações</h1>
 
 <label>👤 Nome:</label>
 <input type="text" id="config-username" readonly>
 
-<button class="btn btn-primary" onclick="saveSettings()" style="width:100%;margin-top:10px">💾 Salvar</button>
-<button class="btn btn-danger" onclick="logout()" style="width:100%;margin-top:5px">🚪 Sair</button>
+<button class="btn btn-primary" onclick="logout()" style="margin-top:10px">🚪 Sair</button>
 
-<div id="temporary-mode-indicator" class="hidden" style="margin-top:15px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px">
+<div id="temp-indicator" class="hidden" style="margin-top:10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px">
 <div style="font-size:11px;color:#f59e0b;font-weight:600">🕐 Modo Temporário Ativo</div>
-<button class="btn btn-warning" onclick="logout()" style="width:100%;margin-top:8px;font-size:11px">🚪 Sair e Apagar Tudo</button>
+<button class="btn btn-warning" onclick="logout()" style="margin-top:8px;font-size:11px">🚪 Sair e Apagar Tudo</button>
 </div>
 </div>
 </div>
 </div>
 
 <script>
-// Estado global
-const state = {
+// ============================================
+// ESTADO GLOBAL
+// ============================================
+var state = {
     username: '',
     password: '',
     isTemporary: false,
     messages: [],
-    encryptionKey: null,
-    broadcastChannel: null
+    channel: null
 };
 
-// Iniciar setup
-async function startSetup() {
+// ============================================
+// DEBUG LOG
+// ============================================
+function debug(msg) {
+    var log = document.getElementById('debug-log');
+    if (log) {
+        log.innerHTML += '<br>[' + new Date().toLocaleTimeString() + '] ' + msg;
+        log.scrollTop = log.scrollHeight;
+    }
+    console.log('[DataLink] ' + msg);
+}
+
+function showError(msg) {
+    var el = document.getElementById('setup-error');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+    debug('ERRO: ' + msg);
+}
+
+// ============================================
+// CRIPTOGRAFIA SIMPLES (FUNCIONA SEM crypto.subtle)
+// ============================================
+function simpleEncrypt(text, key) {
+    var result = '';
+    for (var i = 0; i < text.length; i++) {
+        var charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+        result += String.fromCharCode(charCode);
+    }
+    return btoa(unescape(encodeURIComponent(result)));
+}
+
+function simpleDecrypt(encoded, key) {
     try {
-        const username = document.getElementById('setup-username').value.trim();
-        const password = document.getElementById('setup-password').value;
-        const passwordConfirm = document.getElementById('setup-password-confirm').value;
-        const isTemporary = document.getElementById('setup-temporary').checked;
-        
-        // Validações
-        if (!username || username.length < 2) {
-            showError('Nome deve ter pelo menos 2 caracteres');
-            return;
+        var text = decodeURIComponent(escape(atob(encoded)));
+        var result = '';
+        for (var i = 0; i < text.length; i++) {
+            var charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+            result += String.fromCharCode(charCode);
         }
-        
-        if (!password || password.length < 8) {
-            showError('Senha deve ter pelo menos 8 caracteres');
-            return;
+        return result;
+    } catch(e) {
+        return '[Erro ao descriptografar]';
+    }
+}
+
+// ============================================
+// SETUP
+// ============================================
+function startSetup() {
+    debug('Iniciando setup...');
+    
+    var username = document.getElementById('setup-username').value.trim();
+    var password = document.getElementById('setup-password').value;
+    var passwordConfirm = document.getElementById('setup-password-confirm').value;
+    var isTemporary = document.getElementById('setup-temporary').checked;
+    
+    debug('Nome: ' + username);
+    debug('Senha length: ' + password.length);
+    
+    // Validações
+    if (!username || username.length < 2) {
+        showError('Nome deve ter pelo menos 2 caracteres');
+        return;
+    }
+    
+    if (!password || password.length < 8) {
+        showError('Senha deve ter pelo menos 8 caracteres');
+        return;
+    }
+    
+    if (password !== passwordConfirm) {
+        showError('Senhas não coincidem');
+        return;
+    }
+    
+    debug('Validações OK');
+    
+    // Salvar estado
+    state.username = username;
+    state.password = password;
+    state.isTemporary = isTemporary;
+    
+    debug('Estado salvo');
+    
+    // Salvar no localStorage
+    try {
+        localStorage.setItem('dl_username', username);
+        localStorage.setItem('dl_password', btoa(password));
+        localStorage.setItem('dl_temporary', isTemporary ? '1' : '0');
+        debug('localStorage salvo');
+    } catch(e) {
+        showError('Erro ao salvar: ' + e.message);
+        return;
+    }
+    
+    // Inicializar canal de comunicação
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            state.channel = new BroadcastChannel('datalink_mesh');
+            state.channel.onmessage = handleMessage;
+            debug('BroadcastChannel OK');
+        } else {
+            debug('BroadcastChannel não disponível');
         }
-        
-        if (password !== passwordConfirm) {
-            showError('Senhas não coincidem');
-            return;
-        }
-        
-        // Salvar dados
-        state.username = username;
-        state.password = password;
-        state.isTemporary = isTemporary;
-        
-        localStorage.setItem('datalink_username', username);
-        localStorage.setItem('datalink_password', btoa(password));
-        localStorage.setItem('datalink_temporary', isTemporary ? 'true' : 'false');
-        
-        // Inicializar criptografia
-        await initEncryption(password);
-        
-        // Inicializar BroadcastChannel
-        try {
-            state.broadcastChannel = new BroadcastChannel('datalink_mesh');
-            state.broadcastChannel.onmessage = handleIncomingMessage;
-        } catch(e) {
-            console.log('BroadcastChannel não suportado');
-        }
-        
-        // Mostrar interface
-        document.getElementById('setup-screen').classList.add('hidden');
-        document.getElementById('main-interface').classList.remove('hidden');
+    } catch(e) {
+        debug('Erro BroadcastChannel: ' + e.message);
+    }
+    
+    // Mostrar interface principal
+    debug('Mostrando interface...');
+    
+    try {
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('main-interface').style.display = 'block';
         document.getElementById('user-display').textContent = username;
         document.getElementById('config-username').value = username;
         
         if (isTemporary) {
-            document.getElementById('temporary-mode-indicator').classList.remove('hidden');
+            document.getElementById('temp-indicator').style.display = 'block';
         }
         
         // Carregar mensagens
         loadMessages();
         
-        console.log('✅ Setup completo!');
+        debug('✅ SETUP COMPLETO!');
         
-    } catch(error) {
-        console.error('❌ Erro no setup:', error);
-        showError('Erro ao iniciar: ' + error.message);
-    }
-}
-
-// Inicializar criptografia
-async function initEncryption(password) {
-    const encoder = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(password),
-        'PBKDF2',
-        false,
-        ['deriveKey']
-    );
-    
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    state.encryptionKey = await crypto.subtle.deriveKey(
-        {name:'PBKDF2', salt, iterations:100000, hash:'SHA-256'},
-        keyMaterial,
-        {name:'AES-GCM', length:256},
-        true,
-        ['encrypt','decrypt']
-    );
-}
-
-// Criptografar mensagem
-async function encryptMessage(text) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    
-    const encrypted = await crypto.subtle.encrypt(
-        {name:'AES-GCM', iv},
-        state.encryptionKey,
-        data
-    );
-    
-    return {
-        encrypted: Array.from(new Uint8Array(encrypted)),
-        iv: Array.from(iv),
-        timestamp: Date.now()
-    };
-}
-
-// Descriptografar mensagem
-async function decryptMessage(encryptedData) {
-    try {
-        const encrypted = new Uint8Array(encryptedData.encrypted);
-        const iv = new Uint8Array(encryptedData.iv);
-        
-        const decrypted = await crypto.subtle.decrypt(
-            {name:'AES-GCM', iv},
-            state.encryptionKey,
-            encrypted
-        );
-        
-        return new TextDecoder().decode(decrypted);
     } catch(e) {
-        return '[Mensagem criptografada]';
+        showError('Erro ao mostrar interface: ' + e.message);
+        debug('ERRO CRÍTICO: ' + e.message);
     }
 }
 
-// Enviar mensagem
-async function sendMessage() {
-    const input = document.getElementById('chat-input');
-    const text = input.value.trim();
+// ============================================
+// MENSAGENS
+// ============================================
+function sendMessage() {
+    var input = document.getElementById('chat-input');
+    var text = input.value.trim();
     if (!text) return;
     
-    const messageId = 'msg_' + Date.now();
-    const encrypted = await encryptMessage(text);
+    var encrypted = simpleEncrypt(text, state.password);
     
-    const message = {
-        id: messageId,
+    var message = {
+        id: 'msg_' + Date.now(),
         from: state.username,
         text: text,
         encrypted: encrypted,
-        timestamp: Date.now()
+        time: Date.now()
     };
     
     state.messages.push(message);
     saveMessages();
-    addMessageToUI(message, 'sent');
+    showMessageUI(message, 'sent');
     
-    // Broadcast para outras abas
-    if (state.broadcastChannel) {
-        state.broadcastChannel.postMessage({type:'message', message});
+    // Enviar para outras abas
+    if (state.channel) {
+        state.channel.postMessage({type: 'msg', data: message});
     }
     
     input.value = '';
+    debug('Mensagem enviada: ' + text.substring(0, 20));
 }
 
-// Receber mensagem
-async function handleIncomingMessage(event) {
-    const {type, message} = event.data;
-    
-    if (type === 'message' && message.from !== state.username) {
-        const text = await decryptMessage(message.encrypted);
-        
-        const receivedMessage = {
-            id: message.id,
-            from: message.from,
-            text: text,
-            timestamp: message.timestamp
-        };
-        
-        state.messages.push(receivedMessage);
-        saveMessages();
-        addMessageToUI(receivedMessage, 'received');
+function handleMessage(event) {
+    if (event.data && event.data.type === 'msg') {
+        var msg = event.data.data;
+        if (msg.from !== state.username) {
+            state.messages.push(msg);
+            saveMessages();
+            showMessageUI(msg, 'received');
+            debug('Mensagem recebida de: ' + msg.from);
+        }
     }
 }
 
-// Adicionar mensagem à UI
-function addMessageToUI(message, type) {
-    const container = document.getElementById('chat-messages');
+function showMessageUI(msg, type) {
+    var container = document.getElementById('chat-messages');
     
-    if (container.querySelector('div[style*="text-align:center"]')) {
-        container.innerHTML = '';
-    }
+    // Limpar placeholder
+    var placeholder = container.querySelector('div[style*="text-align:center"]');
+    if (placeholder) container.innerHTML = '';
     
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.className = 'message ' + type;
-    
-    div.innerHTML = `
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:11px;font-weight:600;color:#60a5fa">${escapeHtml(message.from)} 🔐</span>
-            <span style="font-size:9px;color:#64748b">${new Date(message.timestamp).toLocaleTimeString()}</span>
-        </div>
-        <div style="font-size:12px;color:#e2e8f0">${escapeHtml(message.text)}</div>
-    `;
+    div.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+        '<span style="font-size:11px;font-weight:600;color:#60a5fa">' + escapeHtml(msg.from) + ' 🔐</span>' +
+        '<span style="font-size:9px;color:#64748b">' + new Date(msg.time).toLocaleTimeString() + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#e2e8f0">' + escapeHtml(msg.text) + '</div>';
     
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
 
-// Mostrar aba
-function showTab(tabName, btn) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    
+// ============================================
+// PERSISTÊNCIA
+// ============================================
+function saveMessages() {
+    try {
+        localStorage.setItem('dl_messages', JSON.stringify(state.messages.slice(-100)));
+    } catch(e) {
+        debug('Erro ao salvar mensagens: ' + e.message);
+    }
+}
+
+function loadMessages() {
+    try {
+        var data = localStorage.getItem('dl_messages');
+        if (data) {
+            state.messages = JSON.parse(data);
+            state.messages.forEach(function(msg) {
+                showMessageUI(msg, msg.from === state.username ? 'sent' : 'received');
+            });
+            debug('Mensagens carregadas: ' + state.messages.length);
+        }
+    } catch(e) {
+        debug('Erro ao carregar mensagens: ' + e.message);
+    }
+}
+
+// ============================================
+// UI
+// ============================================
+function showTab(name, btn) {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
     btn.classList.add('active');
-    document.getElementById('tab-' + tabName).classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
 }
 
-// Mostrar erro
-function showError(msg) {
-    const errorDiv = document.getElementById('setup-error');
-    errorDiv.textContent = '⚠️ ' + msg;
-    errorDiv.classList.remove('hidden');
-    setTimeout(() => errorDiv.classList.add('hidden'), 3000);
-}
-
-// Salvar configurações
-function saveSettings() {
-    alert('✅ Configurações salvas!');
-}
-
-// Limpar chat
 function clearChat() {
     if (confirm('Limpar todas as mensagens?')) {
         state.messages = [];
@@ -345,14 +361,12 @@ function clearChat() {
     }
 }
 
-// Sair
 function logout() {
-    const isTemporary = localStorage.getItem('datalink_temporary') === 'true';
+    var isTemp = localStorage.getItem('dl_temporary') === '1';
     
-    if (isTemporary) {
+    if (isTemp) {
         if (confirm('⚠️ MODO TEMPORÁRIO\n\nTodos os dados serão apagados!\n\nContinuar?')) {
             localStorage.clear();
-            sessionStorage.clear();
             location.reload();
         }
     } else {
@@ -363,64 +377,55 @@ function logout() {
     }
 }
 
-// Salvar mensagens
-function saveMessages() {
-    localStorage.setItem('datalink_messages', JSON.stringify(state.messages.slice(-100)));
-}
-
-// Carregar mensagens
-function loadMessages() {
-    const data = localStorage.getItem('datalink_messages');
-    if (data) {
-        state.messages = JSON.parse(data);
-        state.messages.forEach(msg => addMessageToUI(msg, msg.from === state.username ? 'sent' : 'received'));
-    }
-}
-
-// Escape HTML
 function escapeHtml(text) {
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Inicialização
-window.onload = async function() {
-    const savedUsername = localStorage.getItem('datalink_username');
-    const savedPassword = localStorage.getItem('datalink_password');
-    const isTemporary = localStorage.getItem('datalink_temporary') === 'true';
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+window.onload = function() {
+    debug('Página carregada');
     
-    if (savedUsername && savedPassword) {
+    var savedUser = localStorage.getItem('dl_username');
+    var savedPass = localStorage.getItem('dl_password');
+    var isTemp = localStorage.getItem('dl_temporary') === '1';
+    
+    debug('Usuário salvo: ' + (savedUser || 'nenhum'));
+    
+    if (savedUser && savedPass) {
         try {
-            state.username = savedUsername;
-            state.password = atob(savedPassword);
-            state.isTemporary = isTemporary;
+            state.username = savedUser;
+            state.password = atob(savedPass);
+            state.isTemporary = isTemp;
             
-            await initEncryption(state.password);
+            // Inicializar canal
+            if (typeof BroadcastChannel !== 'undefined') {
+                state.channel = new BroadcastChannel('datalink_mesh');
+                state.channel.onmessage = handleMessage;
+            }
             
-            try {
-                state.broadcastChannel = new BroadcastChannel('datalink_mesh');
-                state.broadcastChannel.onmessage = handleIncomingMessage;
-            } catch(e) {}
+            // Mostrar interface
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('main-interface').style.display = 'block';
+            document.getElementById('user-display').textContent = savedUser + (isTemp ? ' 🕐' : '');
+            document.getElementById('config-username').value = savedUser;
             
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('main-interface').classList.remove('hidden');
-            document.getElementById('user-display').textContent = state.username + (isTemporary ? ' 🕐' : '');
-            document.getElementById('config-username').value = state.username;
-            
-            if (isTemporary) {
-                document.getElementById('temporary-mode-indicator').classList.remove('hidden');
+            if (isTemp) {
+                document.getElementById('temp-indicator').style.display = 'block';
             }
             
             loadMessages();
+            debug('✅ Sistema carregado automaticamente!');
             
-            console.log('✅ Sistema carregado!');
-            
-        } catch(error) {
-            console.error('❌ Erro ao carregar:', error);
+        } catch(e) {
+            debug('Erro ao carregar: ' + e.message);
             localStorage.clear();
-            location.reload();
         }
+    } else {
+        debug('Aguardando configuração do usuário');
     }
 };
 </script>
