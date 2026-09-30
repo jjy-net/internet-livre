@@ -134,6 +134,16 @@ input,select,textarea{font-size:12px;padding:8px}
 <input type="password" id="setup-password-confirm" placeholder="Repita a senha" oninput="checkPasswordMatch()">
 <div id="password-match" style="font-size:11px;margin-top:3px"></div>
 
+<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px;margin-top:10px">
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#f59e0b;margin:0">
+<input type="checkbox" id="setup-temporary" style="width:auto;margin:0">
+<span style="font-size:11px"><strong>🕐 Modo Temporário</strong> - Ao sair, apaga todos os dados</span>
+</label>
+<p style="font-size:9px;color:#94a3b8;margin-top:5px;margin-left:24px">
+Ideal para dispositivos compartilhados. Todos os dados serão apagados ao sair.
+</p>
+</div>
+
 <button class="btn btn-primary" onclick="completeSetup()" style="width:100%;margin-top:10px">🚀 Iniciar DataLink Mesh</button>
 
 <div id="setup-error" class="alert alert-warning hidden" style="margin-top:10px"></div>
@@ -145,6 +155,10 @@ input,select,textarea{font-size:12px;padding:8px}
 <div class="card">
 <h1>🌐 DataLink Mesh</h1>
 <p class="subtitle">Comunicação Multi-Canal - <span id="user-display"></span></p>
+
+<div id="temporary-banner" class="hidden" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:8px;margin-bottom:10px">
+<div style="font-size:10px;color:#f59e0b;font-weight:600">🕐 MODO TEMPORÁRIO - Dados serão apagados ao sair</div>
+</div>
 
 <div class="status-grid">
 <div class="status-card">
@@ -336,6 +350,14 @@ input,select,textarea{font-size:12px;padding:8px}
 
 <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;margin-top:10px">💾 Salvar</button>
 <button class="btn btn-danger" onclick="logout()" style="width:100%;margin-top:5px">🚪 Sair</button>
+
+<div id="temporary-mode-indicator" class="hidden" style="margin-top:15px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px">
+<div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:5px">🕐 Modo Temporário Ativo</div>
+<div style="font-size:9px;color:#94a3b8;line-height:1.5">
+Ao sair, todos os seus dados serão apagados automaticamente de forma segura.
+</div>
+<button class="btn btn-warning" onclick="logout()" style="width:100%;margin-top:8px;font-size:11px">🚪 Sair e Apagar Tudo</button>
+</div>
 </div>
 </div>
 </div>
@@ -372,6 +394,7 @@ function completeSetup() {
     const username = document.getElementById('setup-username').value.trim();
     const password = document.getElementById('setup-password').value;
     const passwordConfirm = document.getElementById('setup-password-confirm').value;
+    const isTemporary = document.getElementById('setup-temporary').checked;
     
     if (!username || username.length < 2) {
         showSetupError('Nome deve ter pelo menos 2 caracteres');
@@ -404,10 +427,16 @@ function completeSetup() {
     
     state.username = username;
     state.password = password;
+    state.isTemporary = isTemporary;
     
     // Salvar credenciais
     localStorage.setItem('datalink_username', username);
     localStorage.setItem('datalink_password', btoa(password));
+    localStorage.setItem('datalink_temporary', isTemporary ? 'true' : 'false');
+    
+    if (isTemporary) {
+        console.log('🕐 Modo Temporário ativado - dados serão apagados ao sair');
+    }
     
     // Inicializar criptografia
     initEncryption(password);
@@ -1155,10 +1184,126 @@ function clearAllData() {
 }
 
 function logout() {
-    if (confirm('Sair?')) {
-        localStorage.clear();
-        location.reload();
+    const isTemporary = localStorage.getItem('datalink_temporary') === 'true';
+    
+    if (isTemporary) {
+        // Modo temporário - limpeza segura automática
+        if (confirm('⚠️ MODO TEMPORÁRIO ATIVO\n\nAo sair, TODOS os seus dados serão apagados permanentemente:\n\n• Mensagens\n• Fila offline\n• Configurações\n• Credenciais\n\nContinuar?')) {
+            secureWipe();
+        }
+    } else {
+        // Modo normal
+        if (confirm('Sair?')) {
+            localStorage.clear();
+            location.reload();
+        }
     }
+}
+
+function secureWipe() {
+    console.log('🧹 Iniciando limpeza segura...');
+    
+    // Lista de chaves para limpar
+    const keysToWipe = [
+        'datalink_username',
+        'datalink_password',
+        'datalink_temporary',
+        'datalink_messages',
+        'datalink_queue',
+        'datalink_settings',
+        'datalink_peers',
+        'datalink_password_hash'
+    ];
+    
+    // Limpar cada chave individualmente
+    keysToWipe.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`✓ ${key} removido`);
+    });
+    
+    // Limpar sessionStorage
+    sessionStorage.clear();
+    console.log('✓ sessionStorage limpo');
+    
+    // Limpar estado da aplicação
+    state.messages = [];
+    state.messageQueue = [];
+    state.peers = [];
+    state.username = '';
+    state.password = '';
+    state.encryptionKey = null;
+    state.isTemporary = false;
+    
+    console.log('✓ Estado da aplicação resetado');
+    
+    // Mostrar mensagem de confirmação
+    showWipeConfirmation();
+    
+    // Recarregar após 2 segundos
+    setTimeout(() => {
+        location.reload();
+    }, 2000);
+}
+
+function showWipeConfirmation() {
+    // Criar overlay de confirmação
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.3s;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        text-align: center;
+        color: #10b981;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+    
+    content.innerHTML = `
+        <div style="font-size: 64px; margin-bottom: 20px;">🧹</div>
+        <h2 style="font-size: 24px; margin-bottom: 10px;">Limpeza Segura Concluída</h2>
+        <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">
+            Todos os seus dados foram apagados permanentemente
+        </p>
+        <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; padding: 15px; max-width: 400px; margin: 0 auto; text-align: left;">
+            <div style="font-size: 12px; color: #10b981; margin-bottom: 8px;">✓ Dados removidos:</div>
+            <div style="font-size: 11px; color: #94a3b8; line-height: 1.6;">
+                • Mensagens do chat<br>
+                • Fila de mensagens offline<br>
+                • Configurações pessoais<br>
+                • Credenciais de login<br>
+                • Dados de peers<br>
+                • Chaves de criptografia<br>
+                • Cache do navegador
+            </div>
+        </div>
+        <p style="font-size: 11px; color: #64748b; margin-top: 20px;">
+            Redirecionando...
+        </p>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+    
+    // Adicionar animação CSS
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 // ============================================
@@ -1169,10 +1314,12 @@ window.onload = function() {
     // Verificar se já configurado
     const savedUsername = localStorage.getItem('datalink_username');
     const savedPassword = localStorage.getItem('datalink_password');
+    const isTemporary = localStorage.getItem('datalink_temporary') === 'true';
     
     if (savedUsername && savedPassword) {
         state.username = savedUsername;
         state.password = atob(savedPassword);
+        state.isTemporary = isTemporary;
         
         initEncryption(state.password).then(() => {
             // Inicializar BroadcastChannel
@@ -1183,8 +1330,15 @@ window.onload = function() {
             
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('main-interface').classList.remove('hidden');
-            document.getElementById('user-display').textContent = state.username;
+            document.getElementById('user-display').textContent = state.username + (isTemporary ? ' 🕐' : '');
             document.getElementById('config-username').value = state.username;
+            
+            // Mostrar indicador de modo temporário
+            if (isTemporary) {
+                document.getElementById('temporary-mode-indicator').classList.remove('hidden');
+                document.getElementById('temporary-banner').classList.remove('hidden');
+                console.log('🕐 Modo Temporário ativo - dados serão apagados ao sair');
+            }
             
             // Carregar configurações
             const settings = JSON.parse(localStorage.getItem('datalink_settings') || '{}');
