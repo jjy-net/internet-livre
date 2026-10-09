@@ -10,7 +10,7 @@ nsyte.exe
 .DS_Store
 Thumbs.db
 
-# Documentacao e notas locais (nao rastrear no GitHub)
+# Documentação e notas locais (manter apenas no PC)
 *.md
 *.txt
 *.tx
@@ -21,3 +21,31 @@ Thumbs.db
 *VPS*
 install-vps-hostinger.sh
 jyy-hostinger.zip
+
+# Atalhos e inicializadores locais do Windows (manter apenas no PC)
+*.bat
+*.ps1
+*.lnk
+Atalhos Jyy/
+
+# Testes internos e ferramentas auxiliares
+tests/
+.nsite/
+setup-electron.js
+
+# Arquivos e testes legados na pasta public (manter apenas no PC)
+*.hta
+public/*.bat
+public/*.hta
+public/DataLink-BASICO.html
+public/DataLink-Chat-v3.html
+public/DataLink-SIMPLES.html
+public/DataLink-TESTE.html
+public/DataLink.html
+public/QR-Code-App.html
+public/QR-Code-Funciona.html
+public/QR-Code-Offline.html
+public/qr-generator-standalone.html
+public/qrcode-app.html
+public/qrcode-final.html
+public/Gerador-QR-Code.html

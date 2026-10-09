@@ -1,3 +1,0 @@
-@echo off
-title Abrindo Gerador de QR Code...
-start "" "%~dp0QR-Code-Offline.html"
