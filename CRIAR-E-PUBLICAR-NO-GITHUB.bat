@@ -1,52 +1,72 @@
 @echo off
 chcp 65001 >nul
-title Publicar Projeto Jyy no GitHub
+title Publicar Projeto Jyy no GitHub (Publico e Open Source)
 color 0B
 
 echo ======================================================================
-echo    🚀 PUBLICADOR AUTOMÁTICO DO JYY NO GITHUB
+echo    🌐 PUBLICAR REPOSITÓRIO PÚBLICO E OPEN SOURCE DO JYY NO GITHUB
 echo ======================================================================
 echo.
-echo Este assistente vai criar o repositório público no seu GitHub e
-echo enviar todo o código-fonte e documentação automaticamente.
+echo Este script vai:
+echo   1. Conectar com sua conta do GitHub;
+echo   2. Criar o repositório PÚBLICO oficial do JYY;
+echo   3. Liberar o código para TODOS poderem VER, BAIXAR e MODIFICAR (Licença MIT);
+echo   4. Enviar todo o projeto, Globo 3D, Radar RuView e Documentação!
+echo.
+echo ======================================================================
 echo.
 
-:: 1. Verificar se o GitHub CLI está autenticado
+:: 1. Verificar se o GitHub CLI já está autenticado
 gh auth status >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [1/3] Conectando a sua conta do GitHub...
-    echo Uma janela do navegador vai abrir para você fazer login no GitHub.
-    echo Pressione Enter para continuar...
+    echo [PASSO 1/3] AUTENTICANDO COM O GITHUB...
+    echo.
+    echo ⚠️  ATENÇÃO: Na próxima linha vai aparecer uma mensagem como:
+    echo     "! First copy your one-time code: XXXX-XXXX"
+    echo.
+    echo 1. COPIE O CÓDIGO de 8 letras/números que aparecer na tela preta.
+    echo 2. Pressione ENTER para abrir a página do GitHub no seu navegador.
+    echo 3. Cole o código no site do GitHub e clique em "Authorize".
+    echo.
+    echo Pressione ENTER para iniciar a conexão...
     pause >nul
     call gh auth login -w -p https
+) else (
+    echo [PASSO 1/3] ✅ Conta do GitHub já está conectada!
 )
 
 echo.
-echo [2/3] Criando repositório público no seu GitHub...
-call gh repo create jyy --public --source=. --remote=origin --description "Jyy v2.0 - Suite Soberana de Transmissao e Internet Livre com Globo 3D, Radar RuView e Mesh P2P"
+echo [PASSO 2/3] Criando repositório PÚBLICO no seu GitHub...
+call gh repo create jyy --public --source=. --remote=origin --description "Jyy v2.0 - Suite Soberana de Transmissao e Internet Livre com Globo 3D, Radar RuView e Mesh P2P (Open Source)"
 
 if %errorlevel% neq 0 (
     echo.
-    echo [AVISO] O repositório pode já existir ou a origem já foi configurada.
+    echo [AVISO] O repositório já existe ou o link remoto já está configurado. Prosseguindo com o envio...
 )
 
 echo.
-echo [3/3] Enviando código para o GitHub (git push)...
+echo [PASSO 3/3] Enviando todo o código para o GitHub (git push)...
 git branch -M main
 git push -u origin main --force
 
 if %errorlevel% equ 0 (
     echo.
     echo ======================================================================
-    echo  ✅ CONCLUÍDO COM SUCESSO!
-    echo  Seu projeto e documentação estão públicos no GitHub!
-    echo  Abrindo a página do seu repositório no navegador...
+    echo  🎉 SUCESSO! SEU REPOSITÓRIO ESTÁ 100%% PÚBLICO NO GITHUB!
+    echo.
+    echo  Qualquer pessoa no mundo agora pode:
+    echo    • Ver todo o código-fonte e documentação
+    echo    • Clonar e testar no seu computador
+    echo    • Enviar modificações e melhorias (Pull Requests / Forks)
+    echo.
+    echo  Abrindo a página pública do seu repositório no navegador...
     echo ======================================================================
     call gh repo view --web
 ) else (
     echo.
-    echo [ERRO] Ocorreu uma falha ao enviar. Verifique sua conexão e login.
+    echo [ERRO] Ocorreu uma falha ao enviar. Verifique se o login foi concluído com sucesso.
 )
 
 echo.
-pause
+echo Pressione qualquer tecla para fechar esta janela...
+pause >nul
