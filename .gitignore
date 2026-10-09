@@ -10,18 +10,23 @@ nsyte.exe
 .DS_Store
 Thumbs.db
 
-# Documentação e notas locais (manter apenas no PC)
+# Documentação, conversas e notas locais (manter apenas no PC)
 *.md
-!README.md
 *.txt
 *.tx
+*.log
+logs/
+conversas/
+transcripts/
 *hostinger*
 *HOSTINGER*
 *Hostinger*
+*jjy-hostinger*
 *vps*
 *VPS*
 install-vps-hostinger.sh
 jyy-hostinger.zip
+jjy-hostinger.zip
 
 # Atalhos e inicializadores locais do Windows (manter apenas no PC)
 *.bat
