@@ -29,38 +29,38 @@ import {
   AvaliadorReputacao,
   PontuacaoPeer,
   ClassificacaoPeer,
-} from '../utils/jyyReputacao';
+} from '../utils/jjyReputacao';
 import {
   RegistroAuditoria,
   EventoAuditoria,
   GravidadeAuditoria,
   OrigemAuditoria,
-} from '../utils/jyyAuditoria';
+} from '../utils/jjyAuditoria';
 import {
   GestorVizinhanca,
   Vizinho,
   EstadoVizinho,
   MeioEnlace,
-} from '../utils/jyyVizinhanca';
+} from '../utils/jjyVizinhanca';
 import {
   FilaStoreAndForward,
   EntradaFila,
   PrioridadeMensagem,
-} from '../utils/jyyFila';
+} from '../utils/jjyFila';
 import {
   DiagnosticoNo,
   RelatorioSaude,
   EstadoSaude,
-} from '../utils/jyyDiagnostico';
+} from '../utils/jjyDiagnostico';
 import {
   AgendaTarefas,
   TarefaAgendada,
   DisparoAgenda,
-} from '../utils/jyyAgenda';
+} from '../utils/jjyAgenda';
 
 type MeshSubTab = 'reputacao' | 'auditoria' | 'vizinhanca' | 'fila' | 'diagnostico' | 'agenda';
 
-export const JyyMeshProtocolView: React.FC = () => {
+export const JjyMeshProtocolView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MeshSubTab>('reputacao');
 
   // Instâncias dos subsistemas
@@ -98,7 +98,7 @@ export const JyyMeshProtocolView: React.FC = () => {
   const [agendaIntervalo, setAgendaIntervalo] = useState(15);
   const [agendaTipo, setAgendaTipo] = useState<'UmaVez' | 'Periodica'>('Periodica');
 
-  // Inicialização de dados demonstrativos realistas do JYY Mesh
+  // Inicialização de dados demonstrativos realistas do JJY Mesh
   useEffect(() => {
     const rep = avaliadorRef.current;
     const aud = auditoriaRef.current;
@@ -130,7 +130,7 @@ export const JyyMeshProtocolView: React.FC = () => {
     viz.adicionar('NÓ-DELTA', 'Acoustic');
 
     // Popula eventos de auditoria
-    aud.info('Malha', 'Nó local inicializado na frequência soberana JYY', undefined);
+    aud.info('Malha', 'Nó local inicializado na frequência soberana JJY', undefined);
     aud.info('Reputacao', 'Nó NÓ-ALPHA promovido a Confiável (Score: 720)', 'NÓ-ALPHA');
     aud.aviso('Guard', 'NÓ-DELTA apresentou pacotes desordenados (-50 pts)', 'NÓ-DELTA');
     aud.erro('Reputacao', 'NÓ-ZULU excedeu limiar de segurança e foi Bloqueado', 'NÓ-ZULU');
@@ -330,7 +330,7 @@ export const JyyMeshProtocolView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-extrabold text-white tracking-tight">
-                  Protocolo JYY Sovereign Mesh
+                  Protocolo JJY Sovereign Mesh
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
                   RUST ENGINE SPEC v0
@@ -495,7 +495,7 @@ export const JyyMeshProtocolView: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. ABA DE REPUTAÇÃO DE PEERS (jyy-reputacao) */}
+      {/* 1. ABA DE REPUTAÇÃO DE PEERS (jjy-reputacao) */}
       {/* ========================================================================= */}
       {activeTab === 'reputacao' && (
         <div className="space-y-4">
@@ -636,7 +636,7 @@ export const JyyMeshProtocolView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. ABA DE TRILHA DE AUDITORIA IMUTÁVEL (jyy-auditoria) */}
+      {/* 2. ABA DE TRILHA DE AUDITORIA IMUTÁVEL (jjy-auditoria) */}
       {/* ========================================================================= */}
       {activeTab === 'auditoria' && (
         <div className="space-y-4">
@@ -778,7 +778,7 @@ export const JyyMeshProtocolView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. ABA DE VIZINHANÇA & LQI (jyy-vizinhanca) */}
+      {/* 3. ABA DE VIZINHANÇA & LQI (jjy-vizinhanca) */}
       {/* ========================================================================= */}
       {activeTab === 'vizinhanca' && (
         <div className="space-y-4">
@@ -878,7 +878,7 @@ export const JyyMeshProtocolView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 4. ABA DE FILA DTN STORE-AND-FORWARD (jyy-fila) */}
+      {/* 4. ABA DE FILA DTN STORE-AND-FORWARD (jjy-fila) */}
       {/* ========================================================================= */}
       {activeTab === 'fila' && (
         <div className="space-y-4">
@@ -993,7 +993,7 @@ export const JyyMeshProtocolView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 5. ABA DE SAÚDE E DIAGNÓSTICO DO NÓ (jyy-diagnostico) */}
+      {/* 5. ABA DE SAÚDE E DIAGNÓSTICO DO NÓ (jjy-diagnostico) */}
       {/* ========================================================================= */}
       {activeTab === 'diagnostico' && (
         <div className="space-y-4">
@@ -1076,7 +1076,7 @@ export const JyyMeshProtocolView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 6. ABA DE AGENDA TÁTICA & SILÊNCIO EMCON (jyy-agenda) */}
+      {/* 6. ABA DE AGENDA TÁTICA & SILÊNCIO EMCON (jjy-agenda) */}
       {/* ========================================================================= */}
       {activeTab === 'agenda' && (
         <div className="space-y-4">

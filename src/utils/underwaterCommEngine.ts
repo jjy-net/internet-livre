@@ -7,7 +7,7 @@
  * 2. Padrão NATO STANAG 4748 (JANUS) para descoberta e sinalização submarina interoperável.
  * 3. Comunicação Óptica Subaquática (UWOC - Blue-Green Laser/LED com modelo de Jerlov).
  * 4. Penetração Eletromagnética Submarina (VLF/ELF, Skin Depth em água salgada e Magneto-Indução MI).
- * 5. Gateway de Superfície Cross-Medium (Bóia Relé: Acústica/Óptica <-> Rádio/Satélite/Jyy Mesh).
+ * 5. Gateway de Superfície Cross-Medium (Bóia Relé: Acústica/Óptica <-> Rádio/Satélite/Jjy Mesh).
  * 6. Síntese de Áudio Acústico via Web Audio API para transmissão e testes reais.
  * 7. Catálogo de Artigos Científicos, Padrões Militares e Projetos Oceanográficos.
  */

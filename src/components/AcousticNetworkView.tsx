@@ -94,7 +94,7 @@ export const AcousticNetworkView: React.FC = () => {
 
   // Mensagens e Nós Vizinhos
   const [destinationNode, setDestinationNode] = useState('**'); // '**' = Broadcast
-  const [inputMessage, setInputMessage] = useState('Olá rede acústica Jyy!');
+  const [inputMessage, setInputMessage] = useState('Olá rede acústica Jjy!');
   const [chatLog, setChatLog] = useState<{ id: string; time: string; src: string; dst: string; text: string; type: 'tx' | 'rx'; ack?: boolean }[]>([]);
   const [peersList, setPeersList] = useState<NetworkPeerInfo[]>([]);
 

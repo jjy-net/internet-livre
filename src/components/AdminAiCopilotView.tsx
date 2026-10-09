@@ -218,7 +218,7 @@ export const AdminAiCopilotView: React.FC<AdminAiCopilotViewProps> = ({
     {
       id: 'welcome_1',
       role: 'assistant',
-      content: `👋 **Olá, Administrador! Sou o Sentinel AI, seu Copilot Tático de Segurança.**\n\nEstou conectado ao núcleo do sistema e monitorando **${connectedStations.length} estações** ativas.\n\nCompreendo toda a arquitetura da rede, incluindo o protocolo **JYY Soberano (Specs 36 a 41)**, os **Modems Acústicos com fallback em Giroscópio**, o controle de **Lan House**, **Controle Parental** e o módulo de **Contenção Zero-Trust (DEFCON 1)**.\n\nPossuo **${MCP_TOOLS_CATALOG.length} ferramentas MCP** ativas para isolamento, quarentena e diagnósticos. Como posso apoiá-lo agora?`,
+      content: `👋 **Olá, Administrador! Sou o Sentinel AI, seu Copilot Tático de Segurança.**\n\nEstou conectado ao núcleo do sistema e monitorando **${connectedStations.length} estações** ativas.\n\nCompreendo toda a arquitetura da rede, incluindo o protocolo **JJY Soberano (Specs 36 a 41)**, os **Modems Acústicos com fallback em Giroscópio**, o controle de **Lan House**, **Controle Parental** e o módulo de **Contenção Zero-Trust (DEFCON 1)**.\n\nPossuo **${MCP_TOOLS_CATALOG.length} ferramentas MCP** ativas para isolamento, quarentena e diagnósticos. Como posso apoiá-lo agora?`,
       timestamp: Date.now(),
       providerUsed: 'offline',
     },
@@ -245,7 +245,7 @@ export const AdminAiCopilotView: React.FC<AdminAiCopilotViewProps> = ({
     });
 
     try {
-      const cached = JSON.parse(localStorage.getItem('jyy_mobile_cached_models') || '[]');
+      const cached = JSON.parse(localStorage.getItem('jjy_mobile_cached_models') || '[]');
       setCachedModelIds(cached);
     } catch {}
 
@@ -1177,7 +1177,7 @@ export const AdminAiCopilotView: React.FC<AdminAiCopilotViewProps> = ({
   const quickPromptSuggestions = [
     '🔍 Analisar estações com anomalias de rede agora',
     '🚨 O que fazer se sofrermos um ataque de Flood DDoS?',
-    '📊 Resumir reputação JYY e saúde dos nós',
+    '📊 Resumir reputação JJY e saúde dos nós',
     '🛠️ Listar e testar ferramentas MCP ativas',
     '🎙️ Como funciona a transmissão sísmica por giroscópio?',
   ];

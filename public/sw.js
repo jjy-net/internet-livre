@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jyy-v2';
+const CACHE_NAME = 'jjy-v2';
 const urlsToCache = [
   '/',
   '/index.html',

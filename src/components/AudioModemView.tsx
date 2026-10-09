@@ -54,7 +54,7 @@ export const AudioModemView: React.FC = () => {
   const [activeFeatureTab, setActiveFeatureTab] = useState<'modem' | 'network' | 'stego' | 'sstv'>('modem');
 
   // Transmissor States
-  const [inputText, setInputText] = useState('JYY-RADIO');
+  const [inputText, setInputText] = useState('JJY-RADIO');
   const [baudRate, setBaudRate] = useState(20);
   const [modulationMode, setModulationMode] = useState<'standard' | 'bell202' | 'ultrasonic' | 'morse' | 'dtmf' | 'calibration'>('standard');
   const [volume, setVolume] = useState(0.35);
@@ -799,10 +799,10 @@ export const AudioModemView: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => sendPreset('JYY-SECURE')}
+                  onClick={() => sendPreset('JJY-SECURE')}
                   className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300"
                 >
-                  JYY
+                  JJY
                 </button>
               </div>
             </div>

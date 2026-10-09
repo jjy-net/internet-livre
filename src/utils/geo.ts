@@ -1,4 +1,4 @@
-// Utilitário de Geolocalização por GPS e País para Telemetria de Estações Jyy
+// Utilitário de Geolocalização por GPS e País para Telemetria de Estações Jjy
 
 export interface GeoLocationData {
   latitude: number;

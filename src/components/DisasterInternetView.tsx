@@ -261,7 +261,7 @@ export const DisasterInternetView: React.FC = () => {
     setTerminalLogs((prev) => [
       ...prev,
       `💥 [PULSO EMP DISPARADO]: Simulação de colapso de infraestrutura regional #${pulseEmpCount + 1}.`,
-      `🛡️ [RESILIÊNCIA JYY]: Nós reiniciando comunicação em modo estritamente autônomo.`,
+      `🛡️ [RESILIÊNCIA JJY]: Nós reiniciando comunicação em modo estritamente autônomo.`,
     ]);
   };
 
@@ -348,7 +348,7 @@ export const DisasterInternetView: React.FC = () => {
               <ShieldAlert className="w-4 h-4 text-amber-400" /> Arquitetura de Sobrevivência Post-Collapse
             </span>
             <p className="text-slate-300 leading-relaxed text-[11px]">
-              Quando torres de operadoras são destruídas, cabos de fibra óptica submarinos são cortados e servidores centrais saem do ar, a malha Jyy opera de forma <strong>estritamente descentralizada P2P</strong> através de rádio HF/VHF, LoRa, acústica na água e feixes de luz ópticos.
+              Quando torres de operadoras são destruídas, cabos de fibra óptica submarinos são cortados e servidores centrais saem do ar, a malha Jjy opera de forma <strong>estritamente descentralizada P2P</strong> através de rádio HF/VHF, LoRa, acústica na água e feixes de luz ópticos.
             </p>
             <div className="flex flex-wrap gap-2 text-[10px] font-mono pt-1 text-slate-400">
               <span className="px-2 py-0.5 bg-slate-900 rounded border border-slate-800">✓ Blindagem EMP</span>

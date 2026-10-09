@@ -237,7 +237,7 @@ export const QRStudio: React.FC = () => {
 
   const themes = [
     { name: 'Clássico', dark: '#000000', light: '#ffffff' },
-    { name: 'Jyy', dark: '#6366f1', light: '#ffffff' },
+    { name: 'Jjy', dark: '#6366f1', light: '#ffffff' },
     { name: 'Dark Cyber', dark: '#38bdf8', light: '#0f172a' },
     { name: 'Esmeralda', dark: '#059669', light: '#ecfdf5' },
     { name: 'Vinho', dark: '#991b1b', light: '#fff1f2' },
@@ -290,7 +290,7 @@ export const QRStudio: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setContent('mailto:contato@jyy.local?subject=Jyy')}
+                  onClick={() => setContent('mailto:contato@jjy.local?subject=Jjy')}
                   className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-200 rounded-lg border border-slate-700/60 transition-all"
                 >
                   <Mail className="w-3.5 h-3.5 text-amber-400" /> E-mail
@@ -304,21 +304,21 @@ export const QRStudio: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setContent('https://wa.me/5511999998888?text=Ola%20Jyy')}
+                  onClick={() => setContent('https://wa.me/5511999998888?text=Ola%20Jjy')}
                   className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-200 rounded-lg border border-slate-700/60 transition-all"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-green-400" /> WhatsApp
                 </button>
                 <button
                   type="button"
-                  onClick={() => setContent('BEGIN:VCARD\nVERSION:3.0\nFN:Usuario Jyy\nTEL:+5511999998888\nEND:VCARD')}
+                  onClick={() => setContent('BEGIN:VCARD\nVERSION:3.0\nFN:Usuario Jjy\nTEL:+5511999998888\nEND:VCARD')}
                   className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-200 rounded-lg border border-slate-700/60 transition-all"
                 >
                   <User className="w-3.5 h-3.5 text-purple-400" /> Contato vCard
                 </button>
                 <button
                   type="button"
-                  onClick={() => setContent('00020126360014BR.GOV.BCB.PIX0114+5511999999995204000053039865802BR5913Jyy6009Sao Paulo62070503***6304')}
+                  onClick={() => setContent('00020126360014BR.GOV.BCB.PIX0114+5511999999995204000053039865802BR5913Jjy6009Sao Paulo62070503***6304')}
                   className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-200 rounded-lg border border-slate-700/60 transition-all"
                 >
                   <CreditCard className="w-3.5 h-3.5 text-cyan-400" /> Chave Pix

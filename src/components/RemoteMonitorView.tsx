@@ -265,7 +265,7 @@ export const RemoteMonitorView: React.FC = () => {
         const perm = await Notification.requestPermission();
         setNotificationPermission(perm);
         if (perm === 'granted') {
-          new Notification('Jyy: Notificações Ativadas', {
+          new Notification('Jjy: Notificações Ativadas', {
             body: 'Alertas de segurança e recebimento de arquivos habilitados com sucesso.',
             icon: '/favicon.ico',
           });

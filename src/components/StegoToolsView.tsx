@@ -136,7 +136,7 @@ export const StegoToolsView: React.FC = () => {
           <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-2xl flex items-start gap-3">
             <Info className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
             <div className="text-xs text-purple-300">
-              <strong>Esteganografia em Imagens (LSB):</strong> Permite esconder textos invisíveis dentro dos pixels de imagens PNG. O olho humano não nota nenhuma alteração na imagem, mas qualquer pessoa com o Jyy pode extrair a mensagem oculta.
+              <strong>Esteganografia em Imagens (LSB):</strong> Permite esconder textos invisíveis dentro dos pixels de imagens PNG. O olho humano não nota nenhuma alteração na imagem, mas qualquer pessoa com o Jjy pode extrair a mensagem oculta.
             </div>
           </div>
 
@@ -202,7 +202,7 @@ export const StegoToolsView: React.FC = () => {
                   />
                   <a
                     href={encodedResultUrl}
-                    download="stego-jyy.png"
+                    download="stego-jjy.png"
                     className="flex items-center justify-center gap-2 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all"
                   >
                     <Download className="w-4 h-4 text-purple-400" /> Baixar Imagem (PNG Sem Perdas)

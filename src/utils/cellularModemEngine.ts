@@ -149,14 +149,14 @@ export const TETHERING_MODES_INFO: TetheringModeInfo[] = [
     stepsAndroid: [
       'No Android: Ative o "Ponto de Acesso Wi-Fi" (Roteador Wi-Fi).',
       'Defina o nome da rede (SSID) e a senha WPA2/WPA3.',
-      'No GL.iNet ou no Jyy: Vá em Internet > Repeater e faça uma varredura das redes Wi-Fi.',
+      'No GL.iNet ou no Jjy: Vá em Internet > Repeater e faça uma varredura das redes Wi-Fi.',
       'Selecione a rede do celular, insira a senha e conecte.',
     ],
     stepsIos: [
       'No iPhone: Vá em Ajustes > Acesso Pessoal.',
       'Ative "Permitir Acesso a Outros" e anote a Senha do Wi-Fi.',
       'Mantenha a tela do iPhone aberta na tela de Acesso Pessoal durante a conexão inicial.',
-      'No GL.iNet ou Jyy: Conecte à rede Wi-Fi do iPhone.',
+      'No GL.iNet ou Jjy: Conecte à rede Wi-Fi do iPhone.',
     ],
   },
   {

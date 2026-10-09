@@ -1,7 +1,7 @@
 services:
-  jyy-node:
+  jjy-node:
     build: .
-    container_name: jyy-node
+    container_name: jjy-node
     restart: always
     ports:
       - "4870:4870"

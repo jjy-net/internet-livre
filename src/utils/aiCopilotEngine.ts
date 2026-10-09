@@ -1,5 +1,5 @@
 /**
- * JYY Sovereign Mesh & DataLink Pro - Motor de IA Copilot Tático Universal (SOC Ally)
+ * JJY Sovereign Mesh & DataLink Pro - Motor de IA Copilot Tático Universal (SOC Ally)
  * 
  * Suporte Universal:
  * - 100% Offline: Motor Heurístico Nativo, Ollama Local e LM Studio / llama.cpp / Jan.ai
@@ -33,7 +33,7 @@ export interface CopilotLearnedRule {
 }
 
 export interface CopilotActionSuggestion {
-  type: 'quarantine' | 'unquarantine' | 'lockdown' | 'eject' | 'kill_sensors' | 'freeze_screen' | 'ban_ip' | 'jyy_penalize' | 'jyy_pardon';
+  type: 'quarantine' | 'unquarantine' | 'lockdown' | 'eject' | 'kill_sensors' | 'freeze_screen' | 'ban_ip' | 'jjy_penalize' | 'jjy_pardon';
   label: string;
   targetId?: string;
   targetName?: string;
@@ -450,11 +450,11 @@ export function buildSystemKnowledgePrompt(snapshot: LiveSystemSnapshot, include
     ? `\n### 🛠️ CATÁLOGO DE FERRAMENTAS MCP DISPONÍVEIS:\n${formatMcpToolsForSystemPrompt(MCP_TOOLS_CATALOG)}\n`
     : '';
 
-  return `Você é o **Sentinel AI**, copiloto de cibersegurança e aliado tático do Administrador do ecossistema DataLink Pro & JYY Sovereign Mesh.
+  return `Você é o **Sentinel AI**, copiloto de cibersegurança e aliado tático do Administrador do ecossistema DataLink Pro & JJY Sovereign Mesh.
 Sua missão é auxiliar no controle de usuários, detecção de ameaças, prevenção de fraudes, integridade de dados e execução tática de segurança.
 
 ### 🏛️ ARQUITETURA DO SISTEMA:
-1. **JYY Sovereign Mesh Protocol (Portado do Rust):**
+1. **JJY Sovereign Mesh Protocol (Portado do Rust):**
    - **Spec 36 (Reputação 0 a 1000):** Confiável (>=700), Neutro (301-699), Suspeito (101-300), Bloqueado (<=100). Penalidades por violação (-50) e bônus por cooperação (+1).
    - **Spec 37 (Auditoria Hash-Chain):** Trilha imutável encadeada por SHA.
    - **Spec 38 (Fila DTN Store-and-Forward):** Entrega tolerante a atraso com prioridades e TTL.
@@ -717,10 +717,10 @@ export function runOfflineHeuristicCopilot(
     return { reply: 'Nenhuma estação ativa conectada para isolamento.', actions: [] };
   }
 
-  // Protocolo JYY
-  if (query.includes('jyy') || query.includes('spec') || query.includes('reputa') || query.includes('auditoria')) {
+  // Protocolo JJY
+  if (query.includes('jjy') || query.includes('spec') || query.includes('reputa') || query.includes('auditoria')) {
     return {
-      reply: `🏛️ **Protocolo JYY Sovereign Mesh (Specs 36 a 41):**\n\n` +
+      reply: `🏛️ **Protocolo JJY Sovereign Mesh (Specs 36 a 41):**\n\n` +
         `• **Spec 36 (Reputação):** Pontuação de 0 a 1000 (Inicial: 500). Limiar confiável >=700, suspeito <=300, bloqueado <=100.\n` +
         `• **Spec 37 (Auditoria Hash-Chain):** Registros encadeados por SHA determinístico. Blocos imutáveis.\n` +
         `• **Spec 38 (DTN Store-and-Forward):** Fila de mensagens offline prioritária.\n` +
@@ -747,7 +747,7 @@ export function runOfflineHeuristicCopilot(
       `• Analisar ameaças e anomalias de rede.\n` +
       `• Executar ferramentas MCP de contenção (Quarentena, Corte de Sensores, Bloqueio).\n` +
       `• Gerenciar o modo Lockdown DEFCON 1.\n` +
-      `• Tirar dúvidas sobre o protocolo JYY e modems acústicos.`,
+      `• Tirar dúvidas sobre o protocolo JJY e modems acústicos.`,
     actions: [],
   };
 }

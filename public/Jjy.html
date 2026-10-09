@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Jyy — Mensagens e Perguntas Anônimas</title>
+<title>Jjy — Mensagens e Perguntas Anônimas</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <style>
 /* ============================================================
@@ -1040,7 +1040,7 @@ body {
     <header class="top-nav">
         <a href="#" class="brand" onclick="switchView('send'); return false;">
             <div class="brand-flame">🔥</div>
-            <span>Jyy</span>
+            <span>Jjy</span>
         </a>
         <div class="tab-pill">
             <button class="tab-btn active" id="tab-send" onclick="switchView('send')">
@@ -1116,7 +1116,7 @@ body {
         </div>
 
         <div class="security-seal">
-            <span>🔒 Protegido por criptografia anônima do Jyy</span>
+            <span>🔒 Protegido por criptografia anônima do Jjy</span>
         </div>
     </main>
 
@@ -1143,7 +1143,7 @@ body {
         <div class="share-link-card">
             <div class="share-link-header">
                 <div class="share-link-title">
-                    <span>🔗 Seu Link Pessoal Jyy</span>
+                    <span>🔗 Seu Link Pessoal Jjy</span>
                 </div>
                 <span style="font-size:11px;color:#cbd5e1" id="logged-user-tag">@marcos</span>
             </div>
@@ -1165,7 +1165,7 @@ body {
                     📱 Ver QR Code
                 </button>
                 <button class="btn-action-small" onclick="shareToDataLinkChat()">
-                    💬 Chat Jyy
+                    💬 Chat Jjy
                 </button>
             </div>
         </div>
@@ -1272,7 +1272,7 @@ body {
 <div class="modal-overlay" id="qr-modal">
     <div class="qr-modal-content">
         <h3 style="font-size:18px;font-weight:800">📱 Escaneie para Enviar</h3>
-        <p style="font-size:12px;color:#6b7280">Aponte a câmera do celular para abrir seu link Jyy</p>
+        <p style="font-size:12px;color:#6b7280">Aponte a câmera do celular para abrir seu link Jjy</p>
         <canvas id="ngl-qr-canvas" width="220" height="220"></canvas>
         <div style="font-size:12px;font-weight:700;color:#ff5238" id="qr-modal-username">@usuario</div>
         <button class="btn-again" style="background:#f3f4f6;color:#111;margin-bottom:0" onclick="closeQRCodeModal()">
@@ -1461,7 +1461,7 @@ function getBestShareUrl() {
 
     const proto = window.location.protocol.startsWith('https') ? 'https:' : 'http:';
     const portPart = (!port || port === '80' || port === '443') ? '' : `:${port}`;
-    return `${proto}//${host}${portPart}/Jyy.html?u=${encodeURIComponent(myUsername)}`;
+    return `${proto}//${host}${portPart}/Jjy.html?u=${encodeURIComponent(myUsername)}`;
 }
 
 function connectNglWebSocket() {
@@ -1764,7 +1764,7 @@ function resetSendForm() {
 }
 
 function setupMyOwnLink() {
-    const name = prompt('Escolha seu nome de usuário para criar seu link Jyy:', myUsername);
+    const name = prompt('Escolha seu nome de usuário para criar seu link Jjy:', myUsername);
     if (name && name.trim()) {
         myUsername = name.trim();
         localStorage.setItem('datalink_ngl_my_user', myUsername);

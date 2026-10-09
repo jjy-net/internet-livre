@@ -265,7 +265,7 @@ export interface BettercapEventStreamItem {
 export const INITIAL_BETTERCAP_APS: BettercapWifiAp[] = [
   {
     bssid: 'DC:A6:32:8B:10:4A',
-    essid: 'Jyy-Tactical-AP',
+    essid: 'Jjy-Tactical-AP',
     channel: 36,
     frequencyGhz: '5.180 GHz (UNII-1)',
     rssiDbm: -48,
@@ -377,7 +377,7 @@ export const INITIAL_SENSING_NODES: WifiSensingNode[] = [
   },
   {
     id: 'client_mesh',
-    name: 'Nó Cliente Mesh (Jyy Host)',
+    name: 'Nó Cliente Mesh (Jjy Host)',
     role: 'CLIENT_STATION',
     xMeters: 1.5,
     yMeters: 4.8,
@@ -444,7 +444,7 @@ void wifi_csi_rx_callback(void *ctx, wifi_csi_info_t *info) {
   wifi_csi_data_t *csi_data = &info->len;
   int8_t *csi_buf = (int8_t *)info->buf;
 
-  // Header de pacote RuView para o Jyy
+  // Header de pacote RuView para o Jjy
   printf("%s,%02X:%02X:%02X:%02X:%02X:%02X,%d,%d,%d,",
          CSI_FRAME_HEADER,
          info->mac[0], info->mac[1], info->mac[2],
@@ -598,7 +598,7 @@ export const INITIAL_WIFI_NETWORKS: WifiNetwork[] = [
   },
   {
     id: 'net_01',
-    ssid: 'Jyy-Tactical-Mesh-5G',
+    ssid: 'Jjy-Tactical-Mesh-5G',
     bssid: 'DC:A6:32:8B:10:4A',
     rssiDbm: -45,
     channel: 36,
@@ -790,8 +790,8 @@ export const INITIAL_DISCOVERED_DEVICES: WifiDiscoveredDevice[] = [
     statusNote: 'Dispositivo cliente móvel com suporte a Wi-Fi 7 MLO.',
   },
   {
-    id: 'dev_laptop_jyy',
-    name: 'ThinkPad X1 Carbon (Console Jyy Host)',
+    id: 'dev_laptop_jjy',
+    name: 'ThinkPad X1 Carbon (Console Jjy Host)',
     ip: '192.168.8.100',
     mac: '00:28:F8:3C:99:4B',
     vendor: 'Lenovo / Intel AX211',

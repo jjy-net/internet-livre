@@ -50,27 +50,27 @@ export const NetworkHubView: React.FC = () => {
 
   const standaloneApps = [
     {
-      title: 'Jyy Anônimo',
-      file: 'Jyy.html',
+      title: 'Jjy Anônimo',
+      file: 'Jjy.html',
       desc: 'Caixa de perguntas e respostas anônimas estilo NGL com link compartilhável.',
     },
     {
-      title: 'Jyy Pro (Standalone)',
+      title: 'Jjy Pro (Standalone)',
       file: 'DataLink-Pro.html',
       desc: 'Versão em arquivo HTML único com todos os canais de dados e criptografia.',
     },
     {
-      title: 'Jyy Chat (Simples)',
+      title: 'Jjy Chat (Simples)',
       file: 'DataLink-Chat.html',
       desc: 'Interface de chat leve com suporte a figurinhas e banners editáveis.',
     },
     {
-      title: 'Jyy Mesh Network',
+      title: 'Jjy Mesh Network',
       file: 'DataLink-Mesh.html',
       desc: 'Comunicação em malha descentralizada e topologia de nós P2P.',
     },
     {
-      title: 'Jyy Completo',
+      title: 'Jjy Completo',
       file: 'DataLink-COMPLETO.html',
       desc: 'Suite clássica completa para navegadores móveis e desktop.',
     },
@@ -86,7 +86,7 @@ export const NetworkHubView: React.FC = () => {
             <h3 className="font-semibold text-slate-100 text-left">Conectar Dispositivos na Mesma Rede</h3>
           </div>
           <p className="text-xs text-slate-400 self-start text-left">
-            Aponte a câmera do seu smartphone ou tablet para o QR Code abaixo para abrir o Jyy instantaneamente no navegador do celular!
+            Aponte a câmera do seu smartphone ou tablet para o QR Code abaixo para abrir o Jjy instantaneamente no navegador do celular!
           </p>
 
           <div className="p-3 bg-white rounded-2xl shadow-xl my-2">
@@ -116,7 +116,7 @@ export const NetworkHubView: React.FC = () => {
         <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-6 shadow-xl space-y-4">
           <div className="flex items-center gap-2">
             <Server className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-semibold text-slate-100">Servidor Local Jyy</h3>
+            <h3 className="font-semibold text-slate-100">Servidor Local Jjy</h3>
           </div>
 
           <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">

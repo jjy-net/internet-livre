@@ -55,7 +55,7 @@ export function startListener({ onFound } = {}) {
   socket.on('message', (msg, rinfo) => {
     try {
       const data = JSON.parse(msg.toString('utf8'));
-      if (data.magic !== MAGIC || (data.app !== 'jyy' && data.app !== 'datalink-pro')) return;
+      if (data.magic !== MAGIC || (data.app !== 'jjy' && data.app !== 'datalink-pro')) return;
       const ip = rinfo.address;
       const key = `${ip}:${data.port}`;
       const entry = {

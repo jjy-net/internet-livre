@@ -39,10 +39,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { GpsHoverBadge } from './GpsHoverBadge';
-import { AvaliadorReputacao, PontuacaoPeer, ClassificacaoPeer } from '../utils/jyyReputacao';
-import { RegistroAuditoria, EventoAuditoria, GravidadeAuditoria } from '../utils/jyyAuditoria';
-import { FilaStoreAndForward } from '../utils/jyyFila';
-import { DiagnosticoNo } from '../utils/jyyDiagnostico';
+import { AvaliadorReputacao, PontuacaoPeer, ClassificacaoPeer } from '../utils/jjyReputacao';
+import { RegistroAuditoria, EventoAuditoria, GravidadeAuditoria } from '../utils/jjyAuditoria';
+import { FilaStoreAndForward } from '../utils/jjyFila';
+import { DiagnosticoNo } from '../utils/jjyDiagnostico';
 
 export interface StationScreenData {
   videoTrackLabel?: string;
@@ -112,7 +112,7 @@ interface AdminContainmentViewProps {
 interface SiemEvent {
   id: string;
   timestamp: number;
-  type: 'QUARANTINE' | 'LOCKDOWN' | 'EJECT' | 'SENSOR_KILL' | 'SCREEN_LOCK' | 'IP_BAN' | 'RATE_LIMIT' | 'JYY_PENALTY' | 'SIMULATION';
+  type: 'QUARANTINE' | 'LOCKDOWN' | 'EJECT' | 'SENSOR_KILL' | 'SCREEN_LOCK' | 'IP_BAN' | 'RATE_LIMIT' | 'JJY_PENALTY' | 'SIMULATION';
   level: 'info' | 'warning' | 'critical';
   stationId?: string;
   stationName?: string;
@@ -140,7 +140,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
   // Filtros e Pesquisa
   const [threatFilter, setThreatFilter] = useState<'all' | 'high_risk' | 'quarantined' | 'sensors_active'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [subSection, setSubSection] = useState<'stations' | 'jyy_audit' | 'simulation' | 'siem'>('stations');
+  const [subSection, setSubSection] = useState<'stations' | 'jjy_audit' | 'simulation' | 'siem'>('stations');
 
   // Modais de Ação
   const [isLockdownModalOpen, setIsLockdownModalOpen] = useState(false);
@@ -150,7 +150,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
   const [banHours, setBanHours] = useState(24);
   const [actionNotice, setActionNotice] = useState<{ message: string; type: 'success' | 'danger' | 'info' } | null>(null);
 
-  // Instâncias dos Protocolos Soberanos JYY
+  // Instâncias dos Protocolos Soberanos JJY
   const reputacaoEngineRef = useRef<AvaliadorReputacao>(new AvaliadorReputacao());
   const auditoriaEngineRef = useRef<RegistroAuditoria>(new RegistroAuditoria({ capacidade: 500 }));
   const filaEngineRef = useRef<FilaStoreAndForward>(new FilaStoreAndForward());
@@ -173,7 +173,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
     }
   }, [securityData]);
 
-  // Sincronizar estações no motor de reputação JYY
+  // Sincronizar estações no motor de reputação JJY
   useEffect(() => {
     connectedStations.forEach((station) => {
       const rep = reputacaoEngineRef.current.consultar(station.clientId);
@@ -246,15 +246,15 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
       anomalies.push({ label: 'Terminal com Tela Congelada por Segurança', severity: 'high' });
     }
 
-    // Reputação JYY
+    // Reputação JJY
     const rep = reputacaoEngineRef.current.consultar(station.clientId);
     if (rep) {
       if (rep.classificacao === 'Bloqueado') {
         score += 50;
-        anomalies.push({ label: `Reputação JYY Crítica (${rep.valor}/1000)`, severity: 'critical' });
+        anomalies.push({ label: `Reputação JJY Crítica (${rep.valor}/1000)`, severity: 'critical' });
       } else if (rep.classificacao === 'Suspeito') {
         score += 25;
-        anomalies.push({ label: `Reputação JYY Suspeita (${rep.valor}/1000)`, severity: 'high' });
+        anomalies.push({ label: `Reputação JJY Suspeita (${rep.valor}/1000)`, severity: 'high' });
       }
     }
 
@@ -393,7 +393,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
         reason,
       });
 
-      // Penalizar na reputação JYY
+      // Penalizar na reputação JJY
       reputacaoEngineRef.current.registrarInfracao(station.clientId);
       auditoriaEngineRef.current.critico('Guard', `Quarentena ativada para ${station.name} (${station.clientId})`, station.clientId);
 
@@ -590,8 +590,8 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
     }
   };
 
-  // 8. Ajustes na Reputação JYY (Spec 36)
-  const handleAdjustJyyReputation = (station: ConnectedStation, action: 'cooperate' | 'penalize' | 'pardon') => {
+  // 8. Ajustes na Reputação JJY (Spec 36)
+  const handleAdjustJjyReputation = (station: ConnectedStation, action: 'cooperate' | 'penalize' | 'pardon') => {
     if (action === 'cooperate') {
       reputacaoEngineRef.current.registrarCooperacao(station.clientId);
       auditoriaEngineRef.current.info('Reputacao', `Cooperação atribuída para nó ${station.name}`, station.clientId);
@@ -663,14 +663,14 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
         });
         notify('🧪 Teste de Forja de Token: WAF bloqueou tentativa de intrusão!', 'success');
       } else if (type === 'rogue_hash') {
-        auditoriaEngineRef.current.critico('Malha', 'Simulação: Pacote com hash adulterado rejeitado pela validação JYY');
+        auditoriaEngineRef.current.critico('Malha', 'Simulação: Pacote com hash adulterado rejeitado pela validação JJY');
         addSiemLog({
           type: 'SIMULATION',
           level: 'critical',
           details: 'Teste Pen-Test: Pacote com hash corrompido injetado no canal de transporte.',
           mitigation: 'Descarte imediato do pacote corrompido e redução de reputação',
         });
-        notify('🧪 Teste de Hash Corrompido: Protocolo JYY rejeitou o bloco fraudulento!', 'success');
+        notify('🧪 Teste de Hash Corrompido: Protocolo JJY rejeitou o bloco fraudulento!', 'success');
       } else if (type === 'acoustic_jam') {
         auditoriaEngineRef.current.aviso('Audio', 'Simulação: Ruído de interferência acústica detectado. LQI degradado para 15%');
         addSiemLog({
@@ -700,7 +700,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
         ...s,
         risk: getStationRisk(s),
       })),
-      jyyReputationScores: reputacaoEngineRef.current.todos(),
+      jjyReputationScores: reputacaoEngineRef.current.todos(),
       auditTrail: auditoriaEngineRef.current.todos(),
       siemEvents,
       securityStats: securityData?.stats,
@@ -861,7 +861,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
           <div className="text-2xl font-bold font-mono text-indigo-400 mt-1">
             {auditoriaEngineRef.current.todos().length}
           </div>
-          <span className="text-[10px] text-slate-500">Blocos Hash-Chain JYY</span>
+          <span className="text-[10px] text-slate-500">Blocos Hash-Chain JJY</span>
         </div>
 
         <div className="bg-slate-900/70 border border-slate-800 p-3.5 rounded-2xl shadow-lg">
@@ -894,15 +894,15 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setSubSection('jyy_audit')}
+            onClick={() => setSubSection('jjy_audit')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              subSection === 'jyy_audit'
+              subSection === 'jjy_audit'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Governança JYY & Auditoria Criptográfica</span>
+            <span>Governança JJY & Auditoria Criptográfica</span>
           </button>
 
           <button
@@ -1079,7 +1079,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-500">Reputação JYY Spec 36:</span>
+                          <span className="text-slate-500">Reputação JJY Spec 36:</span>
                           <span
                             className={`font-mono font-bold ${
                               risk.repScore >= 700
@@ -1197,7 +1197,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
                         </button>
                       </div>
 
-                      {/* Ações Avançadas: Banir IP & Reputação JYY */}
+                      {/* Ações Avançadas: Banir IP & Reputação JJY */}
                       <div className="flex items-center justify-between gap-1 pt-1">
                         <button
                           type="button"
@@ -1210,15 +1210,15 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => handleAdjustJyyReputation(station, 'penalize')}
+                            onClick={() => handleAdjustJjyReputation(station, 'penalize')}
                             className="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800/40 hover:bg-rose-900 transition-all"
-                            title="Penalizar Reputação JYY (-50)"
+                            title="Penalizar Reputação JJY (-50)"
                           >
-                            -50 JYY
+                            -50 JJY
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleAdjustJyyReputation(station, 'pardon')}
+                            onClick={() => handleAdjustJjyReputation(station, 'pardon')}
                             className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all"
                             title="Restaurar Reputação para 500"
                           >
@@ -1235,15 +1235,15 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
         </div>
       )}
 
-      {/* SUB-SEÇÃO 2: GOVERNANÇA JYY & AUDITORIA CRIPTOGRÁFICA */}
-      {subSection === 'jyy_audit' && (
+      {/* SUB-SEÇÃO 2: GOVERNANÇA JJY & AUDITORIA CRIPTOGRÁFICA */}
+      {subSection === 'jjy_audit' && (
         <div className="space-y-6">
           {/* Header da Seção de Auditoria */}
           <div className="bg-slate-900/60 p-4 rounded-3xl border border-slate-800 flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
                 <FileCheck className="w-4 h-4 text-emerald-400" />
-                <span>Trilha de Auditoria Criptográfica Imutável (JYY Spec 37)</span>
+                <span>Trilha de Auditoria Criptográfica Imutável (JJY Spec 37)</span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Cada evento de segurança, intervenção ou transferência de dados é encadeado por SHA deterministicamente.
@@ -1380,7 +1380,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
             </h3>
             <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
               Dispare cenários de invasão controlados para testar em tempo real as respostas dos módulos de contenção,
-              a resposta do WAF, o isolamento no Fail2Ban e a detecção de adulteração do JYY Sovereign Mesh.
+              a resposta do WAF, o isolamento no Fail2Ban e a detecção de adulteração do JJY Sovereign Mesh.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-5">
@@ -1433,7 +1433,7 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
                     <FileWarning className="w-4 h-4" />
-                    <span>Bloco Adulterado (JYY)</span>
+                    <span>Bloco Adulterado (JJY)</span>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
                     Injeta pacote de bloco com hash divergente para verificar descarte e redução de reputação.

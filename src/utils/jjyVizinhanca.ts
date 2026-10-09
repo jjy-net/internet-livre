@@ -1,6 +1,6 @@
 /**
- * JYY Sovereign Mesh - Gestão de Vizinhança e LQI (Spec 39: jyy-vizinhanca)
- * Portado da especificação oficial em Rust (crates/jyy-vizinhanca)
+ * JJY Sovereign Mesh - Gestão de Vizinhança e LQI (Spec 39: jjy-vizinhanca)
+ * Portado da especificação oficial em Rust (crates/jjy-vizinhanca)
  * 
  * Gerencia o ciclo de vida dos vizinhos diretos (Candidato -> Ativo -> Inativo),
  * computa a métrica LQI (0 a 1000) e ordena os melhores enlaces para encaminhamento.

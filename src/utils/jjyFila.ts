@@ -1,6 +1,6 @@
 /**
- * JYY Sovereign Mesh - Fila de Mensagens Store-and-Forward (Spec: jyy-fila)
- * Portado da especificação oficial em Rust (crates/jyy-fila)
+ * JJY Sovereign Mesh - Fila de Mensagens Store-and-Forward (Spec: jjy-fila)
+ * Portado da especificação oficial em Rust (crates/jjy-fila)
  * 
  * Permite enfileirar mensagens criptografadas para peers offline com prioridade
  * (Alta > Normal > Baixa), TTL e controle de tentativas de reenvio.

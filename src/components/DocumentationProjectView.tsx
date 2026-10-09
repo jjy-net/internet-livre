@@ -63,7 +63,7 @@ export const DocumentationProjectView: React.FC<{
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
                 <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-                DOCUMENTAÇÃO OFICIAL DO PROJETO JYY
+                DOCUMENTAÇÃO OFICIAL DO PROJETO JJY
               </span>
               <span className="text-xs font-mono text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-semibold">
                 ● v2.0.0 ARQUITETURA ABERTA
@@ -153,10 +153,10 @@ export const DocumentationProjectView: React.FC<{
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8 space-y-4 shadow-xl">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-400" />
-              O que é a Internet Livre (Jyy v2.0)?
+              O que é a Internet Livre (Jjy v2.0)?
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed">
-              O <strong>Jyy</strong> é uma suíte unificada de telecomunicação descentralizada concebida sob o paradigma
+              O <strong>Jjy</strong> é uma suíte unificada de telecomunicação descentralizada concebida sob o paradigma
               <strong> 100% Offline-First</strong>. Ele combina tecnologias de sensoriamento de radar por Wi-Fi CSI,
               rádio LoRa de longo alcance, modems acústicos subaquáticos, comunicação por pulsos de luz e criptografia
               pós-quântica, transformando qualquer computador ou celular em um <strong>nó roteador soberano</strong>.
@@ -359,7 +359,7 @@ export const DocumentationProjectView: React.FC<{
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8 space-y-4 shadow-xl">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Server className="w-5 h-5 text-indigo-400" />
-            Como Publicar o Nó na sua VPS Hostinger (jyy.com.br)
+            Como Publicar o Nó na sua VPS Hostinger (jjy.com.br)
           </h2>
 
           <p className="text-xs text-slate-300 leading-relaxed">
@@ -381,9 +381,9 @@ export const DocumentationProjectView: React.FC<{
                 Passo 2: Rodar o instalador automatizado na VPS
               </span>
               <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between font-mono text-xs text-cyan-300">
-                <code>ssh root@SEU_IP_VPS "cd /var/www/jyy && bash install-vps-hostinger.sh"</code>
+                <code>ssh root@SEU_IP_VPS "cd /var/www/jjy && bash install-vps-hostinger.sh"</code>
                 <button
-                  onClick={() => copyToClipboard('cd /var/www/jyy && bash install-vps-hostinger.sh', 'vps_cmd')}
+                  onClick={() => copyToClipboard('cd /var/www/jjy && bash install-vps-hostinger.sh', 'vps_cmd')}
                   className="p-1 hover:text-white"
                 >
                   {copiedCode === 'vps_cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -396,9 +396,9 @@ export const DocumentationProjectView: React.FC<{
                 Passo 3: Emitir certificado SSL Gratuito (HTTPS + WSS)
               </span>
               <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between font-mono text-xs text-emerald-400">
-                <code>sudo certbot --nginx -d jyy.com.br -d www.jyy.com.br</code>
+                <code>sudo certbot --nginx -d jjy.com.br -d www.jjy.com.br</code>
                 <button
-                  onClick={() => copyToClipboard('sudo certbot --nginx -d jyy.com.br -d www.jyy.com.br', 'ssl_cmd')}
+                  onClick={() => copyToClipboard('sudo certbot --nginx -d jjy.com.br -d www.jjy.com.br', 'ssl_cmd')}
                   className="p-1 hover:text-white"
                 >
                   {copiedCode === 'ssl_cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -436,7 +436,7 @@ export const DocumentationProjectView: React.FC<{
             </div>
             <ol className="text-xs text-slate-400 space-y-1.5 list-decimal list-inside leading-relaxed pt-1">
               <li>O script abrirá o navegador para você entrar na sua conta do GitHub e autorizar o acesso com 1 clique.</li>
-              <li>Em seguida, ele cria o repositório público com o nome <strong className="text-white">jyy</strong> na sua conta.</li>
+              <li>Em seguida, ele cria o repositório público com o nome <strong className="text-white">jjy</strong> na sua conta.</li>
               <li>Envia todo o código-fonte, o Globo 3D, a Internet Livre e o README formatado.</li>
               <li>Abre a página do seu repositório no seu navegador pronta para você compartilhar!</li>
             </ol>

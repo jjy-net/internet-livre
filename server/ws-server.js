@@ -384,15 +384,15 @@ export function randomColor() {
   return COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
 }
 
-export function getSslCredentials(certPath, passphrase = 'jyy_secure_ssl') {
+export function getSslCredentials(certPath, passphrase = 'jjy_secure_ssl') {
   try {
     const targetPath = certPath || path.join(__dirname, 'cert.pfx');
     if (!fs.existsSync(targetPath)) {
       if (process.platform === 'win32') {
         const localIps = getLocalIPs();
-        const safePass = String(passphrase || 'jyy2026').replace(/["`$\\]/g, '');
+        const safePass = String(passphrase || 'jjy2026').replace(/["`$\\]/g, '');
         const dnsNames = ['localhost', '127.0.0.1', ...localIps].map(n => `"${n.replace(/[^0-9a-zA-Z.:-]/g, '')}"`).join(',');
-        const psScript = `$cert = New-SelfSignedCertificate -DnsName ${dnsNames} -CertStoreLocation "cert:\\CurrentUser\\My" -NotAfter (Get-Date).AddYears(10) -KeyLength 2048 -FriendlyName "Jyy-LAN-SSL"; $pwd = ConvertTo-SecureString -String "${safePass}" -Force -AsPlainText; Export-PfxCertificate -Cert $cert -FilePath "${targetPath.replace(/\\/g, '\\\\')}" -Password $pwd | Out-Null;`;
+        const psScript = `$cert = New-SelfSignedCertificate -DnsName ${dnsNames} -CertStoreLocation "cert:\\CurrentUser\\My" -NotAfter (Get-Date).AddYears(10) -KeyLength 2048 -FriendlyName "Jjy-LAN-SSL"; $pwd = ConvertTo-SecureString -String "${safePass}" -Force -AsPlainText; Export-PfxCertificate -Cert $cert -FilePath "${targetPath.replace(/\\/g, '\\\\')}" -Password $pwd | Out-Null;`;
         execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript}"`, { stdio: 'ignore' });
       }
     }
@@ -961,16 +961,16 @@ export function createDataLinkServer(options = {}) {
       return;
     }
 
-    // Mensagens Anônimas Jyy / NGL via WebSocket
-    if (msg.t === 'jyy:send' || msg.t === 'ngl:send') {
+    // Mensagens Anônimas Jjy / NGL via WebSocket
+    if (msg.t === 'jjy:send' || msg.t === 'ngl:send') {
       const target = String(msg.target || '').trim().toLowerCase();
       const text = String(msg.text || '').trim();
       if (!target || !text) {
-        peer.conn.sendText({ t: msg.t === 'jyy:send' ? 'jyy:ack' : 'ngl:ack', ok: false, error: 'target e text são obrigatórios' });
+        peer.conn.sendText({ t: msg.t === 'jjy:send' ? 'jjy:ack' : 'ngl:ack', ok: false, error: 'target e text são obrigatórios' });
         return;
       }
       const nglMsg = {
-        id: msg.id || ('jyy_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex')),
+        id: msg.id || ('jjy_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex')),
         target,
         prompt: String(msg.prompt || '').trim(),
         text: text.slice(0, 500),
@@ -985,24 +985,24 @@ export function createDataLinkServer(options = {}) {
       if (userList.length > MAX_NGL_PER_USER) userList.pop();
 
       telemetry.messageTypesCount.ngl = (telemetry.messageTypesCount.ngl || 0) + 1;
-      logEvent('jyy_send', `Mensagem anônima Jyy para @${target} via WebSocket`);
+      logEvent('jjy_send', `Mensagem anônima Jjy para @${target} via WebSocket`);
       events.emit('ngl:message', nglMsg);
-      events.emit('jyy:message', nglMsg);
+      events.emit('jjy:message', nglMsg);
 
       for (const p of peers.values()) {
         if (p.hello) {
-          p.conn.sendText({ t: 'jyy:message', msg: nglMsg });
+          p.conn.sendText({ t: 'jjy:message', msg: nglMsg });
           p.conn.sendText({ t: 'ngl:message', msg: nglMsg });
         }
       }
-      peer.conn.sendText({ t: msg.t === 'jyy:send' ? 'jyy:ack' : 'ngl:ack', ok: true, id: nglMsg.id, msg: nglMsg });
+      peer.conn.sendText({ t: msg.t === 'jjy:send' ? 'jjy:ack' : 'ngl:ack', ok: true, id: nglMsg.id, msg: nglMsg });
       return;
     }
 
-    if (msg.t === 'jyy:get_inbox' || msg.t === 'ngl:get_inbox') {
+    if (msg.t === 'jjy:get_inbox' || msg.t === 'ngl:get_inbox') {
       const target = String(msg.target || peer.name || '').trim().toLowerCase();
       const list = nglStore.get(target) || [];
-      peer.conn.sendText({ t: msg.t === 'jyy:get_inbox' ? 'jyy:inbox' : 'ngl:inbox', target, messages: list });
+      peer.conn.sendText({ t: msg.t === 'jjy:get_inbox' ? 'jjy:inbox' : 'ngl:inbox', target, messages: list });
       return;
     }
 
@@ -1438,8 +1438,8 @@ export function createDataLinkServer(options = {}) {
           }
 
           // Atalhos amigáveis
-          if (req.url === '/ngl' || req.url === '/ngl/' || req.url === '/jyy' || req.url === '/jyy/') {
-            res.writeHead(302, { Location: '/Jyy.html' }).end();
+          if (req.url === '/ngl' || req.url === '/ngl/' || req.url === '/jjy' || req.url === '/jjy/') {
+            res.writeHead(302, { Location: '/Jjy.html' }).end();
             return;
           }
           if (req.url === '/chat' || req.url === '/chat/') {
@@ -1696,8 +1696,8 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          // API REST: Jyy / NGL Mensagens Anônimas
-          if ((req.url === '/api/jyy/send' || req.url === '/api/ngl/send') && req.method === 'POST') {
+          // API REST: Jjy / NGL Mensagens Anônimas
+          if ((req.url === '/api/jjy/send' || req.url === '/api/ngl/send') && req.method === 'POST') {
             let body = '';
             req.on('data', (c) => { body += c; });
             req.on('end', () => {
@@ -1711,7 +1711,7 @@ export function createDataLinkServer(options = {}) {
                   return;
                 }
                 const nglMsg = {
-                  id: data.id || ('jyy_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex')),
+                  id: data.id || ('jjy_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex')),
                   target,
                   prompt: String(data.prompt || '').trim(),
                   text: text.slice(0, 500),
@@ -1726,14 +1726,14 @@ export function createDataLinkServer(options = {}) {
                 if (userList.length > MAX_NGL_PER_USER) userList.pop();
 
                 telemetry.messageTypesCount.ngl = (telemetry.messageTypesCount.ngl || 0) + 1;
-                logEvent('jyy_send', `Mensagem anônima Jyy para @${target} via HTTP REST`);
+                logEvent('jjy_send', `Mensagem anônima Jjy para @${target} via HTTP REST`);
                 events.emit('ngl:message', nglMsg);
-                events.emit('jyy:message', nglMsg);
+                events.emit('jjy:message', nglMsg);
 
                 // Notifica em tempo real clientes conectados via WebSocket
                 for (const p of peers.values()) {
                   if (p.hello) {
-                    p.conn.sendText({ t: 'jyy:message', msg: nglMsg });
+                    p.conn.sendText({ t: 'jjy:message', msg: nglMsg });
                     p.conn.sendText({ t: 'ngl:message', msg: nglMsg });
                   }
                 }
@@ -1748,7 +1748,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if ((req.url.startsWith('/api/jyy/inbox') || req.url.startsWith('/api/ngl/inbox')) && req.method === 'GET') {
+          if ((req.url.startsWith('/api/jjy/inbox') || req.url.startsWith('/api/ngl/inbox')) && req.method === 'GET') {
             const parsedUrl = new URL(req.url, 'http://localhost');
             const target = (parsedUrl.searchParams.get('u') || parsedUrl.searchParams.get('user') || '').trim().toLowerCase();
             const list = nglStore.get(target) || [];
@@ -1757,7 +1757,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if ((req.url === '/api/jyy/delete' || req.url === '/api/ngl/delete') && req.method === 'POST') {
+          if ((req.url === '/api/jjy/delete' || req.url === '/api/ngl/delete') && req.method === 'POST') {
             let body = '';
             req.on('data', (c) => { body += c; });
             req.on('end', () => {
@@ -2346,7 +2346,7 @@ export function createDataLinkServer(options = {}) {
             try {
               beacon = startBeacon({
                 port: DISCOVERY_PORT,
-                info: { app: 'jyy', v: VERSION, name: serverName, port: actualPort, ips: getLocalIPs() },
+                info: { app: 'jjy', v: VERSION, name: serverName, port: actualPort, ips: getLocalIPs() },
                 interval: 2500,
               });
             } catch (err) {

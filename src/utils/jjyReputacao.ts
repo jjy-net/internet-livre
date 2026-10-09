@@ -1,6 +1,6 @@
 /**
- * JYY Sovereign Mesh - Módulo de Reputação de Peers (Spec 36: jyy-reputacao)
- * Portado da especificação oficial em Rust (crates/jyy-reputacao)
+ * JJY Sovereign Mesh - Módulo de Reputação de Peers (Spec 36: jjy-reputacao)
+ * Portado da especificação oficial em Rust (crates/jjy-reputacao)
  * 
  * Atribui e calcula dinamicamente a confiança de cada nó vizinho (PeerId)
  * através de pontuações de 0 a 1000 (inicial = 500) e estados de classificação:

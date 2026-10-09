@@ -1,6 +1,6 @@
 /**
- * JYY Sovereign Mesh - Agendador Tático de Tarefas & EMCON (Spec: jyy-agenda)
- * Portado da especificação oficial em Rust (crates/jyy-agenda)
+ * JJY Sovereign Mesh - Agendador Tático de Tarefas & EMCON (Spec: jjy-agenda)
+ * Portado da especificação oficial em Rust (crates/jjy-agenda)
  * 
  * Permite agendar transmissões e ações por ticks ou tempo real (UmaVez ou Periódica),
  * gerenciar janelas de silêncio de rádio/acústico (EMCON - Emission Control) e disparos.

@@ -1,6 +1,6 @@
 /**
- * JYY Sovereign Mesh - Autodiagnóstico e Relatório de Saúde (Spec: jyy-diagnostico)
- * Portado da especificação oficial em Rust (crates/jyy-diagnostico)
+ * JJY Sovereign Mesh - Autodiagnóstico e Relatório de Saúde (Spec: jjy-diagnostico)
+ * Portado da especificação oficial em Rust (crates/jjy-diagnostico)
  * 
  * Rastreia a saúde de todos os subsistemas do nó (Criptografia, Enlace, Áudio,
  * Roteamento, Fila DTN, Auditoria) e gera níveis de alerta globais.

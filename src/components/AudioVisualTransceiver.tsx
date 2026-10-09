@@ -124,7 +124,7 @@ export const AudioVisualTransceiver: React.FC = () => {
       ctx.fillStyle = '#38bdf8';
       ctx.font = `bold ${Math.max(7, Math.floor(res.width * 0.12))}px monospace`;
       ctx.textAlign = 'center';
-      ctx.fillText('JYY-SSTV', cx, cy - 4);
+      ctx.fillText('JJY-SSTV', cx, cy - 4);
     } else if (type === 'target') {
       // Alvo Tático
       const cx = res.width / 2;
@@ -142,12 +142,12 @@ export const AudioVisualTransceiver: React.FC = () => {
       ctx.arc(cx, cy, res.width * 0.08, 0, 2 * Math.PI);
       ctx.fill();
     } else {
-      // Logo Jyy
+      // Logo Jjy
       ctx.fillStyle = '#6366f1';
       ctx.font = `bold ${Math.max(10, Math.floor(res.width * 0.3))}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('JYY', res.width / 2, res.height / 2);
+      ctx.fillText('JJY', res.width / 2, res.height / 2);
     }
 
     setPreviewCanvas(canvas);
@@ -622,7 +622,7 @@ export const AudioVisualTransceiver: React.FC = () => {
                   onClick={() => generatePresetImage('logo')}
                   className="px-2.5 py-1 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-lg text-[11px] text-slate-300"
                 >
-                  Logo Jyy
+                  Logo Jjy
                 </button>
               </div>
             )}

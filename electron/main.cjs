@@ -14,7 +14,7 @@ function createWindow() {
     height: 850,
     minWidth: 800,
     minHeight: 600,
-    title: 'Jyy - Suite Offline & P2P',
+    title: 'Jjy - Suite Offline & P2P',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       nodeIntegration: false,
@@ -73,14 +73,14 @@ function createWindow() {
       label: 'Navegador & Web',
       submenu: [
         {
-          label: '🔥 Abrir Jyy Mensagens Anônimas',
+          label: '🔥 Abrir Jjy Mensagens Anônimas',
           click: () => {
             const { shell } = require('electron');
-            shell.openExternal('http://localhost:4870/Jyy.html');
+            shell.openExternal('http://localhost:4870/Jjy.html');
           }
         },
         {
-          label: '🌐 Abrir Jyy Web no Navegador',
+          label: '🌐 Abrir Jjy Web no Navegador',
           click: () => {
             const { shell } = require('electron');
             shell.openExternal('http://localhost:4870/');
@@ -125,12 +125,12 @@ function createWindow() {
       label: 'Ajuda',
       submenu: [
         {
-          label: 'Sobre o Jyy',
+          label: 'Sobre o Jjy',
           click: () => {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'Sobre o Jyy',
-              message: 'Jyy - Suite Offline & P2P',
+              title: 'Sobre o Jjy',
+              message: 'Jjy - Suite Offline & P2P',
               detail: 'Versão: 2.0.0\n\nComunicação segura offline, chat P2P/LAN, QR Codes, modem de áudio/luz, criptografia e esteganografia.\n\nDesenvolvido com Electron, React, TypeScript e Node.',
               buttons: ['OK']
             });

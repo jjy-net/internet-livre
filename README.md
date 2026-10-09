@@ -1,4 +1,4 @@
-# 🌐 Internet Livre (Jyy)
+# 🌐 Internet Livre (Jjy)
 
 <div align="center">
 

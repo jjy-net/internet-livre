@@ -53,7 +53,7 @@ export interface ExtractedStegoResult {
   error?: string;
 }
 
-const MAGIC_SIGNATURE = [0x4A, 0x59, 0x59, 0x53, 0x54, 0x45, 0x47, 0x00]; // "JYYSTEG\0" (8 bytes)
+const MAGIC_SIGNATURE = [0x4A, 0x59, 0x59, 0x53, 0x54, 0x45, 0x47, 0x00]; // "JJYSTEG\0" (8 bytes)
 
 /**
  * Decodifica qualquer arquivo de áudio aceito pelo navegador (MP3, WAV, AAC, OGG, FLAC) em um AudioBuffer
@@ -324,7 +324,7 @@ export async function extractMessageFromAudio(
     isEncrypted: false,
     encryptionType: 'none',
     payloadBytes: 0,
-    error: 'Nenhuma mensagem esteganográfica oculta do padrão Jyy foi detectada neste áudio.',
+    error: 'Nenhuma mensagem esteganográfica oculta do padrão Jjy foi detectada neste áudio.',
   };
 }
 

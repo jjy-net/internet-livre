@@ -91,8 +91,8 @@ export const CellularGatewayView: React.FC = () => {
   ]);
   const [inputAtCommand, setInputAtCommand] = useState<string>('');
 
-  // Opções de Ponte Jyy
-  const [enableJyyCellularBridge, setEnableJyyCellularBridge] = useState<boolean>(true);
+  // Opções de Ponte Jjy
+  const [enableJjyCellularBridge, setEnableJjyCellularBridge] = useState<boolean>(true);
   const [useSecureDns, setUseSecureDns] = useState<boolean>(true);
 
   const currentRouter = GLINET_ROUTERS_CATALOG.find((r) => r.id === selectedRouterId) || GLINET_ROUTERS_CATALOG[0];
@@ -186,7 +186,7 @@ export const CellularGatewayView: React.FC = () => {
               <span>Internet Celular & Roteadores GL.iNet</span>
             </h2>
             <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-              Use <strong>qualquer smartphone (Android / iPhone)</strong> ou roteador <strong>GL.iNet</strong> como um modem 5G de alta velocidade conectado ao Jyy via cabo USB (RNDIS/NCM), repetidor Wi-Fi (WISP) ou Bluetooth PAN com contorno de tethering TTL.
+              Use <strong>qualquer smartphone (Android / iPhone)</strong> ou roteador <strong>GL.iNet</strong> como um modem 5G de alta velocidade conectado ao Jjy via cabo USB (RNDIS/NCM), repetidor Wi-Fi (WISP) ou Bluetooth PAN com contorno de tethering TTL.
             </p>
           </div>
 
@@ -269,7 +269,7 @@ export const CellularGatewayView: React.FC = () => {
           }`}
         >
           <Share2 className="w-4 h-4 text-rose-300" />
-          <span>Ponte de Internet Jyy</span>
+          <span>Ponte de Internet Jjy</span>
         </button>
       </div>
 
@@ -731,14 +731,14 @@ export const CellularGatewayView: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* ABA 5: PONTE DE INTERNET PARA A REDE JYY                 */}
+      {/* ABA 5: PONTE DE INTERNET PARA A REDE JJY                 */}
       {/* ======================================================== */}
       {activeTab === 'bridge' && (
         <div className="space-y-5">
           <div className="p-5 bg-slate-900/70 rounded-3xl border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-rose-400" /> Ponte de Internet Móvel ➔ Rede Jyy Mesh
+                <Share2 className="w-4 h-4 text-rose-400" /> Ponte de Internet Móvel ➔ Rede Jjy Mesh
               </h3>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">
                 Cellular Gateway Active
@@ -759,8 +759,8 @@ export const CellularGatewayView: React.FC = () => {
                 </div>
                 <input
                   type="checkbox"
-                  checked={enableJyyCellularBridge}
-                  onChange={(e) => setEnableJyyCellularBridge(e.target.checked)}
+                  checked={enableJjyCellularBridge}
+                  onChange={(e) => setEnableJjyCellularBridge(e.target.checked)}
                   className="w-4 h-4 accent-emerald-500 rounded"
                 />
               </label>
@@ -793,7 +793,7 @@ export const CellularGatewayView: React.FC = () => {
                 </span>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                 <span className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-purple-400">
-                  🛡️ Jyy Host Gateway
+                  🛡️ Jjy Host Gateway
                 </span>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                 <span className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-amber-400">

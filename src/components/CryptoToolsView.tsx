@@ -4,7 +4,7 @@ import { computeHash, encryptAESGCM, decryptAESGCM, generateRandomKey } from '..
 
 export const CryptoToolsView: React.FC = () => {
   // Hash
-  const [hashInput, setHashInput] = useState('Jyy 2026');
+  const [hashInput, setHashInput] = useState('Jjy 2026');
   const [hashAlgorithm, setHashAlgorithm] = useState<'SHA-256' | 'SHA-512'>('SHA-256');
   const [computedHash, setComputedHash] = useState('');
   const [verifyHashInput, setVerifyHashInput] = useState('');

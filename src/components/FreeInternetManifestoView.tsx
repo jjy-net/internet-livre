@@ -40,7 +40,7 @@ export const FreeInternetManifestoView: React.FC<{ onNavigateToGlobe?: () => voi
   const [nodes, setNodes] = useState<MeshSimulatorNode[]>([
     {
       id: 'node_1',
-      name: 'Estação Central (Seu Nó Jyy)',
+      name: 'Estação Central (Seu Nó Jjy)',
       type: 'wifi',
       rangeKm: 0.3,
       throughput: '54 ~ 300 Mbps',
@@ -166,7 +166,7 @@ export const FreeInternetManifestoView: React.FC<{ onNavigateToGlobe?: () => voi
 
           <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-3xl">
             A internet convencional foi construída sobre cabos corporativos, torres centralizadas e provedores que podem ser desligados,
-            bloqueados ou censurados a qualquer momento. A <strong>Internet Livre Jyy</strong> devolve a rede para as pessoas:
+            bloqueados ou censurados a qualquer momento. A <strong>Internet Livre Jjy</strong> devolve a rede para as pessoas:
             ela conecta você diretamente a outros seres humanos por ondas de rádio, Wi-Fi mesh, som, luz e satélites,
             sem depender de mensalidade, servidores centrais ou sinal de celular.
           </p>
@@ -326,7 +326,7 @@ export const FreeInternetManifestoView: React.FC<{ onNavigateToGlobe?: () => voi
                 </div>
 
                 <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-900/40 space-y-1">
-                  <span className="font-bold text-emerald-300 block">Nossa Internet Livre Jyy:</span>
+                  <span className="font-bold text-emerald-300 block">Nossa Internet Livre Jjy:</span>
                   <ul className="text-slate-300 space-y-1 list-disc list-inside">
                     <li>Malha mesh auto-regenerativa sem servidor</li>
                     <li>Continua funcionando em blackouts por bateria</li>
@@ -591,13 +591,13 @@ export const FreeInternetManifestoView: React.FC<{ onNavigateToGlobe?: () => voi
             {
               step: 'Passo 2',
               title: 'Crie Conexões Locais por Wi-Fi ou Bluetooth',
-              description: 'Mesmo sem internet na sua casa ou rua, o aplicativo Jyy permite conversar e transferir arquivos por Wi-Fi Direct, rede local e Bluetooth com qualquer vizinho num raio de 50 a 150 metros.',
+              description: 'Mesmo sem internet na sua casa ou rua, o aplicativo Jjy permite conversar e transferir arquivos por Wi-Fi Direct, rede local e Bluetooth com qualquer vizinho num raio de 50 a 150 metros.',
               badge: 'Zero Hardware Adicional',
             },
             {
               step: 'Passo 3',
               title: 'Conecte um Rádio LoRa (Alcance de 15 a 40 km)',
-              description: 'Para conectar bairros vizinhos ou cidades próximas sem internet, conecte qualquer chip LoRa SX1262 (Heltec V3 ou LilyGO T-Beam) na porta USB. O Jyy reconhece automaticamente e cria enlaces de rádio.',
+              description: 'Para conectar bairros vizinhos ou cidades próximas sem internet, conecte qualquer chip LoRa SX1262 (Heltec V3 ou LilyGO T-Beam) na porta USB. O Jjy reconhece automaticamente e cria enlaces de rádio.',
               badge: 'Custo: ~R$ 80 uma única vez',
             },
             {
@@ -628,7 +628,7 @@ export const FreeInternetManifestoView: React.FC<{ onNavigateToGlobe?: () => voi
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] font-mono text-slate-500">Jyy Sovereign Suite</span>
+                <span className="text-[11px] font-mono text-slate-500">Jjy Sovereign Suite</span>
                 {i === 0 && onNavigateToGlobe && (
                   <button
                     onClick={onNavigateToGlobe}

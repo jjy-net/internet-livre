@@ -65,7 +65,7 @@ export const AudioStegoView: React.FC = () => {
   const [carrierFile, setCarrierFile] = useState<File | null>(null);
   const [carrierBuffer, setCarrierBuffer] = useState<AudioBuffer | null>(null);
   const [carrierDuration, setCarrierDuration] = useState<number>(0);
-  const [carrierName, setCarrierName] = useState<string>('Trilha Acústica Sintética Jyy');
+  const [carrierName, setCarrierName] = useState<string>('Trilha Acústica Sintética Jjy');
   const [secretMessage, setSecretMessage] = useState('RELATÓRIO CONFIDENCIAL: Operação Delta confirmada para o quadrante 4.');
   const [encryptionMode, setEncryptionMode] = useState<'none' | 'asymmetric_rsa' | 'symmetric_aes' | 'plausible_deniable'>('plausible_deniable');
   const [recipientPublicKey, setRecipientPublicKey] = useState('');
@@ -90,7 +90,7 @@ export const AudioStegoView: React.FC = () => {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   // --- ESPECTROGRAMA VISUAL STATE ---
-  const [specText, setSpecText] = useState('JYY-SIGINT');
+  const [specText, setSpecText] = useState('JJY-SIGINT');
   const [specMinFreq, setSpecMinFreq] = useState(14000);
   const [specMaxFreq, setSpecMaxFreq] = useState(19000);
   const [specCharMs, setSpecCharMs] = useState(140);
@@ -120,8 +120,8 @@ export const AudioStegoView: React.FC = () => {
   // Carregar ou gerar chaves salvas no localStorage
   useEffect(() => {
     try {
-      const savedPub = localStorage.getItem('jyy_stego_pubkey');
-      const savedPriv = localStorage.getItem('jyy_stego_privkey');
+      const savedPub = localStorage.getItem('jjy_stego_pubkey');
+      const savedPriv = localStorage.getItem('jjy_stego_privkey');
       if (savedPub && savedPriv) {
         const loadedKeys = { publicKeyPem: savedPub, privateKeyPem: savedPriv };
         setKeyPair(loadedKeys);
@@ -142,7 +142,7 @@ export const AudioStegoView: React.FC = () => {
         const synth = generateSyntheticCarrier(12);
         setCarrierBuffer(synth);
         setCarrierDuration(synth.duration);
-        setCarrierName('Acordes Harmônicos Sintéticos Jyy (12s)');
+        setCarrierName('Acordes Harmônicos Sintéticos Jjy (12s)');
       } catch (err) {
         console.error('Erro ao gerar carreador inicial:', err);
       }
@@ -156,8 +156,8 @@ export const AudioStegoView: React.FC = () => {
       setKeyPair(keys);
       setRecipientPublicKey(keys.publicKeyPem);
       setExtractPrivateKey(keys.privateKeyPem);
-      localStorage.setItem('jyy_stego_pubkey', keys.publicKeyPem);
-      localStorage.setItem('jyy_stego_privkey', keys.privateKeyPem);
+      localStorage.setItem('jjy_stego_pubkey', keys.publicKeyPem);
+      localStorage.setItem('jjy_stego_privkey', keys.privateKeyPem);
       if (notify) confetti({ particleCount: 35, origin: { y: 0.6 } });
     } catch (err) {
       console.error('Falha ao gerar par de chaves RSA:', err);
@@ -438,8 +438,8 @@ export const AudioStegoView: React.FC = () => {
     setCarrierFile(null);
     setExtractFile(null);
     if (isJammerActive) toggleJammer();
-    localStorage.removeItem('jyy_stego_pubkey');
-    localStorage.removeItem('jyy_stego_privkey');
+    localStorage.removeItem('jjy_stego_pubkey');
+    localStorage.removeItem('jjy_stego_privkey');
     setKeyPair(null);
     alert('🚨 ZERO-WIPE EXECUTADO: Todas as chaves, buffers de áudio e dados em memória foram purgados.');
   };
@@ -976,7 +976,7 @@ export const AudioStegoView: React.FC = () => {
                   type="text"
                   value={specText}
                   onChange={(e) => setSpecText(e.target.value.toUpperCase())}
-                  placeholder="EX: JYY-SIGINT-2026"
+                  placeholder="EX: JJY-SIGINT-2026"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono font-bold text-purple-300 tracking-wider focus:outline-none focus:border-purple-500"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
@@ -1274,7 +1274,7 @@ export const AudioStegoView: React.FC = () => {
                 {extractFile ? extractFile.name : 'Selecione o arquivo de áudio (.wav / .mp3)'}
               </div>
               <p className="text-[10px] text-slate-500">
-                {extractFile ? `${(extractFile.size / 1024 / 1024).toFixed(2)} MB` : 'Suporta arquivos contendo pacotes esteganográficos Jyy'}
+                {extractFile ? `${(extractFile.size / 1024 / 1024).toFixed(2)} MB` : 'Suporta arquivos contendo pacotes esteganográficos Jjy'}
               </p>
               <input
                 type="file"

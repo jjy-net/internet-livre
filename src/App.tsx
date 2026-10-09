@@ -38,7 +38,7 @@ import { NetworkHubView } from './components/NetworkHubView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { RemoteMonitorView } from './components/RemoteMonitorView';
 import { EmergencyAlertModal } from './components/EmergencyAlertModal';
-import { JyyMeshProtocolView } from './components/JyyMeshProtocolView';
+import { JjyMeshProtocolView } from './components/JjyMeshProtocolView';
 import { SatelliteInternetView } from './components/SatelliteInternetView';
 import { TacticalRadioView } from './components/TacticalRadioView';
 import { UnderwaterInternetView } from './components/UnderwaterInternetView';
@@ -117,7 +117,7 @@ export const App: React.FC = () => {
     { id: 'crypto', label: 'Criptografia', icon: <Shield className="w-4 h-4" /> },
     { id: 'stego', label: 'Esteganografia', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'network', label: 'Rede & Servidor', icon: <Radio className="w-4 h-4" /> },
-    { id: 'mesh', label: 'Protocolo JYY Mesh', icon: <Cpu className="w-4 h-4 text-cyan-400" />, badge: 'Core' },
+    { id: 'mesh', label: 'Protocolo JJY Mesh', icon: <Cpu className="w-4 h-4 text-cyan-400" />, badge: 'Core' },
     { id: 'protocols', label: 'Protocolos & Plugins', icon: <Share2 className="w-4 h-4 text-violet-400" />, badge: 'Omni' },
     { id: 'satellite', label: 'Internet Satélite & SDR', icon: <Satellite className="w-4 h-4 text-sky-400" />, badge: 'Orbital' },
     { id: 'radio', label: 'Rádio UHF/VHF & HF', icon: <RadioTower className="w-4 h-4 text-emerald-400" />, badge: 'RF' },
@@ -141,7 +141,7 @@ export const App: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-base tracking-tight text-white">Jyy</h1>
+                <h1 className="font-bold text-base tracking-tight text-white">Jjy</h1>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
                   v2.0.0
                 </span>
@@ -179,13 +179,13 @@ export const App: React.FC = () => {
             )}
 
             <a
-              href="/Jyy.html"
+              href="/Jjy.html"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
-              title="Abrir Perguntas e Mensagens Anônimas Jyy"
+              title="Abrir Perguntas e Mensagens Anônimas Jjy"
             >
-              🔥 Jyy Anônimo
+              🔥 Jjy Anônimo
             </a>
           </div>
         </div>
@@ -247,7 +247,7 @@ export const App: React.FC = () => {
         {activeTab === 'crypto' && <CryptoToolsView />}
         {activeTab === 'stego' && <StegoToolsView />}
         {activeTab === 'network' && <NetworkHubView />}
-        {activeTab === 'mesh' && <JyyMeshProtocolView />}
+        {activeTab === 'mesh' && <JjyMeshProtocolView />}
         {activeTab === 'protocols' && <ProtocolHubView />}
         {activeTab === 'satellite' && <SatelliteInternetView />}
         {activeTab === 'radio' && <TacticalRadioView />}
@@ -284,7 +284,7 @@ export const App: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              O Jyy pode ser executado e instalado de três maneiras fáceis:
+              O Jjy pode ser executado e instalado de três maneiras fáceis:
             </p>
 
             <div className="space-y-2.5">

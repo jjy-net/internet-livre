@@ -55,7 +55,7 @@ export const Earth3dMapView: React.FC = () => {
     fuzzyLon: number;
   }>({
     callsign: 'OPERADOR-LOCAL',
-    fullName: 'Você (Nó Jyy)',
+    fullName: 'Você (Nó Jjy)',
     bio: 'Disponível na rede para conversar e trocar pacotes via rádio e Wi-Fi.',
     status: 'online',
     transports: ['LoRa Meshtastic', 'Wi-Fi Radar', 'Celular 5G'],
@@ -95,12 +95,12 @@ export const Earth3dMapView: React.FC = () => {
   // Carregar preferências salvas do localStorage
   useEffect(() => {
     try {
-      const savedVisible = localStorage.getItem('jyy_globe_is_visible');
+      const savedVisible = localStorage.getItem('jjy_globe_is_visible');
       if (savedVisible !== null) {
         setIsVisibleOnMap(savedVisible === 'true');
       }
 
-      const savedProfile = localStorage.getItem('jyy_globe_user_profile');
+      const savedProfile = localStorage.getItem('jjy_globe_user_profile');
       if (savedProfile) {
         setUserProfile(JSON.parse(savedProfile));
       }
@@ -125,7 +125,7 @@ export const Earth3dMapView: React.FC = () => {
 
   const handleToggleVisibility = (newValue: boolean) => {
     setIsVisibleOnMap(newValue);
-    localStorage.setItem('jyy_globe_is_visible', String(newValue));
+    localStorage.setItem('jjy_globe_is_visible', String(newValue));
     if (newValue) {
       // Quando ativar, focar a câmera no usuário
       focusOnCoordinates(userProfile.fuzzyLat, userProfile.fuzzyLon);
@@ -134,7 +134,7 @@ export const Earth3dMapView: React.FC = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('jyy_globe_user_profile', JSON.stringify(userProfile));
+    localStorage.setItem('jjy_globe_user_profile', JSON.stringify(userProfile));
     setShowProfileEditor(false);
     alert('Perfil público atualizado! Sua localização permanece protegida com 10 km de erro proposital.');
   };
@@ -174,7 +174,7 @@ export const Earth3dMapView: React.FC = () => {
         const responses = [
           `Olá! Sinal recebido com sucesso via ${chatPeer.transports[0]}. Tudo bem por aí?`,
           `Positivo! Estou operando aqui em ${chatPeer.city}. Enlace verificado em ${chatPeer.rttMs} ms.`,
-          `Mensagem lida com sucesso! Bom te ver no mapa 3D da rede Jyy.`,
+          `Mensagem lida com sucesso! Bom te ver no mapa 3D da rede Jjy.`,
         ];
         const randomResp = responses[Math.floor(Math.random() * responses.length)];
         return {
@@ -571,7 +571,7 @@ export const Earth3dMapView: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                 <Globe className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: '20s' }} />
-                GLOBO 3D PLANETÁRIO JYY
+                GLOBO 3D PLANETÁRIO JJY
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 <ShieldCheck className="w-3.5 h-3.5" />

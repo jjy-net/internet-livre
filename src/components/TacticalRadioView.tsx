@@ -65,8 +65,8 @@ export const TacticalRadioView: React.FC = () => {
     },
     {
       id: 'msg_2',
-      senderCallsign: 'JYY-DELTA-02',
-      recipientCallsign: 'JYY-NODE-01',
+      senderCallsign: 'JJY-DELTA-02',
+      recipientCallsign: 'JJY-NODE-01',
       text: 'Sinal recebido 5/9 pleno. Enlace RF estabelecido com sucesso na malha soberana.',
       frequencyHz: 146520000,
       modulation: 'NBFM / AFSK',
@@ -167,7 +167,7 @@ export const TacticalRadioView: React.FC = () => {
       // Emitir Tom de Portadora / PTT Vox
       if (audioTransceiverRef.current) {
         await audioTransceiverRef.current.transmitPacketAudio(
-          `JYY_TX_${radioStatus.callsign}_CARRIER`,
+          `JJY_TX_${radioStatus.callsign}_CARRIER`,
           radioStatus.ctcssToneHz,
           () => {
             setRadioStatus((prev) => ({ ...prev, isTransmitting: false }));
@@ -721,7 +721,7 @@ export const TacticalRadioView: React.FC = () => {
               <span className="text-slate-500">Atalhos:</span>
               <button
                 type="button"
-                onClick={() => setChatInput('CQ CQ CQ Chamada Geral na Malha Soberana JYY.')}
+                onClick={() => setChatInput('CQ CQ CQ Chamada Geral na Malha Soberana JJY.')}
                 className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
               >
                 CQ Geral

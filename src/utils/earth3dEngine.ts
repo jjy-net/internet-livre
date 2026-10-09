@@ -1,6 +1,6 @@
 // ============================================================================
 // ENGINE 3D EARTH GLOBE & PRIVACIDADE DIFERENCIAL (10 KM FUZZING RADIUS)
-// JYY Communication Suite v2.0 - Argon-4 Class 3D Planetary Mesh System
+// JJY Communication Suite v2.0 - Argon-4 Class 3D Planetary Mesh System
 // ============================================================================
 
 export interface GlobeUserNode {
@@ -252,7 +252,7 @@ export const INITIAL_GLOBE_PEERS: GlobeUserNode[] = [
     flag: '🇧🇷',
     city: 'Curitiba, PR',
     status: 'online',
-    bio: 'Operador de estação meteorológica e nó repetidor JYY. Aberto para bater papo sobre segurança e P2P.',
+    bio: 'Operador de estação meteorológica e nó repetidor JJY. Aberto para bater papo sobre segurança e P2P.',
     transports: ['Wi-Fi 802.11', 'Rádio HF APRS', 'NGL Onion'],
     isVisibleOnMap: true,
     lastSeen: '3 min atrás',

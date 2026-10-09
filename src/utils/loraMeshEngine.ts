@@ -397,7 +397,7 @@ export async function sendWebSerialCommand(
 // ==========================================
 
 export const ARDUINO_LORA_FIRMWARE_SKETCH = `/*
- * JYY LORA USB SERIAL BRIDGE - FIRMWARE DIY
+ * JJY LORA USB SERIAL BRIDGE - FIRMWARE DIY
  * Compatível com Arduino Nano, Uno, ESP32 e módulos SX1276 / SX1278 (Ra-02) / SX1262
  * Biblioteca requerida: Sandeep Mistry "LoRa" (Instalar via Library Manager no Arduino IDE)
  * 
@@ -438,11 +438,11 @@ void setup() {
   LoRa.setSyncWord(0x2B);           // Sync word do Meshtastic / rede aberta
   LoRa.setTxPower(20);              // 20 dBm (100 mW)
 
-  Serial.println("[READY] JYY LoRa Bridge Ativo em 915.0 MHz (115200 bps)");
+  Serial.println("[READY] JJY LoRa Bridge Ativo em 915.0 MHz (115200 bps)");
 }
 
 void loop() {
-  // 1. Receber dados da USB (do app Jyy) e transmitir via LoRa RF:
+  // 1. Receber dados da USB (do app Jjy) e transmitir via LoRa RF:
   if (Serial.available() > 0) {
     String outMsg = Serial.readStringUntil('\\n');
     outMsg.trim();
@@ -455,7 +455,7 @@ void loop() {
     }
   }
 
-  // 2. Receber pacotes LoRa do ar e encaminhar para a USB do Jyy:
+  // 2. Receber pacotes LoRa do ar e encaminhar para a USB do Jjy:
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
     String inMsg = "";

@@ -1,5 +1,5 @@
 /**
- * JYY Sovereign Mesh & DataLink Pro - Módulo Mobile Pocket AI (100% Offline para Celular)
+ * JJY Sovereign Mesh & DataLink Pro - Módulo Mobile Pocket AI (100% Offline para Celular)
  * 
  * Permite que smartphones (Android & iOS) executem Inteligência Artificial
  * completamente offline (sem internet, sem Wi-Fi e sem servidor central) através de:
@@ -160,7 +160,7 @@ export async function detectMobileDeviceCapabilities(): Promise<MobileDeviceCapa
   };
 }
 
-const CACHE_NAME = 'jyy-datalink-mobile-ai-v1';
+const CACHE_NAME = 'jjy-datalink-mobile-ai-v1';
 
 /**
  * Verifica se um modelo móvel já está baixado no Cache do celular
@@ -221,10 +221,10 @@ export async function cacheMobileModelForOffline(
 
   // Registrar em localStorage que está cached
   try {
-    const cachedList = JSON.parse(localStorage.getItem('jyy_mobile_cached_models') || '[]');
+    const cachedList = JSON.parse(localStorage.getItem('jjy_mobile_cached_models') || '[]');
     if (!cachedList.includes(modelId)) {
       cachedList.push(modelId);
-      localStorage.setItem('jyy_mobile_cached_models', JSON.stringify(cachedList));
+      localStorage.setItem('jjy_mobile_cached_models', JSON.stringify(cachedList));
     }
   } catch {}
 
@@ -242,9 +242,9 @@ export async function removeCachedMobileModel(modelId: string): Promise<boolean>
       await cache.delete(`/mobile-ai-models/${modelId}.bin`);
     }
 
-    const cachedList = JSON.parse(localStorage.getItem('jyy_mobile_cached_models') || '[]');
+    const cachedList = JSON.parse(localStorage.getItem('jjy_mobile_cached_models') || '[]');
     const filtered = cachedList.filter((id: string) => id !== modelId);
-    localStorage.setItem('jyy_mobile_cached_models', JSON.stringify(filtered));
+    localStorage.setItem('jjy_mobile_cached_models', JSON.stringify(filtered));
     return true;
   } catch {
     return false;
@@ -301,14 +301,14 @@ export async function runMobileOfflineInference(
     reply = `🔊 **[Telemetria de Modem Acústico & Sísmico no Celular]:**\n\n` +
       `1. **Full-Duplex Acústico:** Transmissão e recepção contínua através do alto-falante e microfone do smartphone.\n` +
       `2. **Fallback Giroscópico:** Se o microfone do celular for bloqueado pelo SO ou estiver em uso, os acelerômetros e giroscópios captam micro-vibrações sísmicas da carcaça para decodificar os pacotes.\n` +
-      `3. **Empacotamento P2P:** Frames JYY de 128 bytes com checksum CRC16 e retransmissão ARQ automática.\n\n` +
+      `3. **Empacotamento P2P:** Frames JJY de 128 bytes com checksum CRC16 e retransmissão ARQ automática.\n\n` +
       `Você pode ativar a transmissão de áudio na aba **Modem de Som** a qualquer momento.`;
   } else if (lower.includes('quarentena') || lower.includes('bloquear') || lower.includes('banir') || lower.includes('ataque')) {
     reply = `🛡️ **[Procedimento Tático Mobile Zero-Trust]:**\n\n` +
       `Para conter uma ameaça diretamente do celular:\n` +
       `• **Isolar Nó:** Envie o comando de quarentena via painel admin ou ative DEFCON 1.\n` +
       `• **Corte de Sensores:** Use a ferramenta MCP para desativar câmera e microfone do terminal suspeito.\n` +
-      `• **Penalização JYY:** Reduza a pontuação de reputação para impedir retransmissão de mensagens.\n\n` +
+      `• **Penalização JJY:** Reduza a pontuação de reputação para impedir retransmissão de mensagens.\n\n` +
       `A instrução pode ser transmitida via rede local ou via modem acústico se a rede de dados estiver fora do ar.`;
   } else if (lower.includes('ajuda') || lower.includes('como usar') || lower.includes('comandos')) {
     reply = `💡 **[Guia Rápido Mobile Pocket AI]:**\n\n` +
@@ -321,7 +321,7 @@ export async function runMobileOfflineInference(
   } else {
     reply = `🧠 **[Sentinel Mobile AI - Análise Concluída]:**\n\n` +
       `Processe sua solicitação em modo offline puro: "${prompt}".\n\n` +
-      `• **Integridade do Sistema:** O protocolo JYY Soberano está operando com criptografia end-to-end.\n` +
+      `• **Integridade do Sistema:** O protocolo JJY Soberano está operando com criptografia end-to-end.\n` +
       `• **Recomendação Tática:** Mantenha os canais de telemetria abertos e o modo acústico em escuta passiva.\n` +
       `• **Ambiente:** Execução local na memória do celular via ${modelDef.name}. Nenhuma informação saiu do aparelho.`;
   }

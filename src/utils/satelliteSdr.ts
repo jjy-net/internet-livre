@@ -1,5 +1,5 @@
 /**
- * JYY Sovereign Mesh & DataLink Pro - Módulo Satellite Internet & SDR Gateway
+ * JJY Sovereign Mesh & DataLink Pro - Módulo Satellite Internet & SDR Gateway
  * 
  * Arquitetura de Comunicação via Satélite e Rádio Definido por Software (SDR):
  * - Conexão com Hardware Físico: WebUSB (RTL-SDR, HackRF, LimeSDR, PlutoSDR), WebSerial (TNC/LoRa) e rtl_tcp/WebSocket.
@@ -542,7 +542,7 @@ export function convertLookAnglesToServoCommands(
  * para o usuário copiar e compilar no seu rotor mecânico
  */
 export const ARDUINO_ROTOR_SKETCH_SAMPLE = `/*
- * JYY DataLink Pro - Firmware para Rotor de Antena de Satélite Pan/Tilt
+ * JJY DataLink Pro - Firmware para Rotor de Antena de Satélite Pan/Tilt
  * Compatível com Arduino Uno, Nano, Mega, ESP32 e STM32
  * 
  * Hardware:
@@ -567,7 +567,7 @@ void setup() {
   // Posiciona a antena no ponto de repouso (Norte 0°, Horizonte 0°)
   servoAzimuth.write(0);
   servoElevation.write(0);
-  Serial.println("OK: JYY_SATELLITE_ROTOR_ONLINE");
+  Serial.println("OK: JJY_SATELLITE_ROTOR_ONLINE");
 }
 
 void loop() {

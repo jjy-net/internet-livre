@@ -1,7 +1,7 @@
 {
-  "appId": "com.jyy.app",
-  "productName": "Jyy",
-  "copyright": "Copyright © 2026 Jyy",
+  "appId": "com.jjy.app",
+  "productName": "Jjy",
+  "copyright": "Copyright © 2026 Jjy",
   "directories": {
     "output": "release",
     "buildResources": "build"

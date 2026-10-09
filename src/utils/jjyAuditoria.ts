@@ -1,6 +1,6 @@
 /**
- * JYY Sovereign Mesh - Trilha de Auditoria Imutável (Spec 37: jyy-auditoria)
- * Portado da especificação oficial em Rust (crates/jyy-auditoria)
+ * JJY Sovereign Mesh - Trilha de Auditoria Imutável (Spec 37: jjy-auditoria)
+ * Portado da especificação oficial em Rust (crates/jjy-auditoria)
  * 
  * Registra eventos operacionais e de segurança de forma determinística
  * com encadeamento de hash (hash-chaining) imutável.

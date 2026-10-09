@@ -1,6 +1,6 @@
 // ============================================================================
 // ENGINE OMNI-PROTOCOL: MATRIZ MODULAR, HUB DE PLUGINS & ROTEADOR CROSS-PROTOCOL
-// JYY Communication Suite v2.0 - Argon-4 Class Hyper-Modular Protocol Engine
+// JJY Communication Suite v2.0 - Argon-4 Class Hyper-Modular Protocol Engine
 // ============================================================================
 
 export type ProtocolCategory =
@@ -112,7 +112,7 @@ export interface TransmittedFrame {
 }
 
 // ----------------------------------------------------------------------------
-// PROTOCOLOS PADRÃO DO SISTEMA JYY (BUILT-IN HYPER-SUITE)
+// PROTOCOLOS PADRÃO DO SISTEMA JJY (BUILT-IN HYPER-SUITE)
 // ----------------------------------------------------------------------------
 
 export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
@@ -125,7 +125,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '2.5.8',
-    author: 'Jyy Core & Meshtastic Open Foundation',
+    author: 'Jjy Core & Meshtastic Open Foundation',
     description: 'Comunicação tática em RF Sub-GHz com saltos distribuídos ponto-a-ponto sem torres ou internet.',
     spec: {
       carrier: '433 / 868 / 915 MHz',
@@ -169,7 +169,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '4.0.7',
-    author: 'RuView Protocol & Jyy RF Labs',
+    author: 'RuView Protocol & Jjy RF Labs',
     description: 'Enlace Wi-Fi ad-hoc de alta capacidade integrado a sensoriamento de radar por CSI e feixes multistáticos.',
     spec: {
       carrier: '2.4 GHz / 5.8 GHz / 6 GHz',
@@ -213,7 +213,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '1.9.4',
-    author: 'Subsea Research Consortium & Jyy Marine',
+    author: 'Subsea Research Consortium & Jjy Marine',
     description: 'Comunicação sonora através de água doce e salgada via transdutores piezocerâmicos ultrassônicos.',
     spec: {
       carrier: '18 ~ 48 kHz (Ultrassom Subaquático)',
@@ -257,7 +257,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '2.1.0',
-    author: 'Jyy Photonics Labs',
+    author: 'Jjy Photonics Labs',
     description: 'Enlace óptico livre no ar (LiFi) e penetração por laser azul-verde (450–532 nm) em meios aquáticos.',
     spec: {
       carrier: '450 nm (Azul Marinho) / 532 nm (Verde)',
@@ -301,7 +301,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '3.2.1',
-    author: 'GL.iNet OpenWrt & Jyy Cellular Integration',
+    author: 'GL.iNet OpenWrt & Jjy Cellular Integration',
     description: 'Interface de alta vazão para modems celulares USB industriais, roteadores GL.iNet e smartphones em tethering.',
     spec: {
       carrier: '700 MHz ~ 3.8 GHz (B1/B3/B7/B28/N78)',
@@ -345,7 +345,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '5.3.0',
-    author: 'Bluetooth SIG & Jyy Protocol',
+    author: 'Bluetooth SIG & Jjy Protocol',
     description: 'Malha ponto-a-ponto de curto alcance sem necessidade de pareamento manual, com difusão contínua de beacons.',
     spec: {
       carrier: '2.402 ~ 2.480 GHz (40 Canais ISM)',
@@ -389,7 +389,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '1.4.2',
-    author: 'GGWave & Jyy Audio Labs',
+    author: 'GGWave & Jjy Audio Labs',
     description: 'Transmissão acústica aérea inaudível por ultrassom (18-20 kHz) ou audível via microfone e alto-falante padrão.',
     spec: {
       carrier: '18.5 ~ 20.5 kHz (Inaudível) / 1.5 ~ 3 kHz (Audível)',
@@ -433,7 +433,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '2.0.1',
-    author: 'Jyy Air-Gap Security Team',
+    author: 'Jjy Air-Gap Security Team',
     description: 'Canal de dados óptico de via única (unidirecional) de tela para câmera a 60 FPS, totalmente imune a escutas eletromagnéticas.',
     spec: {
       carrier: 'Espectro Visível RGB (Pixels na Tela)',
@@ -477,7 +477,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '3.1.2',
-    author: 'Jyy Military Communications & Amateur Radio',
+    author: 'Jjy Military Communications & Amateur Radio',
     description: 'Comunicação além do horizonte (NVIS e Ionosférica) e enlaces locais VHF/UHF por modulação de áudio AFSK 1200 baud.',
     spec: {
       carrier: '3 ~ 30 MHz (HF) / 144 ~ 148 MHz (VHF)',
@@ -521,7 +521,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '2.8.0',
-    author: 'Jyy Orbital Systems',
+    author: 'Jjy Orbital Systems',
     description: 'Telemetria global via constelações de órbita baixa LEO (Iridium Short Burst Data) e recepção passiva por SDR.',
     spec: {
       carrier: '1616 ~ 1626.5 MHz (Banda L)',
@@ -565,7 +565,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '1.2.0',
-    author: 'W3C & Jyy P2P Protocol',
+    author: 'W3C & Jjy P2P Protocol',
     description: 'Túnel ponto-a-ponto de ultrabaixa latência através da Internet ou LAN local com NAT Traversal e criptografia DTLS.',
     spec: {
       carrier: 'IP / UDP / SCTP sobre DTLS',
@@ -609,7 +609,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '2.0.0',
-    author: 'Jyy Core Daemon',
+    author: 'Jjy Core Daemon',
     description: 'Servidor local embutido em Node.js com descoberta automática mDNS e broadcast sem internet.',
     spec: {
       carrier: 'TCP/IP Porta 8080 / 3000',
@@ -620,7 +620,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
       mtuBytes: 65536,
       modulation: 'Ethernet Frame Framing',
       cipher: 'TLS 1.3 / E2EE',
-      hardwareRequired: 'Servidor local Jyy',
+      hardwareRequired: 'Servidor local Jjy',
     },
     metrics: {
       txPackets: 54100,
@@ -653,11 +653,11 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '3.0.0',
-    author: 'Jyy Cryptographic Defense Team',
+    author: 'Jjy Cryptographic Defense Team',
     description: 'Mensageria ultrassecreta sem metadados com criptografia em camadas e nós de retransmissão voluntários (mixnet).',
     spec: {
       carrier: 'Over-The-Top (Encapsulado sobre qualquer meio físico)',
-      medium: 'Qualquer canal de transporte Jyy ativo',
+      medium: 'Qualquer canal de transporte Jjy ativo',
       rangeMax: 'Dependente do transportador físico',
       throughput: 'Variável (Limitado pelo elo mais lento)',
       nominalLatencyMs: 350,
@@ -697,7 +697,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'standby',
     isPlugin: false,
     version: '1.1.0',
-    author: 'NFC Forum & Jyy Security',
+    author: 'NFC Forum & Jjy Security',
     description: 'Troca de chaves criptográficas mestre e credenciais de emergência por contato físico direto (0–4 cm).',
     spec: {
       carrier: '13.56 MHz (Indução Magnética)',
@@ -741,7 +741,7 @@ export const INITIAL_BUILTIN_PROTOCOLS: ProtocolDefinition[] = [
     status: 'active',
     isPlugin: false,
     version: '2.0.4',
-    author: 'Linux USB Core & Jyy Hardware',
+    author: 'Linux USB Core & Jjy Hardware',
     description: 'Enlace físico cabeado de altíssima velocidade para transferências pesadas entre computadores e celulares via cabo USB.',
     spec: {
       carrier: 'Diferencial USB 2.0 / USB 3.2 Gen 2',
@@ -868,7 +868,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
       stealthMode: false,
     },
     pluginSource: 'community_registry',
-    downloadUrl: 'https://jyy-protocols.org/plugins/ax25-pro.jyyproto',
+    downloadUrl: 'https://jjy-protocols.org/plugins/ax25-pro.jjyproto',
   },
   {
     id: 'starlink_mini_driver',
@@ -911,7 +911,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
       stealthMode: false,
     },
     pluginSource: 'community_registry',
-    downloadUrl: 'https://jyy-protocols.org/plugins/starlink-mini.jyyproto',
+    downloadUrl: 'https://jjy-protocols.org/plugins/starlink-mini.jjyproto',
   },
   {
     id: 'esp_now_zero_latency',
@@ -922,7 +922,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
     status: 'disabled',
     isPlugin: true,
     version: '3.0.2',
-    author: 'Espressif Systems & Jyy Hardware',
+    author: 'Espressif Systems & Jjy Hardware',
     description: 'Protocolo de comunicação rápida sem associação prévia ponto-a-ponto para microcontroladores ESP32 a 1 Mbps com latência de 2 ms.',
     spec: {
       carrier: '2.4 GHz (Canais 1 a 13)',
@@ -954,7 +954,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
       stealthMode: true,
     },
     pluginSource: 'community_registry',
-    downloadUrl: 'https://jyy-protocols.org/plugins/esp-now.jyyproto',
+    downloadUrl: 'https://jjy-protocols.org/plugins/esp-now.jjyproto',
   },
   {
     id: 'vlf_submarine_deep',
@@ -997,7 +997,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
       stealthMode: true,
     },
     pluginSource: 'community_registry',
-    downloadUrl: 'https://jyy-protocols.org/plugins/vlf-subsea.jyyproto',
+    downloadUrl: 'https://jjy-protocols.org/plugins/vlf-subsea.jjyproto',
   },
   {
     id: 'laser_fso_gigabit',
@@ -1040,7 +1040,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
       stealthMode: true,
     },
     pluginSource: 'community_registry',
-    downloadUrl: 'https://jyy-protocols.org/plugins/laser-fso.jyyproto',
+    downloadUrl: 'https://jjy-protocols.org/plugins/laser-fso.jjyproto',
   },
   {
     id: 'thread_matter_mesh',
@@ -1083,7 +1083,7 @@ export const REGISTRY_AVAILABLE_PLUGINS: ProtocolDefinition[] = [
       stealthMode: false,
     },
     pluginSource: 'community_registry',
-    downloadUrl: 'https://jyy-protocols.org/plugins/thread-mesh.jyyproto',
+    downloadUrl: 'https://jjy-protocols.org/plugins/thread-mesh.jjyproto',
   },
 ];
 
@@ -1241,7 +1241,7 @@ export class ProtocolHubEngine {
 
   private loadFromStorage() {
     try {
-      const storedProtocols = localStorage.getItem('jyy_protocol_hub_definitions');
+      const storedProtocols = localStorage.getItem('jjy_protocol_hub_definitions');
       if (storedProtocols) {
         const parsed: ProtocolDefinition[] = JSON.parse(storedProtocols);
         parsed.forEach((p) => this.protocols.set(p.id, p));
@@ -1250,7 +1250,7 @@ export class ProtocolHubEngine {
         this.saveToStorage();
       }
 
-      const storedStrategy = localStorage.getItem('jyy_protocol_hub_strategy');
+      const storedStrategy = localStorage.getItem('jjy_protocol_hub_strategy');
       if (storedStrategy) {
         this.activeStrategy = storedStrategy as RoutingStrategy;
       }
@@ -1262,8 +1262,8 @@ export class ProtocolHubEngine {
   public saveToStorage() {
     try {
       const arr = Array.from(this.protocols.values());
-      localStorage.setItem('jyy_protocol_hub_definitions', JSON.stringify(arr));
-      localStorage.setItem('jyy_protocol_hub_strategy', this.activeStrategy);
+      localStorage.setItem('jjy_protocol_hub_definitions', JSON.stringify(arr));
+      localStorage.setItem('jjy_protocol_hub_strategy', this.activeStrategy);
     } catch {
       // Ignora erro de cota
     }
@@ -1399,7 +1399,7 @@ export class ProtocolHubEngine {
     const frame: TransmittedFrame = {
       id: 'FRAME-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
       timestamp,
-      sourceNode: 'JYY-LOCAL-NODE-01',
+      sourceNode: 'JJY-LOCAL-NODE-01',
       destinationNode: 'MESH-BROADCAST-ALL',
       protocolId: effectiveProtocol.id,
       routingMode: mode,

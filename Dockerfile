@@ -1,4 +1,4 @@
-# Dockerfile para o Nó Completo Jyy (Web + WebSocket Relay Server)
+# Dockerfile para o Nó Completo Jjy (Web + WebSocket Relay Server)
 FROM node:20-alpine AS builder
 
 WORKDIR /app

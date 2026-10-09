@@ -1,5 +1,5 @@
 /**
- * JYY Sovereign Mesh & DataLink Pro - Roteador de Ferramentas MCP (Model Context Protocol)
+ * JJY Sovereign Mesh & DataLink Pro - Roteador de Ferramentas MCP (Model Context Protocol)
  * 
  * Permite que qualquer LLM (local ou em nuvem) descubra, consulte e execute ferramentas
  * operacionais e táticas no sistema com verificação de segurança e governança.
@@ -186,7 +186,7 @@ export const MCP_TOOLS_CATALOG: McpToolDefinition[] = [
     },
   },
   {
-    name: 'jyy_verify_audit_chain',
+    name: 'jjy_verify_audit_chain',
     description: 'Executa verificação criptográfica completa (SHA Hash-Chain Spec 37) em todos os blocos registrados do ledger.',
     category: 'audit',
     parameters: {
@@ -196,8 +196,8 @@ export const MCP_TOOLS_CATALOG: McpToolDefinition[] = [
     },
   },
   {
-    name: 'jyy_inspect_peer_reputation',
-    description: 'Consulta a pontuação de reputação Soberana JYY (0 a 1000 - Spec 36), infrações, sucessos e cooperações de um nó.',
+    name: 'jjy_inspect_peer_reputation',
+    description: 'Consulta a pontuação de reputação Soberana JJY (0 a 1000 - Spec 36), infrações, sucessos e cooperações de um nó.',
     category: 'mesh',
     parameters: {
       type: 'object',
@@ -211,8 +211,8 @@ export const MCP_TOOLS_CATALOG: McpToolDefinition[] = [
     },
   },
   {
-    name: 'jyy_penalize_reputation',
-    description: 'Aplica penalidade na pontuação de reputação JYY de um nó por comportamento anômalo ou pacote corrompido.',
+    name: 'jjy_penalize_reputation',
+    description: 'Aplica penalidade na pontuação de reputação JJY de um nó por comportamento anômalo ou pacote corrompido.',
     category: 'mesh',
     parameters: {
       type: 'object',

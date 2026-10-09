@@ -250,7 +250,7 @@ export const ProtocolHubView: React.FC = () => {
       status: 'active',
       isPlugin: true,
       version: '1.0.0',
-      author: 'Usuário Jyy (Studio Custom)',
+      author: 'Usuário Jjy (Studio Custom)',
       description: customProto.description,
       spec: {
         carrier: customProto.carrier,
@@ -296,7 +296,7 @@ export const ProtocolHubView: React.FC = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(p, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute('href', dataStr);
-    dlAnchorElem.setAttribute('download', `${p.codeName.toLowerCase()}-protocol.jyyproto`);
+    dlAnchorElem.setAttribute('download', `${p.codeName.toLowerCase()}-protocol.jjyproto`);
     dlAnchorElem.click();
   };
 
@@ -313,10 +313,10 @@ export const ProtocolHubView: React.FC = () => {
           sfx.playAlert();
           alert(`Protocolo "${parsed.name}" importado e carregado no Omni-Bus com sucesso!`);
         } else {
-          alert('Arquivo inválido: Não contém a assinatura de protocolo JYY.');
+          alert('Arquivo inválido: Não contém a assinatura de protocolo JJY.');
         }
       } catch {
-        alert('Erro ao processar o arquivo .jyyproto.');
+        alert('Erro ao processar o arquivo .jjyproto.');
       }
     };
     reader.readAsText(file);
@@ -544,7 +544,7 @@ export const ProtocolHubView: React.FC = () => {
             {/* Círculo Central Omni-Core */}
             <circle cx="400" cy="120" r="32" fill="#1e1b4b" stroke="url(#glowGrad)" strokeWidth="3" filter="url(#neonGlow)" />
             <circle cx="400" cy="120" r="16" fill="#4f46e5" className="animate-ping" opacity="0.3" />
-            <text x="400" y="117" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="bold">JYY OMNI</text>
+            <text x="400" y="117" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="bold">JJY OMNI</text>
             <text x="400" y="129" textAnchor="middle" fill="#38bdf8" fontSize="8" fontFamily="monospace">ROUTER</text>
 
             {/* Nós Periféricos com Labels */}
@@ -852,7 +852,7 @@ export const ProtocolHubView: React.FC = () => {
                       <button
                         onClick={() => handleExportProtocol(proto)}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                        title="Exportar manifesto .jyyproto"
+                        title="Exportar manifesto .jjyproto"
                       >
                         <Upload className="w-3.5 h-3.5" />
                       </button>
@@ -1048,7 +1048,7 @@ export const ProtocolHubView: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <FileCode className="w-4 h-4 text-indigo-400" />
                       <h3 className="text-xs font-bold text-white uppercase font-mono">
-                        Frame Canônico JYY-V4: {latestFrame.id}
+                        Frame Canônico JJY-V4: {latestFrame.id}
                       </h3>
                     </div>
                     <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
@@ -1148,7 +1148,7 @@ export const ProtocolHubView: React.FC = () => {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleImportFile}
-                accept=".jyyproto,.json"
+                accept=".jjyproto,.json"
                 className="hidden"
               />
               <button
@@ -1156,7 +1156,7 @@ export const ProtocolHubView: React.FC = () => {
                 className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-2"
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>Importar Arquivo .jyyproto</span>
+                <span>Importar Arquivo .jjyproto</span>
               </button>
             </div>
           </div>
@@ -1251,7 +1251,7 @@ export const ProtocolHubView: React.FC = () => {
               Plugin Studio: Crie e Compile Novos Protocolos
             </h2>
             <p className="text-xs text-slate-300">
-              Defina parâmetros físicos, taxas de transmissão, MTU e especificações de modulação para integrar hardware personalizado à rede Jyy.
+              Defina parâmetros físicos, taxas de transmissão, MTU e especificações de modulação para integrar hardware personalizado à rede Jjy.
             </p>
           </div>
 

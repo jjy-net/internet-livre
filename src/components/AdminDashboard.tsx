@@ -7106,7 +7106,7 @@ export const AdminDashboard: React.FC = () => {
                 <Coffee className="w-4 h-4" /> NEXCAFÉ PRO • CYBER CAFÉ
               </div>
               <p className="text-[10px] text-slate-400">
-                Jyy Network Management System
+                Jjy Network Management System
               </p>
               <p className="text-[10px] text-slate-400">
                 {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}

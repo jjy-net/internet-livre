@@ -74,7 +74,7 @@ try {
   const httpsPort = info.httpsPort;
   const ips = getLocalIPs();
   const line = '─'.repeat(58);
-  console.log(`\n  🔗 Jyy — Servidor v${info.version} (Dual HTTP + HTTPS Offline)`);
+  console.log(`\n  🔗 Jjy — Servidor v${info.version} (Dual HTTP + HTTPS Offline)`);
   console.log(`  ${line}`);
   if (webRoot) {
     console.log('  🌐 Acesso HTTP Padrão (Computadores e Painel Local):');
@@ -88,14 +88,14 @@ try {
       console.log('     ℹ️  No celular: abra o link acima e clique em "Avançado -> Continuar"');
       console.log('');
     }
-    console.log('  🔥 Jyy Mensagens Anônimas:');
-    console.log(`     http://localhost:${port}/Jyy.html`);
-    for (const ip of ips) console.log(`     http://${ip}:${port}/Jyy.html`);
+    console.log('  🔥 Jjy Mensagens Anônimas:');
+    console.log(`     http://localhost:${port}/Jjy.html`);
+    for (const ip of ips) console.log(`     http://${ip}:${port}/Jjy.html`);
   } else {
     console.log('  ⚠️  Pasta web estática não encontrada — servindo apenas WebSocket.');
   }
   console.log('');
-  console.log('  📡 WebSocket para apps Jyy:');
+  console.log('  📡 WebSocket para apps Jjy:');
   console.log(`     ws://localhost:${port}`);
   for (const ip of ips) console.log(`     ws://${ip}:${port}`);
   if (httpsPort) {

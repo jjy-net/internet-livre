@@ -554,7 +554,7 @@ export const UnderwaterInternetView: React.FC = () => {
 
     setMessages((prev) => [newSubseaMsg, ...prev]);
 
-    // Simulação do Gateway de Superfície (Relé Cross-Medium) retransmitindo para Satélite/Rádio/Jyy Mesh
+    // Simulação do Gateway de Superfície (Relé Cross-Medium) retransmitindo para Satélite/Rádio/Jjy Mesh
     setTimeout(() => {
       if (autoRelaySatellite || autoRelayRadio) {
         const relayMsg: CrossMediumMessage = {
@@ -1334,7 +1334,7 @@ export const UnderwaterInternetView: React.FC = () => {
 
                 <label className="flex items-center justify-between p-3 bg-slate-950 rounded-2xl border border-slate-800 cursor-pointer">
                   <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-200 block">Injeção Direta na Rede Jyy Mesh</span>
+                    <span className="text-xs font-bold text-slate-200 block">Injeção Direta na Rede Jjy Mesh</span>
                     <span className="text-[10px] text-slate-400">Roteamento P2P local e descentralizado</span>
                   </div>
                   <input
@@ -1388,7 +1388,7 @@ export const UnderwaterInternetView: React.FC = () => {
                   <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
                   <span>3. Satélite / RF</span>
                   <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>4. Rede Jyy / Terra</span>
+                  <span>4. Rede Jjy / Terra</span>
                 </div>
 
                 <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono">
@@ -1595,7 +1595,7 @@ export const UnderwaterInternetView: React.FC = () => {
               <BookOpen className="w-5 h-5 text-indigo-400" /> Biblioteca de Pesquisas & Padrões Científicos
             </h3>
             <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-              Literatura técnica fundamental utilizada como base para os algoritmos de propagação acústica, óptica e eletromagnética integrados no sistema Jyy.
+              Literatura técnica fundamental utilizada como base para os algoritmos de propagação acústica, óptica e eletromagnética integrados no sistema Jjy.
             </p>
           </div>
 

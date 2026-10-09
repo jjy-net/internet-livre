@@ -101,8 +101,8 @@ export const LoraMeshView: React.FC = () => {
   const [activeChannel, setActiveChannel] = useState<string>('#geral-915');
   const [isTransmitting, setIsTransmitting] = useState<boolean>(false);
 
-  // Integração com Bridge Jyy
-  const [isJyyBridgeActive, setIsJyyBridgeActive] = useState<boolean>(true);
+  // Integração com Bridge Jjy
+  const [isJjyBridgeActive, setIsJjyBridgeActive] = useState<boolean>(true);
 
   const logsEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -366,7 +366,7 @@ export const LoraMeshView: React.FC = () => {
           }`}
         >
           <Share2 className="w-4 h-4 text-amber-300" />
-          <span>Ponte Jyy Mesh (Transporte)</span>
+          <span>Ponte Jjy Mesh (Transporte)</span>
         </button>
       </div>
 
@@ -870,7 +870,7 @@ export const LoraMeshView: React.FC = () => {
                   <Cpu className="w-4 h-4 text-emerald-400" /> Firmware C++ para Arduino / ESP32 com LoRa DIY
                 </h3>
                 <p className="text-xs text-slate-300">
-                  Transforme qualquer placa barata (Arduino Nano + Ra-02 ou ESP32 + SX1262) em um modem USB do Jyy.
+                  Transforme qualquer placa barata (Arduino Nano + Ra-02 ou ESP32 + SX1262) em um modem USB do Jjy.
                 </p>
               </div>
 
@@ -910,14 +910,14 @@ export const LoraMeshView: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* ABA 6: PONTE JYY MESH (TRANSPORTE MULTI-MEIOS)           */}
+      {/* ABA 6: PONTE JJY MESH (TRANSPORTE MULTI-MEIOS)           */}
       {/* ======================================================== */}
       {activeTab === 'bridge' && (
         <div className="space-y-5">
           <div className="p-5 bg-slate-900/70 rounded-3xl border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-amber-400" /> Ponte de Roteamento LoRa ➔ Rede Jyy Mesh
+                <Share2 className="w-4 h-4 text-amber-400" /> Ponte de Roteamento LoRa ➔ Rede Jjy Mesh
               </h3>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
                 Cross-Transport Active
@@ -925,20 +925,20 @@ export const LoraMeshView: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
-              Quando a Ponte está ativa, o hardware LoRa conectado à USB atua como a <strong>camada física sem fio</strong> para todo o ecossistema Jyy. Mensagens do Chat LAN, alertas de emergência e arquivos fragmentados são divididos e transmitidos pelo rádio, permitindo conversar com outros computadores mesmo sem sinal de celular, internet ou roteador Wi-Fi!
+              Quando a Ponte está ativa, o hardware LoRa conectado à USB atua como a <strong>camada física sem fio</strong> para todo o ecossistema Jjy. Mensagens do Chat LAN, alertas de emergência e arquivos fragmentados são divididos e transmitidos pelo rádio, permitindo conversar com outros computadores mesmo sem sinal de celular, internet ou roteador Wi-Fi!
             </p>
 
             <label className="flex items-center justify-between p-4 bg-slate-950 rounded-2xl border border-slate-800 cursor-pointer max-w-xl">
               <div className="space-y-0.5">
-                <span className="text-xs font-bold text-slate-200 block">Habilitar LoRa como Interface de Rede Jyy</span>
+                <span className="text-xs font-bold text-slate-200 block">Habilitar LoRa como Interface de Rede Jjy</span>
                 <span className="text-[10px] text-slate-400">
                   Roteia automaticamente pacotes P2P pelo rádio USB conectado.
                 </span>
               </div>
               <input
                 type="checkbox"
-                checked={isJyyBridgeActive}
-                onChange={(e) => setIsJyyBridgeActive(e.target.checked)}
+                checked={isJjyBridgeActive}
+                onChange={(e) => setIsJjyBridgeActive(e.target.checked)}
                 className="w-4 h-4 accent-emerald-500 rounded"
               />
             </label>
@@ -947,7 +947,7 @@ export const LoraMeshView: React.FC = () => {
               <span className="text-slate-400 block font-bold">Topologia Multi-Meios em Operação:</span>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
                 <span className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-emerald-400">
-                  1. Usuário Jyy (PC / Celular)
+                  1. Usuário Jjy (PC / Celular)
                 </span>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                 <span className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-cyan-400">
@@ -959,7 +959,7 @@ export const LoraMeshView: React.FC = () => {
                 </span>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                 <span className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-emerald-400">
-                  4. Outros Nós Jyy no Campo
+                  4. Outros Nós Jjy no Campo
                 </span>
               </div>
             </div>

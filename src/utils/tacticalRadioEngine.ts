@@ -1,5 +1,5 @@
 /**
- * JYY Sovereign Mesh & DataLink Pro - Motor de Rádio Tático Universal (UHF, VHF, HF, FM, AM)
+ * JJY Sovereign Mesh & DataLink Pro - Motor de Rádio Tático Universal (UHF, VHF, HF, FM, AM)
  * 
  * Orquestrador de Comunicação e Controle de Rádio Frequência:
  * - Suporte a Bandas: UHF (300-3000 MHz), VHF (30-300 MHz), HF (3-30 MHz), FM Comercial (87.5-108 MHz), AM Aviação/PX
@@ -204,7 +204,7 @@ export const DEFAULT_RADIO_STATUS: TacticalRadioStatus = {
   voxEnabled: true,
   beaconIntervalMinutes: 10,
   isDigipeaterActive: true,
-  callsign: 'JYY-NODE-01',
+  callsign: 'JJY-NODE-01',
 };
 
 /**

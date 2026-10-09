@@ -171,7 +171,7 @@ export const WifiRadarView: React.FC = () => {
     'dev_user_router',
     'dev_esp32_rx1',
     'dev_esp32_rx2',
-    'dev_laptop_jyy',
+    'dev_laptop_jjy',
   ]);
   const [isMultistaticMeshActive, setIsMultistaticMeshActive] = useState<boolean>(true);
 
@@ -435,7 +435,7 @@ export const WifiRadarView: React.FC = () => {
 
       // Atualizar sinais vitais RuView (Pessoa 1 e Pessoa 2)
       setVitalPerson1(generateVitalSignsReading(timeElapsedSec, 'p1', 'Intruso / Alvo Monitorado', 18 + Math.sin(animAngle) * 3, 84 + Math.sin(animAngle * 2) * 8));
-      setVitalPerson2(generateVitalSignsReading(timeElapsedSec, 'p2', 'Operador Local (Jyy Station)', 14, 68));
+      setVitalPerson2(generateVitalSignsReading(timeElapsedSec, 'p2', 'Operador Local (Jjy Station)', 14, 68));
 
       // Atualizar vetor 128D
       setEnvironmentVector(generateEnvironmentFingerprint128(disturbance));
