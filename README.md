@@ -1,163 +1,173 @@
-# 🎯 SOLUÇÃO DEFINITIVA - Gerador de QR Code
+# 🌐 Jyy v2.0 — Suite de Comunicação Soberana & Internet Livre
 
-## ✅ Problema Resolvido!
+<div align="center">
 
-O Windows SmartScreen estava bloqueando os arquivos `.bat` e `.hta`.
+![Jyy Banner](https://img.shields.io/badge/Vers%C3%A3o-2.0.0-indigo?style=for-the-badge)
+![Status](https://img.shields.io/badge/Rede-100%25%20Offline%20%26%20P2P-emerald?style=for-the-badge)
+![Licença](https://img.shields.io/badge/Licen%C3%A7a-Open%20Source-cyan?style=for-the-badge)
+![Plataforma](https://img.shields.io/badge/Suporte-Windows%20%7C%20Linux%20%7C%20Web%20%7C%20Docker-blue?style=for-the-badge)
 
-A **SOLUÇÃO DEFINITIVA** é usar **UM ÚNICO ARQUIVO HTML** que:
+**A rede de transmissão e comunicação que ninguém pode derrubar, censurar ou desligar.**  
+*Conectividade livre por ondas de rádio (LoRa/HF), Wi-Fi CSI Radar, ultrassom subaquático, laser óptico, satélites LEO e malha P2P.*
 
-✅ **NÃO dispara antivírus**  
-✅ **NÃO precisa de permissões**  
-✅ **NÃO precisa instalar nada**  
-✅ **Funciona 100% offline**  
-✅ **Abre direto no navegador**  
+</div>
 
 ---
 
-## 📁 Arquivo Único
+## 📖 Índice
 
+- [Visão Geral](#-visão-geral)
+- [Principais Funcionalidades](#-principais-funcionalidades)
+- [Arquitetura dos Módulos](#-arquitetura-dos-módulos)
+- [Globo 3D & Privacidade Diferencial (10 km)](#-globo-3d--privacidade-diferencial-10-km)
+- [Nossa Internet Livre & Soberana](#-nossa-internet-livre--soberana)
+- [Wi-Fi Radar & Visão Holográfica RuView](#-wi-fi-radar--visão-holográfica-ruview)
+- [Omni-Protocol Hub & Sistema de Plugins](#-omni-protocol-hub--sistema-de-plugins)
+- [Hardwares Suportados](#-hardwares-suportados)
+- [Como Executar Localmente](#-como-executar-localmente)
+- [Como Publicar na VPS Hostinger](#-como-publicar-na-vps-hostinger-jyycombr)
+- [Segurança & Criptografia](#-segurança--criptografia)
+- [Licença](#-licença)
+
+---
+
+## 🌟 Visão Geral
+
+O **Jyy** é uma plataforma revolucionária de comunicação descentralizada desenvolvida para operar **100% offline**, sem qualquer dependência de provedores de internet comerciais, cabos submarinos ou servidores centrais.
+
+Cada computador, smartphone, roteador ou microcontrolador atuando na rede torna-se um **nó roteador soberano**, capaz de encaminhar pacotes de dados através de múltiplos meios físicos simultaneamente:
+- **Rádio Sub-GHz (LoRa Meshtastic 433/868/915 MHz)**
+- **Wi-Fi 802.11 ax/be com Radar CSI RuView (Sinais vitais e detecção de intrusão)**
+- **Modem Acústico Subaquático (18 a 48 kHz através de água doce e salgada)**
+- **Comunicação Óptica & Laser Azul-Verde Subaquático (450 a 532 nm)**
+- **Rádio Tático HF/VHF/UHF & APRS AX.25**
+- **Satélites de Órbita Baixa LEO & Iridium SBD**
+- **Rede Celular 4G/5G com Gateways GL.iNet**
+- **Canais Ópticos Air-Gapped via QR Code Stream e Som Aéreo (GGWave)**
+
+---
+
+## ⚡ Principais Funcionalidades
+
+| Módulo | Descrição | Meio Físico |
+| :--- | :--- | :--- |
+| **🌍 Globo 3D da Terra** | Mapa 3D interativo para encontrar outros operadores com erro proposital de 10 km. | WebGL / 3D Canvas |
+| **🗽 Internet Livre** | Manifesto, simulador de malha mesh comunitária e guia de autonomia. | Teoria & Prática Mesh |
+| **📡 Wi-Fi Radar RuView** | Radar CSI com rastreamento de respiração, batimentos cardíacos e feixes multistáticos. | Micro-ondas 2.4/5GHz |
+| **🔌 Omni-Protocol Hub** | Matriz com 16 protocolos físicos canônicos e loja de plugins instaláveis. | Multi-Camada Híbrida |
+| **🌊 Subsea Internet** | Comunicação subaquática acústica e óptica para mergulho e submarinos. | Água Salgada / Doce |
+| **📻 LoRa Meshtastic** | Enlace de longa distância (15 a 40 km) sem infraestrutura. | Rádio RF Sub-GHz |
+| **🛰️ Satélite & SDR** | Recepção de telemetria orbital, boletins de emergência e rádio definido por software. | Banda L & VHF |
+| **💬 Chat LAN & NGL** | Mensageria instantânea P2P local e envio anônimo com criptografia pós-quântica. | WebSocket / UDP |
+
+---
+
+## 🌍 Globo 3D & Privacidade Diferencial (10 km)
+
+Na página inicial, os operadores da rede podem optar por serem visíveis publicamente no **Globo 3D da Terra** para fazer novas amizades e testar enlaces:
+
+- **Aviso no Topo:** *"Quer ser visto por quem usa essa rede no mapa para conversar com novas pessoas?"*
+- **Raio de Privacidade de 10 km:** As coordenadas reais de GPS passam por um algoritmo de *Differential Privacy Fuzzing*, adicionando um deslocamento proposital de exatamente 8 a 10 km.
+- **Zona de Privacidade Visual:** Um círculo protetor de 10 km é desenhado ao redor de cada operador, impedindo qualquer triangulação residencial.
+- **Chat P2P Integrado:** Clique em qualquer nó no globo para abrir uma conversa direta e verificar a distância aproximada.
+
+---
+
+## 🗽 Nossa Internet Livre & Soberana
+
+Uma internet que não pode ser censurada nem desligada:
+1. **Zero Servidores Centrais:** O tráfego pula de aparelho em aparelho em malha mesh.
+2. **Resiliente a Guerras e Desastres:** Arquitetura *Store-and-Forward* tolerante a atrasos (DTN).
+3. **Custo Zero:** Comunicação gratuita e perpétua.
+4. **Simulador de Cobertura:** Permite simular a cobertura da sua cidade adicionando estações LoRa, Wi-Fi e Rádio HF.
+
+---
+
+## 📡 Wi-Fi Radar & Visão Holográfica RuView
+
+Implementação completa dos protocolos e ADRs do projeto **RuView**:
+- **Monitoramento de Sinais Vitais:** Frequência respiratória (0.1–0.5 Hz / 6–30 RPM) e cardíaca (0.8–2.0 Hz / 40–120 BPM) com osciloscópios animados em tempo real.
+- **RuvSense Malha Multistática (ADR-029):** $N \times (N-1)$ feixes cruzados em 360° com salto TDM de 50ms entre os canais 1, 6 e 11.
+- **Os 7 Níveis Exóticos (ADR-030):** Tomografia 3D por voxels, antecipação motora (200–500ms antes do movimento) e re-identificação dielétrica AETHER.
+- **Triagem de Desastres START (ADR-001):** Detecção de sobreviventes sob escombros de concreto com classificação por cores.
+- **Seleção de Dispositivos Conectados:** Use seu próprio roteador doméstico ou nós ESP32-S3 com 1 clique.
+
+---
+
+## 🔌 Omni-Protocol Hub & Sistema de Plugins
+
+- **Terminal Despachante Unificado:** Transmita pacotes simultâneos por *Omni-Broadcast*, *Multipath Bonding* ou *Cascading Fallback*.
+- **Loja de Plugins:** Instale drivers adicionais como *AX.25 Packet Radio*, *Starlink Mini*, *ESP-NOW Zero Latency*, *VLF Submarino 24kHz* e *Laser Gigabit FSO*.
+- **Plugin Studio:** Crie, teste e exporte novos protocolos no formato `.jyyproto`.
+- **Kill-Switch de Evasão:** Botão de emergência para silêncio total de RF contra guerra eletrônica.
+
+---
+
+## 🛠️ Hardwares Suportados
+
+- **Microcontroladores:** ESP32, ESP32-S3, ESP32-C3, Raspberry Pi Pico W.
+- **Módulos LoRa:** Semtech SX1262, Heltec WiFi LoRa 32 V3, LilyGO T-Beam, Ra-02.
+- **Rádios Analógicos:** Baofeng UV-5R, Quansheng UV-K5, Xiegu G90, Icom, Yaesu.
+- **Transdutores Subaquáticos:** Pastilhas piezocerâmicas PZT-5A, hidrofones passivos.
+- **Óptica:** Diodos laser 450nm/532nm/1550nm e fotodiodos de avalanche (APD).
+- **Rede e Computadores:** Qualquer PC com Windows 10/11, Linux, macOS ou smartphone via navegador.
+
+---
+
+## 🚀 Como Executar Localmente
+
+### Pré-requisitos
+- Node.js 18+ instalado.
+
+### Passo a Passo
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/SEU_USUARIO/jyy.git
+cd jyy
+
+# 2. Instalar dependências
+npm install
+
+# 3. Rodar em modo de desenvolvimento
+npm run dev
+
+# 4. Iniciar o servidor local WebSocket + Web
+npm run server
 ```
-📄 public/Gerador-QR-Code.html
-```
+
+Acesse no navegador: `http://localhost:3000` ou `http://localhost:4870`.
 
 ---
 
-## 🚀 Como Usar
+## 🌐 Como Publicar na VPS Hostinger (`jyy.com.br`)
 
-1. **Dê duplo clique** no arquivo: `Gerador-QR-Code.html`
-2. O navegador vai abrir com uma janela bonita
-3. Digite o que você quer no QR Code
-4. Clique em "⚡ Gerar QR Code"
-5. Clique em "💾 Salvar Imagem"
-6. **Pronto!**
+O repositório já inclui scripts prontos para colocar seu nó no ar na Hostinger:
 
----
+1. **Aponte o DNS:** No painel do domínio, crie registros Tipo `A` para `@` e `www` apontando para o IP da sua VPS.
+2. **Envie os arquivos:** No Windows, dê duplo clique em `ENVIAR-PARA-VPS-HOSTINGER.bat` e digite o IP da sua VPS.
+3. **Execute o instalador:** Conecte via SSH (`ssh root@IP_DA_VPS`) e rode:
+   ```bash
+   cd /var/www/jyy
+   bash install-vps-hostinger.sh
+   ```
+4. **Ative o SSL Grátis:**
+   ```bash
+   sudo certbot --nginx -d jyy.com.br -d www.jyy.com.br
+   ```
 
-## 💡 Por Que Esta Solução Funciona?
-
-O arquivo HTML é um site completo que funciona 100% offline.
-
-Quando você dá duplo clique:
-- O navegador (Edge/Chrome) abre
-- Mostra a interface bonita
-- Tudo funciona sem internet
-- Seus dados ficam só no seu computador
-
-**Arquivos HTML NÃO são bloqueados pelo SmartScreen!**
+Pronto! Seu nó estará ativo em `https://jyy.com.br`.
 
 ---
 
-## 📋 Funcionalidades
+## 🔒 Segurança & Criptografia
 
-✅ Gerar QR Code de qualquer texto, link, senha, etc.  
-✅ 4 níveis de correção de erro (L, M, Q, H)  
-✅ Tamanho ajustável (150px a 600px)  
-✅ Margem configurável  
-✅ Cores personalizáveis  
-✅ 5 temas de cores prontos  
-✅ 6 modelos prontos (Link, Wi-Fi, E-mail, Telefone, Contato, SMS)  
-✅ Salvar como PNG  
-✅ Copiar imagem  
-✅ Interface bonita e moderna  
-✅ 100% offline  
+- **Pós-Quântica:** Algoritmo ML-KEM (Kyber-1024) para encapsulamento de chaves.
+- **Autenticação e Cifra:** XChaCha20-Poly1305 e Curve25519 de ponta a ponta.
+- **Privacidade Espacial:** Fuzzing polar gaussiano garantindo 10 km de margem de erro contra rastreamento físico domiciliar.
+- **Air-Gap:** Modems ópticos de tela para câmera e sonoros sem qualquer emissão de rádio.
 
 ---
 
-## 📦 Como Distribuir
+## 📄 Licença
 
-### Opção 1: Pendrive (Recomendado)
-1. Copie o arquivo `Gerador-QR-Code.html` para um pendrive
-2. Entregue o pendrive
-3. A pessoa dá duplo clique e usa!
-
-### Opção 2: Área de Trabalho
-1. Copie o arquivo para a Área de Trabalho
-2. A pessoa dá duplo clique e usa!
-
-### Opção 3: E-mail
-1. Envie o arquivo por e-mail
-2. A pessoa salva e dá duplo clique
-
----
-
-## 🎨 Exemplos de Uso
-
-### Exemplo 1: QR Code para um site
-```
-1. Digite: https://www.google.com
-2. Clique em "Gerar QR Code"
-3. Salve a imagem
-4. Pronto!
-```
-
-### Exemplo 2: QR Code para Wi-Fi
-```
-1. Clique no botão "📶 Wi-Fi"
-2. Mude "NomeDaRede" para o nome do seu Wi-Fi
-3. Mude "Senha" para a senha do seu Wi-Fi
-4. Clique em "Gerar QR Code"
-5. Pronto!
-```
-
-### Exemplo 3: QR Code com telefone
-```
-1. Clique no botão "📱 Telefone"
-2. Mude o número para o seu telefone
-3. Clique em "Gerar QR Code"
-4. Pronto!
-```
-
----
-
-## ❓ Solução de Problemas
-
-### Problema: O arquivo não abre
-**Solução:** Clique com botão direito → "Abrir com" → Microsoft Edge ou Chrome
-
-### Problema: O QR Code não aparece
-**Solução:** Verifique se digitou algo na caixa de texto
-
-### Problema: Não consigo salvar
-**Solução:** Tente salvar na Área de Trabalho (é mais fácil de encontrar)
-
----
-
-## 📁 Arquivos do Projeto
-
-### Arquivo Principal (para distribuir):
-- `public/Gerador-QR-Code.html` - Aplicação completa
-
-### Documentação:
-- `SOLUCAO_DEFINITIVA.txt` - Guia completo
-- `GUIA_PARA_IDOSOS.txt` - Guia visual simples
-- `COMO_DESATIVAR_SMARTSCREEN.txt` - Como desativar SmartScreen (opcional)
-- `README_DEFINITIVO.md` - Este arquivo
-
----
-
-## 🎯 Resumo Rápido
-
-1. Dê duplo clique em: `Gerador-QR-Code.html`
-2. Digite o que você quer
-3. Clique em "Gerar QR Code"
-4. Clique em "Salvar Imagem"
-5. Pronto!
-
----
-
-## ✨ Vantagens
-
-✅ **UM ÚNICO ARQUIVO** (super simples)  
-✅ **NÃO dispara antivírus**  
-✅ **NÃO precisa de permissões**  
-✅ **NÃO precisa instalar nada**  
-✅ **Funciona 100% offline**  
-✅ **Interface bonita**  
-✅ **Pode usar em pendrive**  
-✅ **Funciona em qualquer computador com navegador**  
-
----
-
-**Feito com ❤️ para facilitar a vida das pessoas!**
-
-Agora **QUALQUER PESSOA** pode gerar QR Codes sem problemas!
+Distribuído sob a licença **MIT Open Source**. Livre para uso comunitário, civil, de resgate e educacional.

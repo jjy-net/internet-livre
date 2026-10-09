@@ -24,7 +24,8 @@ import {
   Flame,
   Share2,
   Globe,
-  Unlock
+  Unlock,
+  BookOpen
 } from 'lucide-react';
 import { QRStudio } from './components/QRStudio';
 import { ChatLAN } from './components/ChatLAN';
@@ -48,8 +49,9 @@ import { DisasterInternetView } from './components/DisasterInternetView';
 import { ProtocolHubView } from './components/ProtocolHubView';
 import { Earth3dMapView } from './components/Earth3dMapView';
 import { FreeInternetManifestoView } from './components/FreeInternetManifestoView';
+import { DocumentationProjectView } from './components/DocumentationProjectView';
 
-type ActiveTab = 'globe' | 'free_internet' | 'qr' | 'chat' | 'files' | 'sound' | 'light' | 'crypto' | 'stego' | 'network' | 'mesh' | 'protocols' | 'satellite' | 'radio' | 'underwater' | 'lora' | 'cellular' | 'wifi' | 'disaster' | 'remote' | 'admin';
+type ActiveTab = 'globe' | 'free_internet' | 'docs' | 'qr' | 'chat' | 'files' | 'sound' | 'light' | 'crypto' | 'stego' | 'network' | 'mesh' | 'protocols' | 'satellite' | 'radio' | 'underwater' | 'lora' | 'cellular' | 'wifi' | 'disaster' | 'remote' | 'admin';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -106,6 +108,7 @@ export const App: React.FC = () => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'globe', label: 'Globo 3D (Início)', icon: <Globe className="w-4 h-4 text-emerald-400" />, badge: 'Principal' },
     { id: 'free_internet', label: 'Nossa Internet Livre', icon: <Unlock className="w-4 h-4 text-cyan-400" />, badge: 'Soberana' },
+    { id: 'docs', label: 'Documentação do Projeto', icon: <BookOpen className="w-4 h-4 text-amber-400" />, badge: 'Docs' },
     { id: 'chat', label: 'Chat LAN', icon: <MessageSquare className="w-4 h-4" />, badge: 'P2P' },
     { id: 'qr', label: 'QR Studio', icon: <QrCode className="w-4 h-4" /> },
     { id: 'files', label: 'Arquivos Chunks', icon: <Layers className="w-4 h-4" /> },
@@ -226,6 +229,14 @@ export const App: React.FC = () => {
           <FreeInternetManifestoView
             onNavigateToGlobe={() => setActiveTab('globe')}
             onNavigateToProtocols={() => setActiveTab('protocols')}
+          />
+        )}
+        {activeTab === 'docs' && (
+          <DocumentationProjectView
+            onNavigateToGlobe={() => setActiveTab('globe')}
+            onNavigateToFreeInternet={() => setActiveTab('free_internet')}
+            onNavigateToProtocols={() => setActiveTab('protocols')}
+            onNavigateToWifi={() => setActiveTab('wifi')}
           />
         )}
         {activeTab === 'chat' && <ChatLAN />}
