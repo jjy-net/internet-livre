@@ -12,6 +12,7 @@ Thumbs.db
 
 # Documentação, conversas e notas locais (manter apenas no PC)
 *.md
+!README.md
 *.txt
 *.tx
 *.log
