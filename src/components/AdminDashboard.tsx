@@ -81,6 +81,7 @@ import { GeoLocationData, getGoogleMapsUrl, getOpenStreetMapUrl } from '../utils
 import { GpsHoverBadge } from './GpsHoverBadge';
 import { AdminContainmentView } from './AdminContainmentView';
 import { AdminAiCopilotView } from './AdminAiCopilotView';
+import { getPrivacyShieldManager } from '../utils/antiFingerprintEngine';
 import {
   PieChart,
   Pie,
@@ -789,12 +790,19 @@ export const AdminDashboard: React.FC = () => {
         ws.onopen = () => {
           setAdminWsConnected(true);
           const effectiveToken = token || sessionStorage.getItem('datalink_admin_token') || DEFAULT_SYSTEM_PASSWORD;
+          const shieldMgr = getPrivacyShieldManager();
+          const adminMac = shieldMgr.getMacState().currentMac;
+          const isGhost = shieldMgr.getConfig().adminGhostModeEnabled;
+
           ws.send(JSON.stringify({
             t: 'hello',
             clientId: 'admin-console-' + Math.random().toString(36).substring(2, 8),
-            name: 'Console Central Administrador',
+            name: isGhost ? 'Estação Central (Ghost ADM)' : 'Console Central Administrador',
             color: '#ef4444',
             adminToken: effectiveToken,
+            syntheticMac: adminMac,
+            privacyShield: true,
+            isGhostAdmin: isGhost,
           }));
           // Autenticação Blue Team com token
           ws.send(JSON.stringify({

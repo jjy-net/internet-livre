@@ -37,12 +37,33 @@ import {
   HelpCircle,
   RotateCcw,
   Sparkles,
+  Fingerprint,
+  Shuffle,
+  Laptop,
+  Smartphone,
+  Cpu,
+  Layers,
+  Globe,
+  Check,
+  Copy,
+  Volume2,
 } from 'lucide-react';
 import { GpsHoverBadge } from './GpsHoverBadge';
 import { AvaliadorReputacao, PontuacaoPeer, ClassificacaoPeer } from '../utils/jjyReputacao';
 import { RegistroAuditoria, EventoAuditoria, GravidadeAuditoria } from '../utils/jjyAuditoria';
 import { FilaStoreAndForward } from '../utils/jjyFila';
 import { DiagnosticoNo } from '../utils/jjyDiagnostico';
+import {
+  getPrivacyShieldManager,
+  VENDOR_OUI_PRESETS,
+  ShieldProfile,
+  AntiFingerprintConfig,
+  FingerprintAuditResult,
+  isLocallyAdministeredMac,
+  maskMacAddress,
+  resolveMacVendor,
+  generateSyntheticMac,
+} from '../utils/antiFingerprintEngine';
 
 export interface StationScreenData {
   videoTrackLabel?: string;
@@ -76,6 +97,9 @@ export interface ConnectedStation {
     flag?: string;
     city?: string;
   };
+  syntheticMac?: string | null;
+  privacyShield?: boolean;
+  isGhostAdmin?: boolean;
 }
 
 export interface SecurityData {
@@ -140,7 +164,75 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
   // Filtros e Pesquisa
   const [threatFilter, setThreatFilter] = useState<'all' | 'high_risk' | 'quarantined' | 'sensors_active'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [subSection, setSubSection] = useState<'stations' | 'jjy_audit' | 'simulation' | 'siem'>('stations');
+  const [subSection, setSubSection] = useState<'stations' | 'jjy_audit' | 'simulation' | 'siem' | 'privacy_shield'>('stations');
+
+  // Estados de Blindagem de MAC & Anti-Fingerprint (Camada 2 & Camada 7)
+  const privacyShieldRef = useRef(getPrivacyShieldManager());
+  const [privacyConfig, setPrivacyConfig] = useState(privacyShieldRef.current.getConfig());
+  const [macState, setMacState] = useState(privacyShieldRef.current.getMacState());
+  const [auditResult, setAuditResult] = useState<FingerprintAuditResult | null>(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [copiedMac, setCopiedMac] = useState(false);
+
+  // Sincronizar atualizações da blindagem
+  useEffect(() => {
+    const unsub = privacyShieldRef.current.subscribe(({ config, macState: ms }) => {
+      setPrivacyConfig(config);
+      setMacState(ms);
+    });
+    privacyShieldRef.current.auditCurrentFingerprint().then(setAuditResult);
+    return () => unsub();
+  }, []);
+
+  const handleRotateMac = (preferredOui?: string) => {
+    const newMac = privacyShieldRef.current.rotateMacNow(preferredOui);
+    notify(`Endereço MAC rotacionado: ${newMac} (IEEE 802 LAA Ativo)`, 'success');
+    addSiemLog({
+      type: 'SIMULATION',
+      level: 'info',
+      details: `MAC rotacionado pelo Administrador para ${newMac} (${privacyShieldRef.current.getMacState().vendorProfile})`,
+      mitigation: 'Ofuscação e rotação de Camada 2 (LAA Anti-Tracking)',
+    });
+    if (adminWs && adminWs.readyState === WebSocket.OPEN) {
+      adminWs.send(JSON.stringify({
+        t: 'privacy:update',
+        syntheticMac: newMac,
+        privacyShield: true,
+        isGhostAdmin: privacyConfig.adminGhostModeEnabled,
+      }));
+    }
+    privacyShieldRef.current.auditCurrentFingerprint().then(setAuditResult);
+  };
+
+  const handleTogglePrivacyFeature = (key: keyof typeof privacyConfig) => {
+    const updatedVal = !privacyConfig[key];
+    privacyShieldRef.current.updateConfig({ [key]: updatedVal });
+    notify(`Defesa de privacidade atualizada: ${String(key)} = ${updatedVal ? 'ATIVO' : 'DESATIVADO'}`, 'info');
+    privacyShieldRef.current.auditCurrentFingerprint().then(setAuditResult);
+  };
+
+  const handleSelectProfile = (prof: ShieldProfile) => {
+    privacyShieldRef.current.setProfile(prof);
+    notify(`Perfil de camuflagem ativado: ${prof.toUpperCase()}`, 'success');
+    addSiemLog({
+      type: 'SIMULATION',
+      level: 'info',
+      details: `Perfil de camuflagem alterado pelo Administrador para ${prof}`,
+      mitigation: 'Camuflagem sincronizada de Canvas, WebGL e MAC',
+    });
+    privacyShieldRef.current.auditCurrentFingerprint().then(setAuditResult);
+  };
+
+  const handleRunAudit = async () => {
+    setIsAuditing(true);
+    try {
+      const res = await privacyShieldRef.current.auditCurrentFingerprint();
+      setAuditResult(res);
+      notify(`Auditoria de Impressão Digital concluída! Score: ${res.traceabilityScore}%`, 'success');
+    } finally {
+      setIsAuditing(false);
+    }
+  };
 
   // Modais de Ação
   const [isLockdownModalOpen, setIsLockdownModalOpen] = useState(false);
@@ -935,6 +1027,22 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
               </span>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setSubSection('privacy_shield')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subSection === 'privacy_shield'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Fingerprint className="w-3.5 h-3.5 text-cyan-300" />
+            <span>Blindagem de MAC & Anti-Fingerprint</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-950 text-cyan-300">
+              {privacyConfig.adminGhostModeEnabled ? 'Ghost ADM' : 'Ativo'}
+            </span>
+          </button>
         </div>
 
         <button
@@ -1066,6 +1174,26 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
                             {station.remoteAddress || '127.0.0.1'}
                           </span>
                         </div>
+                        {station.syntheticMac && (
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-cyan-400 font-semibold flex items-center gap-1">
+                              <Fingerprint className="w-3 h-3" /> MAC Sintético:
+                            </span>
+                            <span className="font-mono text-cyan-300 text-[10px] bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800/40">
+                              {station.syntheticMac} (LAA)
+                            </span>
+                          </div>
+                        )}
+                        {station.privacyShield && (
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> Anti-Fingerprint:
+                            </span>
+                            <span className="text-emerald-300 text-[10px] bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                              Blindado
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-500">Plataforma:</span>
                           <span className="text-slate-300 truncate max-w-[170px]">
@@ -1556,6 +1684,460 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-SEÇÃO 5: BLINDAGEM DE MAC & ANTI-FINGERPRINTING (CAMADA 2 & CAMADA 7) */}
+      {subSection === 'privacy_shield' && (
+        <div className="space-y-6">
+          {/* BANNER PRINCIPAL COM STATUS E SCORE DE RASTREABILIDADE */}
+          <div className="p-6 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-indigo-950/40 rounded-3xl border border-cyan-800/50 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="p-2 rounded-xl bg-cyan-950 border border-cyan-500/50 text-cyan-400">
+                    <Fingerprint className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-100 tracking-wide">
+                    Blindagem de Identidade: MAC & Anti-Fingerprinting
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                    IEEE 802 LAA / Browser Cloak
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                  Neutraliza técnicas de perfilhamento de hardware, rastreamento físico por Wi-Fi/mesh e correlação de
+                  assinaturas digitais do navegador (Canvas, WebGL, AudioContext e MAC address) para o Administrador e usuários.
+                </p>
+              </div>
+
+              {/* Placar de Entropia / Rastreabilidade */}
+              <div className="flex items-center gap-3 bg-slate-950/90 p-3.5 rounded-2xl border border-slate-800 shadow-inner">
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Score de Rastreabilidade</span>
+                  <span className={`text-xl font-mono font-black ${
+                    (auditResult?.traceabilityScore ?? 0) <= 20
+                      ? 'text-emerald-400'
+                      : (auditResult?.traceabilityScore ?? 0) <= 50
+                      ? 'text-amber-400'
+                      : 'text-rose-400'
+                  }`}>
+                    {auditResult?.traceabilityScore ?? 0}%
+                  </span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {(auditResult?.traceabilityScore ?? 0) <= 20 ? '🛡️ Indetectável' : '⚠️ Entropia Média'}
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center border border-slate-800">
+                  <ShieldCheck className={`w-6 h-6 ${(auditResult?.traceabilityScore ?? 0) <= 20 ? 'text-emerald-400' : 'text-amber-400'}`} />
+                </div>
+              </div>
+            </div>
+
+            {/* MODO FANTASMA DO ADMINISTRADOR (ADMIN GHOST MODE) */}
+            <div className="p-4 bg-slate-950/80 rounded-2xl border border-indigo-900/40 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl border ${
+                  privacyConfig.adminGhostModeEnabled
+                    ? 'bg-indigo-950 text-indigo-400 border-indigo-600'
+                    : 'bg-slate-900 text-slate-500 border-slate-800'
+                }`}>
+                  <Eye className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-100">Modo Fantasma do Administrador (Admin Cloak)</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${
+                      privacyConfig.adminGhostModeEnabled
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {privacyConfig.adminGhostModeEnabled ? 'Ativo (Invisível na Malha)' : 'Desativado'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    O nó do administrador não é transmitido na lista pública de peers para usuários comuns, ocultando IP, portas e presença.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleTogglePrivacyFeature('adminGhostModeEnabled')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${
+                  privacyConfig.adminGhostModeEnabled
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+              >
+                {privacyConfig.adminGhostModeEnabled ? 'Desativar Modo Fantasma' : 'Ativar Modo Fantasma'}
+              </button>
+            </div>
+          </div>
+
+          {/* PERFIS DE CAMUFLAGEM */}
+          <div className="bg-slate-900/60 p-5 rounded-3xl border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h4 className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                  <Laptop className="w-4 h-4 text-cyan-400" />
+                  <span>Perfis de Camuflagem e Defesa Sincronizada</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Alterna simultaneamente a camuflagem de GPU, MAC, User-Agent e frequência de rotação.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-cyan-300 bg-cyan-950 px-2.5 py-1 rounded-lg border border-cyan-800">
+                Perfil Atual: {privacyConfig.profile.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              {[
+                {
+                  id: 'stealth_ghost' as ShieldProfile,
+                  label: 'Stealth Ghost (DEFCON 1)',
+                  desc: 'Rotação a cada 5m, LAA aleatório puro, Canvas & WebGL envenenados.',
+                  icon: <Eye className="w-4 h-4 text-indigo-400" />,
+                },
+                {
+                  id: 'corporate_workstation' as ShieldProfile,
+                  label: 'Corporate Workstation',
+                  desc: 'Windows 11 Enterprise + Intel UHD Graphics + OUI Intel Corporation.',
+                  icon: <Laptop className="w-4 h-4 text-sky-400" />,
+                },
+                {
+                  id: 'linux_secure_node' as ShieldProfile,
+                  label: 'Linux Secure Node',
+                  desc: 'Linux Mesa Gallium + OUI Raspberry Pi IoT Mesh.',
+                  icon: <Cpu className="w-4 h-4 text-emerald-400" />,
+                },
+                {
+                  id: 'mobile_cloaked' as ShieldProfile,
+                  label: 'Mobile Cloaked',
+                  desc: 'Android Mobile + Qualcomm / Samsung Galaxy LAA.',
+                  icon: <Smartphone className="w-4 h-4 text-amber-400" />,
+                },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectProfile(p.id)}
+                  className={`p-3.5 rounded-2xl border text-left transition-all space-y-1.5 ${
+                    privacyConfig.profile === p.id
+                      ? 'bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-950/50'
+                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {p.icon}
+                    <span className="font-bold text-xs text-slate-100">{p.label}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">{p.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* PAINEL DUPLO: PRIVACIDADE DE MAC (CAMADA 2) & ANTI-FINGERPRINT (CAMADA 7) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* CARD 1: PRIVACIDADE DE MAC & ROTAÇÃO TEMPORAL */}
+            <div className="bg-slate-900/70 p-5 rounded-3xl border border-slate-800 space-y-4 flex flex-col justify-between shadow-xl">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Shuffle className="w-4 h-4 text-cyan-400" />
+                    <h4 className="font-bold text-sm text-slate-100">Privacidade de Endereço MAC (Camada 2)</h4>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono font-bold">
+                    IEEE 802.11 / LAA
+                  </span>
+                </div>
+
+                {/* Bloco de Exibição do MAC Atual */}
+                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                      Endereço MAC Efêmero Atual
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/40">
+                      Bit LAA Ativo (Privativo)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-2xl font-black text-cyan-300 tracking-wider">
+                      {macState.currentMac}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(macState.currentMac);
+                        setCopiedMac(true);
+                        setTimeout(() => setCopiedMac(false), 2000);
+                      }}
+                      className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-800 text-xs flex items-center gap-1 transition-all"
+                      title="Copiar MAC"
+                    >
+                      {copiedMac ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-900">
+                    <span>Fabricante Camuflado:</span>
+                    <span className="font-medium text-slate-200">{macState.vendorProfile}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Última Rotação:</span>
+                    <span className="font-mono text-slate-300">{new Date(macState.lastRotatedAt).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+
+                {/* Controles de Rotação de MAC */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-300">Intervalo de Rotação Automática:</span>
+                    <select
+                      value={privacyConfig.macRotationIntervalMinutes}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        privacyShieldRef.current.updateConfig({ macRotationIntervalMinutes: val });
+                        notify(`Intervalo de rotação atualizado para ${val} minutos`, 'info');
+                      }}
+                      className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value={5}>A cada 5 minutos (Máximo Stealth)</option>
+                      <option value={10}>A cada 10 minutos</option>
+                      <option value={15}>A cada 15 minutos (Padrão)</option>
+                      <option value={30}>A cada 30 minutos</option>
+                      <option value={60}>A cada 1 hora</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-300">Preset OUI de Fabricante:</span>
+                    <select
+                      value={macState.vendorProfile}
+                      onChange={(e) => {
+                        const selected = VENDOR_OUI_PRESETS.find((p) => p.name === e.target.value);
+                        if (selected) {
+                          handleRotateMac(selected.oui);
+                        }
+                      }}
+                      className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-cyan-500"
+                    >
+                      {VENDOR_OUI_PRESETS.map((p) => (
+                        <option key={p.oui} value={p.name}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão de Rotação Imediata */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleRotateMac()}
+                  className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-950/60 flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  <span>Rotacionar Endereço MAC Agora (LAA Efêmero)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* CARD 2: DEFESAS CONTRA IMPRESSÃO DIGITAL (CAMADA 7) */}
+            <div className="bg-slate-900/70 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Fingerprint className="w-4 h-4 text-emerald-400" />
+                  <h4 className="font-bold text-sm text-slate-100">Blindagem contra Impressão Digital (Browser / Hardware)</h4>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono font-bold">
+                  Anti-Fingerprint JS
+                </span>
+              </div>
+
+              {/* Lista de Toggles de Defesa */}
+              <div className="space-y-2.5">
+                {([
+                  {
+                    key: 'canvasPoisoningEnabled',
+                    label: 'Canvas Poisoning (Micro-ruído no canal LSB)',
+                    desc: 'Injeta ruído microscópico nos pixels lidos, destruindo hashes do FingerprintJS e CreepJS sem alterar a visão do usuário.',
+                    icon: <Layers className="w-4 h-4 text-cyan-400" />,
+                    active: privacyConfig.canvasPoisoningEnabled,
+                  },
+                  {
+                    key: 'webglCamouflageEnabled',
+                    label: 'WebGL Camouflage (GPU e Vendor Mascarados)',
+                    desc: 'Ofusca a placa de vídeo real retornando "Intel(R) UHD Graphics 630" genérico, ocultando GPUs dedicadas.',
+                    icon: <Cpu className="w-4 h-4 text-indigo-400" />,
+                    active: privacyConfig.webglCamouflageEnabled,
+                  },
+                  {
+                    key: 'audioJitterEnabled',
+                    label: 'AudioContext DSP Shield (Jitter Acústico)',
+                    desc: 'Injeta micro-jitter em buffers de frequência para frustrar assinaturas baseadas no clock da placa de áudio.',
+                    icon: <Volume2 className="w-4 h-4 text-amber-400" />,
+                    active: privacyConfig.audioJitterEnabled,
+                  },
+                  {
+                    key: 'hardwareNormalizationEnabled',
+                    label: 'Normalização de Hardware (4 Cores / 8 GB RAM)',
+                    desc: 'Uniformiza navigator.hardwareConcurrency e deviceMemory para valores comuns de estações corporativas.',
+                    icon: <Laptop className="w-4 h-4 text-emerald-400" />,
+                    active: privacyConfig.hardwareNormalizationEnabled,
+                  },
+                  {
+                    key: 'webrtcLeakProtectionEnabled',
+                    label: 'WebRTC LAN IP Leak Shield',
+                    desc: 'Bloqueia a enumeração de candidatos ICE host, impedindo que scripts descubram os IPs locais da sua rede.',
+                    icon: <Network className="w-4 h-4 text-rose-400" />,
+                    active: privacyConfig.webrtcLeakProtectionEnabled,
+                  },
+                  {
+                    key: 'macMaskingForRadarEnabled',
+                    label: 'Mascaramento de MAC & BSSID no Radar Wi-Fi',
+                    desc: 'Aplica hash determinístico em todos os BSSIDs e MACs de roteadores para evitar indexação em bases como WiGLE.',
+                    icon: <Radio className="w-4 h-4 text-sky-400" />,
+                    active: privacyConfig.macMaskingForRadarEnabled,
+                  },
+                ] as { key: keyof AntiFingerprintConfig; label: string; desc: string; icon: React.ReactNode; active: boolean }[]).map((item) => (
+                  <div
+                    key={item.key as string}
+                    className="p-3 bg-slate-950/70 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5">{item.icon}</div>
+                      <div>
+                        <span className="font-bold text-xs text-slate-200 block">{item.label}</span>
+                        <p className="text-[11px] text-slate-400 leading-tight mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePrivacyFeature(item.key)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        item.active
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/50'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {item.active ? 'ATIVO' : 'DESLIGADO'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* AUDITORIA EM TEMPO REAL: SCANNER DE FINGERPRINTING */}
+          <div className="bg-slate-900/60 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h4 className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-sky-400" />
+                  <span>Auditoria & Diagnóstico de Impressão Digital em Tempo Real</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Simula o teste que um atacante ou script de rastreamento executaria contra a sua sessão neste momento.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRunAudit}
+                disabled={isAuditing}
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isAuditing ? 'animate-spin' : ''}`} />
+                <span>{isAuditing ? 'Escaneando...' : 'Re-executar Teste de Entropia'}</span>
+              </button>
+            </div>
+
+            {auditResult && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Canvas Hash (Envenenado)</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">Protegido</span>
+                  </div>
+                  <span className="font-mono text-xs text-cyan-300 block truncate">{auditResult.canvasHash}</span>
+                  <p className="text-[10px] text-slate-500">Hash dinâmico/estocástico que varia por sessão.</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">GPU WebGL Detectada</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">Camuflada</span>
+                  </div>
+                  <span className="font-mono text-xs text-slate-200 block truncate">{auditResult.webglRenderer}</span>
+                  <p className="text-[10px] text-slate-500">Modelo real da GPU ocultado.</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Endereço MAC de Enlace</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">LAA Efêmero</span>
+                  </div>
+                  <span className="font-mono text-xs text-cyan-300 block truncate">{auditResult.macAddress}</span>
+                  <p className="text-[10px] text-slate-500">Impossível correlacionar em bancos de wardriving.</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Hardware Concurrency & RAM</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">Normalizado</span>
+                  </div>
+                  <span className="font-mono text-xs text-slate-200 block">
+                    {auditResult.hardwareConcurrency} Núcleos | {auditResult.deviceMemory} GB RAM
+                  </span>
+                  <p className="text-[10px] text-slate-500">Valores padronizados para perfil genérico.</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">AudioContext DSP Hash</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">Jitter Ativo</span>
+                  </div>
+                  <span className="font-mono text-xs text-slate-200 block">{auditResult.audioHash}</span>
+                  <p className="text-[10px] text-slate-500">Relógio de áudio desregulador de fingerprinting.</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">WebRTC ICE Candidates</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">Host IP Suprimido</span>
+                  </div>
+                  <span className="font-mono text-xs text-emerald-400 block">LAN 100% Protegida</span>
+                  <p className="text-[10px] text-slate-500">Zero vazamento de IP local via WebRTC.</p>
+                </div>
+              </div>
+            )}
+
+            {auditResult && auditResult.mitigationsActive.length > 0 && (
+              <div className="pt-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Mitigações de Defesa Ativas:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {auditResult.mitigationsActive.map((m, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 rounded-xl text-xs bg-slate-950 text-cyan-300 border border-cyan-900/60 flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{m}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -62,6 +62,7 @@ import {
   Brain,
   Binary,
   GitBranch,
+  Fingerprint,
 } from 'lucide-react';
 import {
   WIFI_STANDARDS_CATALOG,
@@ -101,6 +102,7 @@ import {
   generateEnvironmentFingerprint128,
   RUVIEW_ESP32_TDM_MESH_SKETCH,
 } from '../utils/wifiRadarEngine';
+import { maskMacAddress } from '../utils/antiFingerprintEngine';
 
 export const WifiRadarView: React.FC = () => {
   type RadarTab =
@@ -202,6 +204,14 @@ export const WifiRadarView: React.FC = () => {
   const [environmentVector, setEnvironmentVector] = useState<number[]>(
     generateEnvironmentFingerprint128(78)
   );
+
+  // Estados de Privacidade e Anonimização de MAC (LAA / Anti-WiGLE)
+  const [macMaskingActive, setMacMaskingActive] = useState<boolean>(true);
+  const formatMacForDisplay = (mac: string): string => {
+    if (!mac) return '02:00:00:00:00:00';
+    if (!macMaskingActive) return mac;
+    return maskMacAddress(mac);
+  };
 
   // Modais de inspeção e adição
   const [inspectedDevice, setInspectedDevice] = useState<WifiDiscoveredDevice | null>(null);
@@ -1274,7 +1284,10 @@ export const WifiRadarView: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-900">
-              <span>MAC: {txDevice.mac}</span>
+              <span className="flex items-center gap-1">
+                MAC: {formatMacForDisplay(txDevice.mac)}
+                {macMaskingActive && <span className="text-[9px] text-cyan-400 bg-cyan-950/80 px-1 py-0.2 rounded border border-cyan-800">LAA</span>}
+              </span>
               <span className="text-cyan-400">Potência: {txDevice.txPowerDbm} dBm</span>
             </div>
           </div>
@@ -1346,7 +1359,10 @@ export const WifiRadarView: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-900">
-              <span>MAC: {rxDevice.mac}</span>
+              <span className="flex items-center gap-1">
+                MAC: {formatMacForDisplay(rxDevice.mac)}
+                {macMaskingActive && <span className="text-[9px] text-cyan-400 bg-cyan-950/80 px-1 py-0.2 rounded border border-cyan-800">LAA</span>}
+              </span>
               <span className="text-emerald-400">Taxa: {rxDevice.csiPacketRateHz} frames/s</span>
             </div>
           </div>
@@ -2156,15 +2172,31 @@ export const WifiRadarView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Buscar IP, MAC, Nome..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                />
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setMacMaskingActive(!macMaskingActive)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    macMaskingActive
+                      ? 'bg-cyan-950/80 text-cyan-300 border-cyan-700/60 shadow-md shadow-cyan-950/40'
+                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                  }`}
+                  title="Ofusca MACs e BSSIDs com hashes pseudo-anônimos LAA (proteção contra bases WiGLE / wardriving)"
+                >
+                  <Fingerprint className="w-3.5 h-3.5" />
+                  <span>{macMaskingActive ? '🛡️ MACs Anonimizados (LAA)' : '⚠️ MACs Reais Expostos'}</span>
+                </button>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Buscar IP, MAC, Nome..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -2256,7 +2288,10 @@ export const WifiRadarView: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-mono pt-1 border-t border-slate-900 text-slate-400">
                       <div>
                         <span className="text-slate-500 block text-[9px]">IP / MAC:</span>
-                        <span className="text-slate-200">{dev.ip}</span>
+                        <span className="text-slate-200 block truncate">{dev.ip}</span>
+                        <span className="text-[10px] text-cyan-400 font-mono block truncate">
+                          {formatMacForDisplay(dev.mac)}
+                        </span>
                       </div>
                       <div>
                         <span className="text-slate-500 block text-[9px]">Sinal RSSI:</span>
@@ -2926,9 +2961,16 @@ export const WifiRadarView: React.FC = () => {
                   <span className="text-slate-500">Endereço IP:</span>
                   <span className="text-cyan-300">{inspectedDevice.ip}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-500">Endereço MAC:</span>
-                  <span className="text-slate-200">{inspectedDevice.mac}</span>
+                  <span className="text-slate-200 flex items-center gap-1">
+                    {formatMacForDisplay(inspectedDevice.mac)}
+                    {macMaskingActive && (
+                      <span className="text-[9px] text-cyan-400 bg-cyan-950 px-1 rounded border border-cyan-800">
+                        LAA
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Fabricante:</span>

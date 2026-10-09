@@ -820,6 +820,10 @@ export function createDataLinkServer(options = {}) {
       remoteAddress: p.remoteAddress || '127.0.0.1',
       userAgent: p.userAgent || 'Desconhecido',
       location: p.location || null,
+      syntheticMac: p.syntheticMac || null,
+      privacyShield: Boolean(p.privacyShield),
+      isGhostAdmin: Boolean(p.isGhostAdmin),
+      isAdmin: Boolean(p.isAdmin),
     }));
 
     return {
@@ -860,26 +864,60 @@ export function createDataLinkServer(options = {}) {
     };
   }
 
-  function peerInfo(p) {
+  function maskIpForPrivacy(ip) {
+    if (!ip) return '0.0.0.0';
+    if (ip === '127.0.0.1' || ip === '::1') return '127.0.0.1 (Local Seguro)';
+    if (ip.includes('.')) {
+      const parts = ip.split('.');
+      if (parts.length === 4) {
+        return `${parts[0]}.${parts[1]}.${parts[2]}.***`;
+      }
+    }
+    if (ip.includes(':')) {
+      const parts = ip.split(':');
+      return `${parts.slice(0, 3).join(':')}:****:****`;
+    }
+    return '***.***.***.***';
+  }
+
+  function sanitizeUserAgent(ua) {
+    if (!ua || ua === 'Desconhecido') return 'Nó JJY Soberano P2P';
+    if (ua.includes('Electron')) return 'JJY Desktop App (Soberano)';
+    if (ua.includes('Mobile') || ua.includes('Android') || ua.includes('iPhone')) return 'Dispositivo Móvel JJY';
+    return 'Estação de Trabalho JJY P2P';
+  }
+
+  function peerInfo(p, isRecipientAdmin = false) {
+    const isGhost = Boolean(p.isGhostAdmin || (p.isAdmin && p.privacyShield));
+    if (isGhost && !isRecipientAdmin) {
+      return null; // Oculta totalmente o administrador de nós não autorizados (Ghost Mode)
+    }
+
     return {
       peerId: p.peerId,
       clientId: p.clientId,
-      name: p.name,
+      name: isGhost && !isRecipientAdmin ? 'Nó Seguro Camuflado' : p.name,
       color: p.color,
       latency: p.latency ?? null,
       since: p.since,
       messagesSent: p.messagesSent || 0,
       bytesSent: p.bytesSent || 0,
-      remoteAddress: p.remoteAddress || '127.0.0.1',
-      userAgent: p.userAgent || 'Desconhecido',
+      remoteAddress: isRecipientAdmin ? (p.remoteAddress || '127.0.0.1') : maskIpForPrivacy(p.remoteAddress),
+      userAgent: isRecipientAdmin ? (p.userAgent || 'Desconhecido') : sanitizeUserAgent(p.userAgent),
       lastActiveAt: p.lastActiveAt || p.since,
       location: p.location || null,
+      syntheticMac: p.syntheticMac || null,
+      privacyShield: Boolean(p.privacyShield),
+      isGhostAdmin: isGhost,
     };
   }
 
-  function broadcastSend(obj, exceptPeerId) {
+  function broadcastSend(obj, exceptPeerId, adminOnly = false) {
     for (const p of peers.values()) {
-      if (p.peerId !== exceptPeerId && p.hello) p.conn.sendText(obj);
+      if (p.peerId !== exceptPeerId && p.hello) {
+        if (adminOnly && !p.isAdmin) continue;
+        p.conn.sendText(obj);
+      }
     }
   }
 
@@ -1039,6 +1077,12 @@ export function createDataLinkServer(options = {}) {
         peer.isAdmin = true;
       }
 
+      peer.syntheticMac = typeof msg.syntheticMac === 'string' ? msg.syntheticMac.slice(0, 24) : null;
+      peer.privacyShield = Boolean(msg.privacyShield);
+      if (peer.isAdmin && msg.isGhostAdmin !== false) {
+        peer.isGhostAdmin = true;
+      }
+
       const activeUserLimit = serverConfig.enableUserLimit ? serverConfig.maxUsersLimit : MAX_PEERS;
       if (!peer.hello && peers.size >= activeUserLimit && !peer.isAdmin) {
         peer.conn.sendText({
@@ -1071,12 +1115,18 @@ export function createDataLinkServer(options = {}) {
       byClientId.set(clientId, peer);
 
       telemetry.peakConcurrency = Math.max(telemetry.peakConcurrency, peers.size);
-      logEvent('join', `${peer.name} (${peer.clientId}) conectado via ${peer.remoteAddress}`);
+      logEvent('join', `${peer.name} (${peer.clientId}) conectado via ${peer.remoteAddress}${peer.syntheticMac ? ` [MAC: ${peer.syntheticMac}]` : ''}`);
+
+      const isRecipientAdmin = Boolean(peer.isAdmin);
+      const visiblePeers = [...peers.values()]
+        .filter((p) => p.hello && p !== peer && !p.isAlertListener)
+        .map((p) => peerInfo(p, isRecipientAdmin))
+        .filter(Boolean);
 
       peer.conn.sendText({
         t: 'welcome',
-        you: peerInfo(peer),
-        peers: [...peers.values()].filter((p) => p.hello && p !== peer && !p.isAlertListener).map(peerInfo),
+        you: peerInfo(peer, isRecipientAdmin),
+        peers: visiblePeers,
         server: {
           name: serverName,
           version: VERSION,
@@ -1085,9 +1135,20 @@ export function createDataLinkServer(options = {}) {
           startedAt,
         },
       });
+
       if (!peer.isAlertListener) {
-        broadcastSend({ t: 'peer:join', peer: peerInfo(peer) }, peer.peerId);
-        events.emit('peer:join', peerInfo(peer));
+        if (peer.isGhostAdmin) {
+          // Modo Fantasma do Administrador: Notifica apenas outros administradores na rede
+          broadcastSend({ t: 'peer:join', peer: peerInfo(peer, true) }, peer.peerId, true);
+        } else {
+          for (const targetPeer of peers.values()) {
+            if (targetPeer.peerId !== peer.peerId && targetPeer.hello) {
+              const info = peerInfo(peer, Boolean(targetPeer.isAdmin));
+              if (info) targetPeer.conn.sendText({ t: 'peer:join', peer: info });
+            }
+          }
+        }
+        events.emit('peer:join', peerInfo(peer, true));
       }
 
       // Entrega imediata de alertas de emergência pendentes (caso o usuário tenha acabado de abrir o navegador)
@@ -1109,11 +1170,20 @@ export function createDataLinkServer(options = {}) {
       return;
     }
 
-    if (msg.t === 'name') {
-      peer.name = String(msg.name || peer.name).slice(0, 40).trim() || peer.name;
+    if (msg.t === 'name' || msg.t === 'privacy:update') {
+      if (msg.name) peer.name = String(msg.name).slice(0, 40).trim() || peer.name;
       if (/^#[0-9a-fA-F]{6}$/.test(msg.color || '')) peer.color = msg.color;
-      broadcastSend({ t: 'peer:update', peer: peerInfo(peer) });
-      peer.conn.sendText({ t: 'you:update', peer: peerInfo(peer) });
+      if (typeof msg.syntheticMac === 'string') peer.syntheticMac = msg.syntheticMac.slice(0, 24);
+      if (msg.privacyShield !== undefined) peer.privacyShield = Boolean(msg.privacyShield);
+      if (msg.isGhostAdmin !== undefined && peer.isAdmin) peer.isGhostAdmin = Boolean(msg.isGhostAdmin);
+
+      for (const targetPeer of peers.values()) {
+        if (targetPeer.peerId !== peer.peerId && targetPeer.hello) {
+          const info = peerInfo(peer, Boolean(targetPeer.isAdmin));
+          if (info) targetPeer.conn.sendText({ t: 'peer:update', peer: info });
+        }
+      }
+      peer.conn.sendText({ t: 'you:update', peer: peerInfo(peer, Boolean(peer.isAdmin)) });
       return;
     }
 
@@ -1338,7 +1408,11 @@ export function createDataLinkServer(options = {}) {
         if (peer.clientId && byClientId.get(peer.clientId) === peer) byClientId.delete(peer.clientId);
         if (peer.hello && !peer.isAlertListener) {
           logEvent('leave', `${peer.name || 'Anônimo'} (${peer.clientId}) desconectou`);
-          broadcastSend({ t: 'peer:leave', peerId: peer.peerId, clientId: peer.clientId });
+          if (peer.isGhostAdmin) {
+            broadcastSend({ t: 'peer:leave', peerId: peer.peerId, clientId: peer.clientId }, peer.peerId, true);
+          } else {
+            broadcastSend({ t: 'peer:leave', peerId: peer.peerId, clientId: peer.clientId });
+          }
           events.emit('peer:leave', { peerId: peer.peerId, clientId: peer.clientId, name: peer.name });
         }
       }

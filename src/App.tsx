@@ -25,8 +25,14 @@ import {
   Share2,
   Globe,
   Unlock,
-  BookOpen
+  BookOpen,
+  Fingerprint,
+  Shuffle,
+  Check,
+  Copy,
+  X,
 } from 'lucide-react';
+import { getPrivacyShieldManager } from './utils/antiFingerprintEngine';
 import { QRStudio } from './components/QRStudio';
 import { ChatLAN } from './components/ChatLAN';
 import { FileTransfer } from './components/FileTransfer';
@@ -64,6 +70,18 @@ export const App: React.FC = () => {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [currentSyntheticMac, setCurrentSyntheticMac] = useState(
+    getPrivacyShieldManager().getMacState().currentMac
+  );
+  const [copiedMac, setCopiedMac] = useState(false);
+
+  useEffect(() => {
+    const unsub = getPrivacyShieldManager().subscribe(({ macState }) => {
+      setCurrentSyntheticMac(macState.currentMac);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -151,6 +169,16 @@ export const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all cursor-pointer"
+              title="Blindagem de Identidade: MAC & Anti-Fingerprint Ativos"
+            >
+              <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Shield: {currentSyntheticMac.slice(0, 8)}...</span>
+            </button>
+
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               100% Offline
@@ -317,6 +345,105 @@ export const App: React.FC = () => {
             >
               Entendido!
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Blindagem de Identidade & Anti-Fingerprint */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-cyan-800/60 rounded-3xl max-w-md w-full p-6 shadow-2xl shadow-cyan-950/60 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5 text-cyan-400">
+                <div className="p-2.5 rounded-2xl bg-cyan-950 border border-cyan-600/50">
+                  <Fingerprint className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-100 tracking-wide">
+                    Blindagem de MAC & Impressão Digital
+                  </h3>
+                  <span className="text-[11px] text-cyan-400 font-semibold">IEEE 802 LAA / Anti-Fingerprint Ativo</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-xl bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Sua estação está navegando com identidade ofuscada. Rastreadores, operadores de rede maliciosos e scripts de fingerprinting recebem dados sintéticos efêmeros.
+            </p>
+
+            <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>Endereço MAC Efêmero:</span>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-800">
+                  LAA Ativo
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-base font-bold text-cyan-300">{currentSyntheticMac}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentSyntheticMac);
+                    setCopiedMac(true);
+                    setTimeout(() => setCopiedMac(false), 2000);
+                  }}
+                  className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-800 text-xs flex items-center gap-1"
+                >
+                  {copiedMac ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
+                <span className="text-slate-500 block text-[10px] font-bold">CANVAS POISONING</span>
+                <span className="text-emerald-400 font-semibold">Ativo (Ruído LSB)</span>
+              </div>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
+                <span className="text-slate-500 block text-[10px] font-bold">GPU WEBGL</span>
+                <span className="text-emerald-400 font-semibold">Camuflada (Intel UHD)</span>
+              </div>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
+                <span className="text-slate-500 block text-[10px] font-bold">AUDIOCONTEXT</span>
+                <span className="text-emerald-400 font-semibold">Jitter DSP Ativo</span>
+              </div>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
+                <span className="text-slate-500 block text-[10px] font-bold">WEBRTC LAN SHIELD</span>
+                <span className="text-emerald-400 font-semibold">Host IP Bloqueado</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const newMac = getPrivacyShieldManager().rotateMacNow();
+                  setCurrentSyntheticMac(newMac);
+                }}
+                className="flex-1 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                <span>Rotacionar MAC Agora</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPrivacyModal(false);
+                  setActiveTab('admin');
+                }}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-all"
+              >
+                Painel SOC
+              </button>
+            </div>
           </div>
         </div>
       )}
