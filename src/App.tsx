@@ -1,63 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import {
-  QrCode,
-  MessageSquare,
-  Layers,
-  Volume2,
-  Lightbulb,
-  Shield,
-  Image as ImageIcon,
-  Radio,
-  Download,
-  Info,
-  CheckCircle2,
-  Lock,
-  ExternalLink,
-  ShieldAlert,
-  Camera,
-  Cpu,
-  Satellite,
-  RadioTower,
-  Waves,
-  Smartphone,
-  Wifi,
-  Flame,
-  Share2,
-  Globe,
-  Unlock,
-  BookOpen,
-  Fingerprint,
-  Shuffle,
-  Check,
-  Copy,
-  X,
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { Lock, Fingerprint, Shuffle, Check, Copy, X } from 'lucide-react';
 import { getPrivacyShieldManager } from './utils/antiFingerprintEngine';
-import { QRStudio } from './components/QRStudio';
-import { ChatLAN } from './components/ChatLAN';
-import { FileTransfer } from './components/FileTransfer';
-import { AudioModemView } from './components/AudioModemView';
-import { LightModemView } from './components/LightModemView';
-import { CryptoToolsView } from './components/CryptoToolsView';
-import { StegoToolsView } from './components/StegoToolsView';
-import { NetworkHubView } from './components/NetworkHubView';
-import { AdminDashboard } from './components/AdminDashboard';
-import { RemoteMonitorView } from './components/RemoteMonitorView';
 import { EmergencyAlertModal } from './components/EmergencyAlertModal';
-import { JjyMeshProtocolView } from './components/JjyMeshProtocolView';
-import { SatelliteInternetView } from './components/SatelliteInternetView';
-import { TacticalRadioView } from './components/TacticalRadioView';
-import { UnderwaterInternetView } from './components/UnderwaterInternetView';
-import { LoraMeshView } from './components/LoraMeshView';
-import { CellularGatewayView } from './components/CellularGatewayView';
-import { WifiRadarView } from './components/WifiRadarView';
-import { DisasterInternetView } from './components/DisasterInternetView';
-import { ProtocolHubView } from './components/ProtocolHubView';
-import { Earth3dMapView } from './components/Earth3dMapView';
-import { FreeInternetManifestoView } from './components/FreeInternetManifestoView';
-import { DocumentationProjectView } from './components/DocumentationProjectView';
+import { UserAiChatPopup } from './components/UserAiChatPopup';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { TabLoadingSpinner } from './components/TabLoadingSpinner';
+import { AppShell } from './shell/AppShell';
+import { DEFAULT_MODULE, findModule, isModuleId } from './shell/modules';
 
-type ActiveTab = 'globe' | 'free_internet' | 'docs' | 'qr' | 'chat' | 'files' | 'sound' | 'light' | 'crypto' | 'stego' | 'network' | 'mesh' | 'protocols' | 'satellite' | 'radio' | 'underwater' | 'lora' | 'cellular' | 'wifi' | 'disaster' | 'remote' | 'admin';
+// Os módulos de usuário (e seus lazy imports) vivem em src/shell/modules.tsx.
+// Para adicionar uma função nova ao menu, edite apenas aquele arquivo.
+const AdminDashboard = lazy(() => import('./components/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+
+type ActiveTab = string;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -65,7 +20,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('globe');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(DEFAULT_MODULE);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -75,6 +30,89 @@ export const App: React.FC = () => {
     getPrivacyShieldManager().getMacState().currentMac
   );
   const [copiedMac, setCopiedMac] = useState(false);
+
+  // Estado e sincronização da sessão administrativa
+  const [isAdminSession, setIsAdminSession] = useState(() => {
+    return !!sessionStorage.getItem('datalink_admin_token');
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      setIsAdminSession(!!sessionStorage.getItem('datalink_admin_token'));
+    };
+    window.addEventListener('jjy_admin_auth_changed', handleAuthChanged);
+    window.addEventListener('storage', handleAuthChanged);
+    return () => {
+      window.removeEventListener('jjy_admin_auth_changed', handleAuthChanged);
+      window.removeEventListener('storage', handleAuthChanged);
+    };
+  }, []);
+
+  // Roteamento isolado via hash de URL (#admin, #globe, #mesh, etc.) e query parameters
+  useEffect(() => {
+    const syncFromHash = () => {
+      const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      const cleanHash = rawHash.split(/[\/?#]/)[0];
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get('tab')?.toLowerCase();
+
+      if (rawHash === 'admin' || window.location.search.includes('admin=1') || tabParam === 'admin') {
+        setActiveTab('admin');
+        return;
+      }
+
+      // Suporte direto para Protocolo JJY Sovereign Mesh e sub-aba Meshtastic
+      if (
+        cleanHash === 'mesh' ||
+        cleanHash === 'meshtastic' ||
+        rawHash.includes('meshtastic') ||
+        tabParam === 'mesh' ||
+        tabParam === 'meshtastic'
+      ) {
+        setActiveTab('mesh');
+        if (
+          cleanHash === 'meshtastic' ||
+          rawHash.includes('meshtastic') ||
+          tabParam === 'meshtastic' ||
+          searchParams.get('subtab') === 'meshtastic'
+        ) {
+          try {
+            sessionStorage.setItem('jjy_mesh_subtab', 'meshtastic');
+            localStorage.setItem('jjy_mesh_subtab', 'meshtastic');
+            window.dispatchEvent(new CustomEvent('jjy_mesh_subtab_change', { detail: 'meshtastic' }));
+          } catch {}
+        }
+        return;
+      }
+
+      if (isModuleId(cleanHash)) {
+        setActiveTab(cleanHash);
+      } else if (tabParam && isModuleId(tabParam)) {
+        setActiveTab(tabParam);
+      } else if (!rawHash) {
+        // Botão "voltar" do navegador/celular até a URL sem hash: retorna ao início
+        setActiveTab(DEFAULT_MODULE);
+      }
+    };
+
+    syncFromHash();
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, []);
+
+  const switchTab = useCallback((tab: ActiveTab) => {
+    setActiveTab(tab);
+    if (tab === 'admin') {
+      window.location.hash = 'admin';
+    } else if (tab === DEFAULT_MODULE) {
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    } else {
+      window.location.hash = tab;
+    }
+    window.scrollTo({ top: 0 });
+  }, []);
 
   useEffect(() => {
     const unsub = getPrivacyShieldManager().subscribe(({ macState }) => {
@@ -123,170 +161,42 @@ export const App: React.FC = () => {
     }
   };
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'globe', label: 'Globo 3D (Início)', icon: <Globe className="w-4 h-4 text-emerald-400" />, badge: 'Principal' },
-    { id: 'free_internet', label: 'Nossa Internet Livre', icon: <Unlock className="w-4 h-4 text-cyan-400" />, badge: 'Soberana' },
-    { id: 'docs', label: 'Documentação do Projeto', icon: <BookOpen className="w-4 h-4 text-amber-400" />, badge: 'Docs' },
-    { id: 'chat', label: 'Chat LAN', icon: <MessageSquare className="w-4 h-4" />, badge: 'P2P' },
-    { id: 'qr', label: 'QR Studio', icon: <QrCode className="w-4 h-4" /> },
-    { id: 'files', label: 'Arquivos Chunks', icon: <Layers className="w-4 h-4" /> },
-    { id: 'sound', label: 'Modem de Som', icon: <Volume2 className="w-4 h-4" /> },
-    { id: 'light', label: 'Modem de Luz', icon: <Lightbulb className="w-4 h-4" /> },
-    { id: 'crypto', label: 'Criptografia', icon: <Shield className="w-4 h-4" /> },
-    { id: 'stego', label: 'Esteganografia', icon: <ImageIcon className="w-4 h-4" /> },
-    { id: 'network', label: 'Rede & Servidor', icon: <Radio className="w-4 h-4" /> },
-    { id: 'mesh', label: 'Protocolo JJY Mesh', icon: <Cpu className="w-4 h-4 text-cyan-400" />, badge: 'Core' },
-    { id: 'protocols', label: 'Protocolos & Plugins', icon: <Share2 className="w-4 h-4 text-violet-400" />, badge: 'Omni' },
-    { id: 'satellite', label: 'Internet Satélite & SDR', icon: <Satellite className="w-4 h-4 text-sky-400" />, badge: 'Orbital' },
-    { id: 'radio', label: 'Rádio UHF/VHF & HF', icon: <RadioTower className="w-4 h-4 text-emerald-400" />, badge: 'RF' },
-    { id: 'underwater', label: 'Internet Subaquática', icon: <Waves className="w-4 h-4 text-cyan-400" />, badge: 'Subsea' },
-    { id: 'lora', label: 'Rádio LoRa & Meshtastic', icon: <Radio className="w-4 h-4 text-emerald-400" />, badge: 'LoRa' },
-    { id: 'cellular', label: 'Internet Celular 4G/5G & GL.iNet', icon: <Smartphone className="w-4 h-4 text-emerald-400" />, badge: '5G' },
-    { id: 'wifi', label: 'Wi-Fi Radar & Visão RF', icon: <Wifi className="w-4 h-4 text-cyan-400" />, badge: 'Radar' },
-    { id: 'disaster', label: 'Internet Guerra & Desastres', icon: <Flame className="w-4 h-4 text-amber-500" />, badge: 'Tático' },
-    { id: 'remote', label: 'Câmera & Transmissor', icon: <Camera className="w-4 h-4 text-emerald-400" />, badge: 'Sensor' },
-    { id: 'admin', label: 'Administrador (Recepção)', icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, badge: 'Admin' },
-  ];
+  const openAi = useCallback(() => window.dispatchEvent(new CustomEvent('jjy_open_ai_chat')), []);
+  const openShield = useCallback(() => setShowPrivacyModal(true), []);
+  const openAdmin = useCallback(() => switchTab('admin'), [switchTab]);
+  const install = useMemo(
+    () => ({
+      state: isInstalled ? ('installed' as const) : isInstallable ? ('ready' as const) : ('guide' as const),
+      run: handleInstallClick,
+    }),
+    // handleInstallClick depende apenas de deferredPrompt
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isInstalled, isInstallable, deferredPrompt]
+  );
+  const activeModule = findModule(activeTab);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Top Header */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <Lock className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-bold text-base tracking-tight text-white">Jjy</h1>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-                  v2.0.0
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">Suite de Transmissão & Comunicação Offline</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowPrivacyModal(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all cursor-pointer"
-              title="Blindagem de Identidade: MAC & Anti-Fingerprint Ativos"
-            >
-              <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Shield: {currentSyntheticMac.slice(0, 8)}...</span>
-            </button>
-
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              100% Offline
-            </span>
-
-            {isInstalled ? (
-              <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full border border-indigo-500/30 font-medium">
-                ✓ Instalado
-              </span>
-            ) : isInstallable ? (
-              <button
-                type="button"
-                onClick={handleInstallClick}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
-              >
-                <Download className="w-3.5 h-3.5" /> Instalar App
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowInstallGuide(true)}
-                className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl border border-slate-700 transition-all"
-              >
-                <Info className="w-3.5 h-3.5" /> Como Instalar
-              </button>
-            )}
-
-            <a
-              href="/Jjy.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
-              title="Abrir Perguntas e Mensagens Anônimas Jjy"
-            >
-              🔥 Jjy Anônimo
-            </a>
-          </div>
-        </div>
-
-        {/* Barra de Navegação Horizontal das Ferramentas */}
-        <div className="max-w-7xl mx-auto px-4 overflow-x-auto scrollbar-none flex gap-1.5 pb-2 pt-1">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 border border-indigo-500'
-                    : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-indigo-400'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </header>
-
-      {/* Conteúdo Principal */}
-      <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
-        {activeTab === 'globe' && <Earth3dMapView />}
-        {activeTab === 'free_internet' && (
-          <FreeInternetManifestoView
-            onNavigateToGlobe={() => setActiveTab('globe')}
-            onNavigateToProtocols={() => setActiveTab('protocols')}
-          />
-        )}
-        {activeTab === 'docs' && (
-          <DocumentationProjectView
-            onNavigateToGlobe={() => setActiveTab('globe')}
-            onNavigateToFreeInternet={() => setActiveTab('free_internet')}
-            onNavigateToProtocols={() => setActiveTab('protocols')}
-            onNavigateToWifi={() => setActiveTab('wifi')}
-          />
-        )}
-        {activeTab === 'chat' && <ChatLAN />}
-        {activeTab === 'qr' && <QRStudio />}
-        {activeTab === 'files' && <FileTransfer />}
-        {activeTab === 'sound' && <AudioModemView />}
-        {activeTab === 'light' && <LightModemView />}
-        {activeTab === 'crypto' && <CryptoToolsView />}
-        {activeTab === 'stego' && <StegoToolsView />}
-        {activeTab === 'network' && <NetworkHubView />}
-        {activeTab === 'mesh' && <JjyMeshProtocolView />}
-        {activeTab === 'protocols' && <ProtocolHubView />}
-        {activeTab === 'satellite' && <SatelliteInternetView />}
-        {activeTab === 'radio' && <TacticalRadioView />}
-        {activeTab === 'underwater' && <UnderwaterInternetView />}
-        {activeTab === 'lora' && <LoraMeshView />}
-        {activeTab === 'cellular' && <CellularGatewayView />}
-        {activeTab === 'wifi' && <WifiRadarView />}
-        {activeTab === 'disaster' && <DisasterInternetView />}
-        {activeTab === 'remote' && <RemoteMonitorView />}
-        {activeTab === 'admin' && <AdminDashboard />}
-      </main>
+    <AppShell
+      active={activeTab}
+      onNavigate={switchTab}
+      adminMode={activeTab === 'admin'}
+      isAdminSession={isAdminSession}
+      shieldLabel={currentSyntheticMac.slice(0, 8) + '…'}
+      onShield={openShield}
+      onAi={openAi}
+      onAdmin={openAdmin}
+      install={install}
+    >
+      {/* Conteúdo Principal Isolado com Resiliência & Lazy Loading */}
+      <ErrorBoundary fallbackTitle="Falha temporária ao renderizar aba" onReset={() => switchTab(DEFAULT_MODULE)}>
+        <Suspense fallback={<TabLoadingSpinner />}>
+          <main key={activeTab} className="jx-view max-w-7xl mx-auto px-4 py-5 sm:py-6 flex-1 w-full">
+            {activeTab === 'admin'
+              ? <AdminDashboard onExit={() => switchTab(DEFAULT_MODULE)} />
+              : activeModule?.render(switchTab)}
+          </main>
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Modal de Instalação PWA / Desktop */}
       {showInstallGuide && (
@@ -437,7 +347,7 @@ export const App: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setShowPrivacyModal(false);
-                  setActiveTab('admin');
+                  switchTab('admin');
                 }}
                 className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-all"
               >
@@ -451,11 +361,27 @@ export const App: React.FC = () => {
       {/* Pop-up de Emergência e Alertas do Administrador (Ativo globalmente com sirene e confirmação) */}
       <EmergencyAlertModal isAdmin={activeTab === 'admin'} />
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 py-4 bg-slate-950/80 text-center text-[11px] text-slate-500">
-        <p>🔒 100% Offline • Criptografia Nativa Web Crypto • Seus dados nunca saem do seu computador ou rede local.</p>
+      {/* Pop-up do Assistente de IA de Conexões para Todo o Site (Para Usuários) */}
+      <UserAiChatPopup
+        onNavigate={switchTab}
+        currentTab={activeTab}
+      />
+
+      <footer className="jx-footer">
+        <p>🔒 100% Offline • Criptografia nativa Web Crypto • Seus dados nunca saem do seu computador ou rede local.</p>
+        <a
+          href="/admin.html"
+          onClick={(e) => {
+            e.preventDefault();
+            switchTab('admin');
+          }}
+          title="Portal Restrito do Administrador (Requer Senha Mestra)"
+        >
+          <Lock className="w-3 h-3" />
+          <span>Acesso Administrativo (Restrito)</span>
+        </a>
       </footer>
-    </div>
+    </AppShell>
   );
 };
 

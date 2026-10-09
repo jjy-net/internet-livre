@@ -80,6 +80,25 @@ npm run electron
 
 ---
 
+## 📂 Estrutura de Pastas & Atalhos Rápidos
+
+O repositório está 100% organizado de forma modular e limpa:
+
+- **`atalhos/`**: Pasta centralizada com todos os 13 atalhos operacionais e scripts `.bat` / `.lnk` com ícones para todas as funcionalidades.
+  - Para iniciar tudo com 1 clique: utilize `0-INICIAR-TUDO.bat` na raiz ou dentro de `atalhos/`.
+  - Para recriar/atualizar atalhos no Desktop: utilize `CRIAR-ATALHOS.bat` ou `atalhos\RECRIAR-ATALHOS.bat`.
+- **`docs/`**: Documentação técnica e manuais organizados:
+  - `docs/guias/`: Manuais de uso, guias passo a passo, instalação e conexão.
+  - `docs/seguranca/`: Protocolos criptográficos, 2FA TOTP e políticas de mitigação.
+  - `docs/historico/`: Resumos de versões e notas de atualização.
+- **`scripts/`**: Scripts automatizados de automação divididos em:
+  - `scripts/build/`: Geração de executáveis Desktop e empacotamento.
+  - `scripts/deploy/`: Publicação na Hostinger VPS e deploys descentralizados.
+  - `scripts/dev/`: Verificações de integridade e checagem de tipos.
+- **`release/`**: Binário oficial compilado `JJY-Portable.exe`.
+
+---
+
 ## 📄 Licença
 
 Distribuído sob a licença **MIT**. Consulte o arquivo [LICENSE](LICENSE) para obter mais informações.  

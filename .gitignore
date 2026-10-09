@@ -10,15 +10,25 @@ nsyte.exe
 .DS_Store
 Thumbs.db
 
-# Documentação, conversas e notas locais (manter apenas no PC)
+# Documentação, conversas, transcrições e saídas de IA (manter apenas no PC)
 *.md
 !README.md
+!CONTRIBUTING.md
 *.txt
 *.tx
 *.log
 logs/
 conversas/
 transcripts/
+*.jsonl
+Claude outputs/
+*claude*
+*Claude*
+chat-logs/
+prompts/
+brain/
+docs/
+
 *hostinger*
 *HOSTINGER*
 *Hostinger*
@@ -34,10 +44,13 @@ jjy-hostinger.zip
 *.ps1
 *.lnk
 Atalhos Jyy/
+Atalhos JJY/
+atalhos/
 
 # Testes internos e ferramentas auxiliares
 tests/
 .nsite/
+.agents/
 setup-electron.js
 
 # Arquivos e testes legados na pasta public (manter apenas no PC)

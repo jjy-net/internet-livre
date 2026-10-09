@@ -27,12 +27,95 @@ export const VERSION = '2.0.0';
 export const DEFAULT_PORT = 4870;
 export const DEFAULT_HTTPS_PORT = 4873;
 export const DISCOVERY_PORT = 48777;
-export const DEFAULT_ADMIN_PASSWORD = 'DL-Admin#9xK7$SecShield!2026';
+// SEGURANÇA: Senha gerada aleatoriamente se nenhuma for definida via DATALINK_ADMIN_PASSWORD
+export const DEFAULT_ADMIN_PASSWORD = (() => {
+  if (process.env.DATALINK_ADMIN_PASSWORD) return process.env.DATALINK_ADMIN_PASSWORD;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
+  const bytes = crypto.randomBytes(24);
+  let pw = 'DL-';
+  for (let i = 0; i < 24; i++) pw += chars[bytes[i] % chars.length];
+  return pw;
+})();
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+
+/* ------------------------------------------------------------------ */
+/* TOTP (RFC 6238) — Autenticação de dois fatores offline              */
+/* ------------------------------------------------------------------ */
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function base32Encode(buffer) {
+  let bits = 0, value = 0, output = '';
+  for (let i = 0; i < buffer.length; i++) {
+    value = (value << 8) | buffer[i];
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  return output;
+}
+
+function base32Decode(str) {
+  str = str.replace(/[= ]/g, '').toUpperCase();
+  let bits = 0, value = 0;
+  const output = [];
+  for (let i = 0; i < str.length; i++) {
+    const idx = BASE32_ALPHABET.indexOf(str[i]);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 0xFF);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(output);
+}
+
+function generateTotpSecret() {
+  return base32Encode(crypto.randomBytes(20)); // 160 bits
+}
+
+function computeHotp(secret, counter) {
+  const key = base32Decode(secret);
+  const buf = Buffer.alloc(8);
+  for (let i = 7; i >= 0; i--) {
+    buf[i] = counter & 0xff;
+    counter = Math.floor(counter / 256);
+  }
+  const hmac = crypto.createHmac('sha1', key).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code = ((hmac[offset] & 0x7f) << 24) |
+               ((hmac[offset + 1] & 0xff) << 16) |
+               ((hmac[offset + 2] & 0xff) << 8) |
+               (hmac[offset + 3] & 0xff);
+  return String(code % 1000000).padStart(6, '0');
+}
+
+function verifyTotp(secret, token, window = 1) {
+  const counter = Math.floor(Date.now() / 30000);
+  for (let i = -window; i <= window; i++) {
+    const expected = computeHotp(secret, counter + i);
+    // Comparação timing-safe
+    if (expected.length === token.length) {
+      const a = Buffer.from(expected);
+      const b = Buffer.from(token);
+      if (crypto.timingSafeEqual(a, b)) return true;
+    }
+  }
+  return false;
+}
+
+function buildTotpUri(secret, label = 'Jjy Admin', issuer = 'Jjy') {
+  return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(label)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+}
 const MAX_TEXT_MESSAGE = 32 * 1024 * 1024;        // 32 MB (fotos base64, telas e JSON)
 const MAX_BINARY_MESSAGE = 64 * 1024 * 1024;      // 64 MB (chunks de arquivo)
 const MAX_PEERS = 64;
+const MAX_POST_BODY = 1024 * 1024;               // 1 MB — limite para corpo de requisições POST API
 const HELLO_TIMEOUT = 15000;
 const LIVENESS_INTERVAL = 20000;
 const RELAY_TYPES = new Set(['chat', 'typing', 'read', 'react', 'file-meta', 'file-end', 'stream-frame', 'remote-alert', 'file-offer', 'file-request', 'audio-sample', 'remote-command', 'device-telemetry', 'screen-frame', 'screen-telemetry', 'terminal-session', 'parental-policy', 'parental-alert', 'admin-popup', 'alert-ack', 'silence-alert', 'play-sound', 'intercom-audio', 'location:update', 'network-lockdown']);
@@ -51,8 +134,9 @@ function savePendingAlert(alertMsg) {
 function triggerWindowsNativeAlert(title, message) {
   if (process.platform !== 'win32') return;
   try {
-    const safeTitle = String(title || 'ALERTA DO ADMINISTRADOR').replace(/["`$\\]/g, ' ').slice(0, 100);
-    const safeMsg = String(message || 'Mensagem urgente da Central de Administração').replace(/["`$\\]/g, ' ').slice(0, 300);
+    // SEGURANÇA: Sanitização rigorosa contra injeção de PowerShell — remove TODOS os caracteres perigosos
+    const safeTitle = String(title || 'ALERTA DO ADMINISTRADOR').replace(/[^a-zA-Z0-9À-ú\s.,!?:;\-()]/g, '').slice(0, 100);
+    const safeMsg = String(message || 'Mensagem urgente da Central de Administração').replace(/[^a-zA-Z0-9À-ú\s.,!?:;\-()]/g, '').slice(0, 300);
     const psScript = `[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show("${safeMsg}", "${safeTitle}", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)`;
     const child = spawn('powershell', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', psScript], {
       detached: true,
@@ -326,6 +410,8 @@ function serveStatic(req, res, webRoot) {
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'SAMEORIGIN',
         'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=(self)',
+        'X-XSS-Protection': '1; mode=block',
       };
       res.writeHead(200, headers);
       fs.createReadStream(target).pipe(res);
@@ -390,10 +476,27 @@ export function getSslCredentials(certPath, passphrase = 'jjy_secure_ssl') {
     if (!fs.existsSync(targetPath)) {
       if (process.platform === 'win32') {
         const localIps = getLocalIPs();
-        const safePass = String(passphrase || 'jjy2026').replace(/["`$\\]/g, '');
-        const dnsNames = ['localhost', '127.0.0.1', ...localIps].map(n => `"${n.replace(/[^0-9a-zA-Z.:-]/g, '')}"`).join(',');
-        const psScript = `$cert = New-SelfSignedCertificate -DnsName ${dnsNames} -CertStoreLocation "cert:\\CurrentUser\\My" -NotAfter (Get-Date).AddYears(10) -KeyLength 2048 -FriendlyName "Jjy-LAN-SSL"; $pwd = ConvertTo-SecureString -String "${safePass}" -Force -AsPlainText; Export-PfxCertificate -Cert $cert -FilePath "${targetPath.replace(/\\/g, '\\\\')}" -Password $pwd | Out-Null;`;
-        execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript}"`, { stdio: 'ignore' });
+        // SEGURANÇA: Sanitização whitelist rigorosa — apenas alfanuméricos, pontos e hífens
+        const safePass = String(passphrase || 'jjy2026').replace(/[^a-zA-Z0-9_\-!@#$%&*]/g, '');
+        const dnsEntries = ['localhost', '127.0.0.1', ...localIps]
+          .map(n => String(n).replace(/[^0-9a-zA-Z.:-]/g, ''))
+          .filter(n => n.length > 0 && n.length < 64);
+        if (dnsEntries.length === 0) throw new Error('Nenhum endereço válido para certificado');
+        // SEGURANÇA: Usa arquivo temporário para o script PowerShell em vez de interpolação na linha de comando
+        const safePath = targetPath.replace(/\\/g, '\\\\');
+        const dnsNames = dnsEntries.map(n => `"${n}"`).join(',');
+        const psScript = [
+          `$cert = New-SelfSignedCertificate -DnsName ${dnsNames} -CertStoreLocation "cert:\\CurrentUser\\My" -NotAfter (Get-Date).AddYears(10) -KeyLength 2048 -FriendlyName "Jjy-LAN-SSL"`,
+          `$pwd = ConvertTo-SecureString -String "${safePass}" -Force -AsPlainText`,
+          `Export-PfxCertificate -Cert $cert -FilePath "${safePath}" -Password $pwd | Out-Null`,
+        ].join('; ');
+        const psFile = path.join(os.tmpdir(), `jjy_ssl_${Date.now()}.ps1`);
+        fs.writeFileSync(psFile, psScript, 'utf8');
+        try {
+          execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${psFile}"`, { stdio: 'ignore', timeout: 30000 });
+        } finally {
+          try { fs.unlinkSync(psFile); } catch { /* ignorar */ }
+        }
       }
     }
     if (fs.existsSync(targetPath)) {
@@ -436,6 +539,19 @@ export function createDataLinkServer(options = {}) {
   const adminPassword = options.adminPassword || process.env.DATALINK_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
   const adminSessions = new Map();     // token -> { token, ip, createdAt, expiresAt }
   const bannedIps = new Map();         // ip -> { ip, reason, bannedAt, expiresAt, auto }
+
+  // TOTP (2FA offline) — estado persistido em arquivo local
+  const totpStatePath = path.join(__dirname, '.totp-state.json');
+  let totpState = { enabled: false, secret: null, setupPending: false, pendingSecret: null };
+  try {
+    if (fs.existsSync(totpStatePath)) {
+      const raw = JSON.parse(fs.readFileSync(totpStatePath, 'utf8'));
+      if (raw && typeof raw === 'object') totpState = { ...totpState, ...raw };
+    }
+  } catch { /* estado inicial se arquivo corrompido */ }
+  function saveTotpState() {
+    try { fs.writeFileSync(totpStatePath, JSON.stringify(totpState), 'utf8'); } catch { /* ignorar */ }
+  }
   const failedLogins = new Map();      // ip -> { count, lastAttempt }
   const rateLimits = new Map();        // ip -> { count, windowStart, violations }
   const securityStats = {
@@ -1430,10 +1546,20 @@ export function createDataLinkServer(options = {}) {
       const tryPort = portOverride ?? actualPort;
       return new Promise((resolve, reject) => {
         const requestHandler = (req, res) => {
-          // CORS headers para chamadas do frontend
-          res.setHeader('Access-Control-Allow-Origin', '*');
+          // CORS: Permitir origens da rede local e localhost (não wildcard aberto em produção)
+          const origin = req.headers['origin'] || '';
+          const allowedOriginPatterns = [
+            /^https?:\/\/localhost(:\d+)?$/,
+            /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+            /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+            /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+            /^https?:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+          ];
+          const corsOrigin = allowedOriginPatterns.some(p => p.test(origin)) ? origin : `http://localhost:${actualPort}`;
+          res.setHeader('Access-Control-Allow-Origin', corsOrigin);
           res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
           res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          res.setHeader('Vary', 'Origin');
 
           if (req.method === 'OPTIONS') {
             res.writeHead(204).end();
@@ -1444,8 +1570,13 @@ export function createDataLinkServer(options = {}) {
           const isLocal = isLoopbackOrLocal(clientIp);
           const isAdmin = checkAdminAuth(req);
 
+          // Parse URL para separar pathname de query string
+          // Corrige bug onde req.url inclui ?token=xxx e comparações exatas falham
+          const _parsedUrl = new URL(req.url, 'http://localhost');
+          const pathname = _parsedUrl.pathname;
+
           // Rota direta de emergência para auto-desbloqueio (Apenas Localhost ou Admin)
-          if (req.url === '/api/unban-self' || req.url === '/api/unban-local') {
+          if (pathname === '/api/unban-self' || pathname === '/api/unban-local') {
             if (!isLocal && !isAdmin) {
               res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
               res.end(JSON.stringify({ ok: false, error: 'Apenas acesso local ou administrador pode autodesbloquear.' }));
@@ -1487,7 +1618,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // 3. Defesa Blue Team: Rate Limiting & Anti-DDoS por IP
-          const maxReqs = (req.url === '/api/admin/login') ? 15 : 180;
+          const maxReqs = (pathname === '/api/admin/login') ? 15 : 180;
           const rateCheck = checkRateLimit(clientIp, maxReqs);
           if (!rateCheck.ok) {
             securityStats.blockedRequests++;
@@ -1500,7 +1631,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // 4. Defesa Blue Team: Proteção contra Buffer Overflow e Exaustão de RAM
-          const isCctvUpload = req.url.startsWith('/api/cctv');
+          const isCctvUpload = pathname.startsWith('/api/cctv');
           const maxPayload = isCctvUpload ? 15 * 1024 * 1024 : 64 * 1024;
           const declaredContentLength = parseInt(req.headers['content-length'] || '0', 10);
           if (declaredContentLength > maxPayload && req.method === 'POST') {
@@ -1512,17 +1643,17 @@ export function createDataLinkServer(options = {}) {
           }
 
           // Atalhos amigáveis
-          if (req.url === '/ngl' || req.url === '/ngl/' || req.url === '/jjy' || req.url === '/jjy/') {
+          if (pathname === '/ngl' || pathname === '/ngl/' || pathname === '/jjy' || pathname === '/jjy/') {
             res.writeHead(302, { Location: '/Jjy.html' }).end();
             return;
           }
-          if (req.url === '/chat' || req.url === '/chat/') {
+          if (pathname === '/chat' || pathname === '/chat/') {
             res.writeHead(302, { Location: '/DataLink-Chat.html' }).end();
             return;
           }
 
           // API REST de Informações de Rede e Servidor (Pública)
-          if (req.url === '/api/info' || req.url === '/api/network') {
+          if (pathname === '/api/info' || pathname === '/api/network') {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({
               ok: true,
@@ -1538,7 +1669,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Autenticação de Administrador (Login)
-          if (req.url === '/api/admin/login' && req.method === 'POST') {
+          if (pathname === '/api/admin/login' && req.method === 'POST') {
             let body = '';
             let bodyTooLarge = false;
             req.on('data', (c) => {
@@ -1557,12 +1688,28 @@ export function createDataLinkServer(options = {}) {
               try {
                 const data = JSON.parse(body || '{}');
                 const password = String(data.password || '');
+                const otpCode = String(data.otp || '').replace(/\s/g, '');
                 if (verifyAdminPassword(password)) {
+                  // Se TOTP está habilitado, exigir código OTP
+                  if (totpState.enabled && totpState.secret) {
+                    if (!otpCode || otpCode.length !== 6) {
+                      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                      res.end(JSON.stringify({ ok: false, error: 'Código TOTP obrigatório.', requireOtp: true }));
+                      return;
+                    }
+                    if (!verifyTotp(totpState.secret, otpCode)) {
+                      securityStats.failedLogins++;
+                      logEvent('security_totp_fail', `Código TOTP inválido de ${clientIp}`);
+                      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                      res.end(JSON.stringify({ ok: false, error: 'Código TOTP inválido ou expirado.', requireOtp: true }));
+                      return;
+                    }
+                  }
                   failedLogins.delete(clientIp);
                   const token = createAdminSession(clientIp);
-                  logEvent('admin_login', `Login de administrador concedido para ${clientIp}`);
+                  logEvent('admin_login', `Login de administrador concedido para ${clientIp}${totpState.enabled ? ' (com 2FA)' : ''}`);
                   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                  res.end(JSON.stringify({ ok: true, token, expiresIn: 43200 }));
+                  res.end(JSON.stringify({ ok: true, token, expiresIn: 43200, totpEnabled: totpState.enabled }));
                   return;
                 }
 
@@ -1600,7 +1747,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Logout de Administrador
-          if (req.url === '/api/admin/logout' && req.method === 'POST') {
+          if (pathname === '/api/admin/logout' && req.method === 'POST') {
             const auth = req.headers['authorization'] || '';
             const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
             if (token) adminSessions.delete(token);
@@ -1610,7 +1757,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Checar Status de Autenticação do Administrador
-          if (req.url === '/api/admin/status' && req.method === 'GET') {
+          if (pathname === '/api/admin/status' && req.method === 'GET') {
             const isAuthed = checkAdminAuth(req);
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ ok: true, authenticated: isAuthed }));
@@ -1618,7 +1765,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Métricas de Segurança Blue Team
-          if (req.url === '/api/admin/security' && req.method === 'GET') {
+          if (pathname === '/api/admin/security' && req.method === 'GET') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1637,7 +1784,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Banir IP Manualmente
-          if (req.url === '/api/admin/ban' && req.method === 'POST') {
+          if (pathname === '/api/admin/ban' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1645,7 +1792,8 @@ export function createDataLinkServer(options = {}) {
               return;
             }
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body || '{}');
@@ -1669,7 +1817,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Desbloquear IP (Unban)
-          if (req.url === '/api/admin/unban' && req.method === 'POST') {
+          if (pathname === '/api/admin/unban' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1677,7 +1825,8 @@ export function createDataLinkServer(options = {}) {
               return;
             }
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body || '{}');
@@ -1694,7 +1843,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Desbloquear Todos os IPs (Limpar Quarentena Geral)
-          if (req.url === '/api/admin/unban-all' && req.method === 'POST') {
+          if (pathname === '/api/admin/unban-all' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' })
                 .end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
@@ -1711,7 +1860,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Configurações de Acesso & Lotação por Número de Usuários (GET)
-          if (req.url === '/api/admin/config' && req.method === 'GET') {
+          if (pathname === '/api/admin/config' && req.method === 'GET') {
             if (!checkAdminAuth(req)) {
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' })
                 .end(JSON.stringify({ ok: false, error: 'Autenticação necessária' }));
@@ -1731,14 +1880,15 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Atualizar Configurações de Acesso & Lotação por Número de Usuários (POST)
-          if (req.url === '/api/admin/config' && req.method === 'POST') {
+          if (pathname === '/api/admin/config' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' })
                 .end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
               return;
             }
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body || '{}');
@@ -1758,7 +1908,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST de Telemetria (Protegida)
-          if (req.url === '/api/telemetry' || req.url === '/api/admin/metrics') {
+          if (pathname === '/api/telemetry' || pathname === '/api/admin/metrics') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1771,9 +1921,10 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Jjy / NGL Mensagens Anônimas
-          if ((req.url === '/api/jjy/send' || req.url === '/api/ngl/send') && req.method === 'POST') {
+          if ((pathname === '/api/jjy/send' || pathname === '/api/ngl/send') && req.method === 'POST') {
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body);
@@ -1822,7 +1973,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if ((req.url.startsWith('/api/jjy/inbox') || req.url.startsWith('/api/ngl/inbox')) && req.method === 'GET') {
+          if ((pathname.startsWith('/api/jjy/inbox') || pathname.startsWith('/api/ngl/inbox')) && req.method === 'GET') {
             const parsedUrl = new URL(req.url, 'http://localhost');
             const target = (parsedUrl.searchParams.get('u') || parsedUrl.searchParams.get('user') || '').trim().toLowerCase();
             const list = nglStore.get(target) || [];
@@ -1831,9 +1982,10 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if ((req.url === '/api/jjy/delete' || req.url === '/api/ngl/delete') && req.method === 'POST') {
+          if ((pathname === '/api/jjy/delete' || pathname === '/api/ngl/delete') && req.method === 'POST') {
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const { target, id } = JSON.parse(body);
@@ -1854,8 +2006,117 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
+          // API REST: TOTP 2FA — Setup, Ativação, Desativação (Protegida)
+          if (pathname === '/api/admin/totp/setup' && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
+              return;
+            }
+            // Gera um novo segredo pendente (não ativa até confirmar com código válido)
+            const newSecret = generateTotpSecret();
+            totpState.pendingSecret = newSecret;
+            totpState.setupPending = true;
+            saveTotpState();
+            const uri = buildTotpUri(newSecret);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              ok: true,
+              secret: newSecret,
+              uri,
+              message: 'Escaneie o QR code no app autenticador (Google Authenticator, Aegis, etc.) e confirme com um código válido via /api/admin/totp/enable',
+            }));
+            return;
+          }
+
+          if (pathname === '/api/admin/totp/enable' && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
+              return;
+            }
+            let body = '';
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const code = String(data.code || '').replace(/\s/g, '');
+                if (!totpState.pendingSecret || !totpState.setupPending) {
+                  res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Execute /api/admin/totp/setup primeiro' }));
+                  return;
+                }
+                if (!code || code.length !== 6 || !verifyTotp(totpState.pendingSecret, code)) {
+                  res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Código TOTP inválido. Verifique o horário do dispositivo.' }));
+                  return;
+                }
+                // Código válido — ativar TOTP
+                totpState.secret = totpState.pendingSecret;
+                totpState.enabled = true;
+                totpState.pendingSecret = null;
+                totpState.setupPending = false;
+                saveTotpState();
+                logEvent('admin_totp', `TOTP 2FA ativado por ${clientIp}`);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: true, message: '2FA TOTP ativado com sucesso. A partir de agora, o login exigirá senha + código OTP.' }));
+              } catch {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: 'JSON inválido' }));
+              }
+            });
+            return;
+          }
+
+          if (pathname === '/api/admin/totp/disable' && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
+              return;
+            }
+            let body = '';
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const password = String(data.password || '');
+                // Requer senha para desativar (proteção extra)
+                if (!verifyAdminPassword(password)) {
+                  res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Senha de administrador necessária para desativar 2FA' }));
+                  return;
+                }
+                totpState.enabled = false;
+                totpState.secret = null;
+                totpState.pendingSecret = null;
+                totpState.setupPending = false;
+                saveTotpState();
+                logEvent('admin_totp', `TOTP 2FA desativado por ${clientIp}`);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: true, message: '2FA TOTP desativado.' }));
+              } catch {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: 'JSON inválido' }));
+              }
+            });
+            return;
+          }
+
+          if (pathname === '/api/admin/totp/status' && req.method === 'GET') {
+            const isAuth = checkAdminAuth(req);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              ok: true,
+              enabled: !!totpState.enabled,
+              setupPending: isAuth ? !!totpState.setupPending : false
+            }));
+            return;
+          }
+
           // API REST de Ações Administrativas (Protegida)
-          if (req.url === '/api/admin/action' && req.method === 'POST') {
+          if (pathname === '/api/admin/action' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1863,7 +2124,8 @@ export function createDataLinkServer(options = {}) {
               return;
             }
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const actionData = JSON.parse(body);
@@ -1965,7 +2227,7 @@ export function createDataLinkServer(options = {}) {
           }
 
           // API REST: Sistema Inteligente de Gravações CFTV (DVR Local)
-          if (req.url.startsWith('/api/cctv/recordings') && req.method === 'GET') {
+          if (pathname.startsWith('/api/cctv/recordings') && req.method === 'GET') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -2020,7 +2282,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if (req.url === '/api/cctv/recordings/save' && req.method === 'POST') {
+          if (pathname === '/api/cctv/recordings/save' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -2132,7 +2394,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if (req.url === '/api/cctv/recordings/toggle-star' && req.method === 'POST') {
+          if (pathname === '/api/cctv/recordings/toggle-star' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -2140,7 +2402,8 @@ export function createDataLinkServer(options = {}) {
               return;
             }
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body || '{}');
@@ -2165,7 +2428,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if (req.url === '/api/cctv/recordings/delete' && req.method === 'POST') {
+          if (pathname === '/api/cctv/recordings/delete' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -2173,7 +2436,8 @@ export function createDataLinkServer(options = {}) {
               return;
             }
             let body = '';
-            req.on('data', (c) => { body += c; });
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body || '{}');
@@ -2251,7 +2515,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          if (req.url === '/api/cctv/open-folder' && req.method === 'POST') {
+          if (pathname === '/api/cctv/open-folder' && req.method === 'POST') {
             if (!checkAdminAuth(req)) {
               securityStats.blockedRequests++;
               res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -2279,7 +2543,7 @@ export function createDataLinkServer(options = {}) {
             return;
           }
 
-          const isRootRequest = (req.url === '/' || req.url === '/index.html');
+          const isRootRequest = (pathname === '/' || pathname === '/index.html');
           if (isRootRequest && (!webRoot || !fs.existsSync(path.join(webRoot, 'index.html')))) {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(welcomePage(actualPort));
             return;
@@ -2412,6 +2676,10 @@ export function createDataLinkServer(options = {}) {
             }
             for (const [ip, f] of failedLogins.entries()) {
               if (now - f.lastAttempt > 3600000) failedLogins.delete(ip);
+            }
+            // Limpar alertas de emergência expirados
+            for (const [target, alert] of pendingEmergencyAlerts.entries()) {
+              if (now > alert.expiresAt) pendingEmergencyAlerts.delete(target);
             }
           }, 60000);
           cleanupTimer.unref?.();

@@ -7,7 +7,7 @@
  */
 
 export type EstadoVizinho = 'Candidato' | 'Ativo' | 'Inativo';
-export type MeioEnlace = 'Acoustic' | 'UDP' | 'BLE' | 'WebRTC' | 'Virtual';
+export type MeioEnlace = 'Acoustic' | 'UDP' | 'BLE' | 'WebRTC' | 'Virtual' | 'LoRa_RF';
 
 export interface Vizinho {
   peerId: string;

@@ -469,7 +469,6 @@ Sua missão é auxiliar no controle de usuários, detecção de ameaças, preven
 
 3. **Módulos Administrativos:**
    - CFTV (DVR local, fotos periódicas, tela ao vivo).
-   - Lan House NexCafé (terminais, pré/pós-pago, comandas e bloqueio).
    - Controle Parental (filtros sensíveis).
    - Blue Team (Fail2Ban, WAF, Tarpit).
    - Contenção Zero-Trust (DEFCON 1 Lockdown, Quarentena Criptográfica, Kill-Switch 4003, Corte de Sensores, Congelamento de Tela).

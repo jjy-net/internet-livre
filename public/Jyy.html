@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jjy — Mensagens e Perguntas Anônimas</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<style>
+/* ============================================================
+   DESIGN SYSTEM & ESTILOS GERAIS (ESTILO NGL / INSTAGRAM STORY)
+   ============================================================ */
+:root {
+    --ngl-orange: #ff5238;
+    --ngl-pink: #ff2a85;
+    --ngl-sunset: linear-gradient(135deg, #ff4538 0%, #ff6b3d 40%, #ff2a85 100%);
+    --ngl-card-bg: #ffffff;
+    --ngl-dark: #121217;
+    --ngl-dark-card: #1c1c24;
+    --ngl-text: #111827;
+    --ngl-subtext: #6b7280;
+    --ngl-border: #e5e7eb;
+    --ngl-radius: 24px;
+    --ngl-shadow: 0 20px 40px -15px rgba(255, 69, 56, 0.35);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: #0d0e12;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(255, 69, 56, 0.18) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(255, 42, 133, 0.18) 0px, transparent 50%);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    overflow-x: hidden;
+}
+
+/* Container que simula tela mobile no desktop e fica 100% no celular */
+.app-viewport {
+    width: 100%;
+    max-width: 440px;
+    min-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-bottom: 30px;
+}
+
+/* Header & Tabs */
+.top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 6px;
+    margin-bottom: 12px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #fff;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+}
+
+.brand-flame {
+    width: 32px;
+    height: 32px;
+    background: var(--ngl-sunset);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 4px 15px rgba(255, 69, 56, 0.4);
+}
+
+.tab-pill {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 30px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+}
+
+.tab-btn {
+    border: none;
+    background: transparent;
+    color: #aaa;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+
+.tab-btn.active {
+    background: var(--ngl-sunset);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(255, 69, 56, 0.35);
+}
+
+.badge-unread {
+    background: #ff2a85;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* ============================================================
+   CARD DE ENVIO ANÔNIMO (VISÃO DO VISITANTE / AMIGO)
+   ============================================================ */
+.send-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Avatar e @username */
+.profile-header {
+    text-align: center;
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.avatar-ring {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    padding: 3px;
+    background: var(--ngl-sunset);
+    box-shadow: 0 8px 24px rgba(255, 69, 56, 0.35);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.avatar-ring:hover {
+    transform: scale(1.05);
+}
+
+.avatar-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #181920;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+}
+
+.profile-username {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.verified-icon {
+    color: #38bdf8;
+    font-size: 14px;
+}
+
+.profile-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+/* O Famoso Adesivo NGL (Sticker Card) */
+.ngl-sticker {
+    background: #ffffff;
+    border-radius: var(--ngl-radius);
+    padding: 22px 20px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    color: var(--ngl-text);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.sticker-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sticker-prompt-box {
+    flex: 1;
+}
+
+.sticker-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #fff1f2;
+    color: #e11d48;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+}
+
+.sticker-prompt-title {
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #111827;
+    letter-spacing: -0.3px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    transition: opacity 0.2s;
+}
+
+/* Botão de Dados (Trocar Pergunta) */
+.dice-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: none;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.dice-btn:hover {
+    background: #e5e7eb;
+    transform: scale(1.1);
+}
+
+.dice-btn:active {
+    transform: scale(0.95) rotate(180deg);
+}
+
+.dice-anim {
+    animation: rollDice 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes rollDice {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Campo de Texto para mensagem */
+.ngl-textarea-wrap {
+    position: relative;
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 14px;
+    transition: all 0.2s;
+}
+
+.ngl-textarea-wrap:focus-within {
+    border-color: #ff5238;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(255, 82, 56, 0.12);
+}
+
+.ngl-textarea {
+    width: 100%;
+    min-height: 110px;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    font-size: 15px;
+    color: #111827;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.ngl-textarea::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+.textarea-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+/* Seletor de Mood / Reação */
+.mood-picker {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+
+.mood-picker::-webkit-scrollbar {
+    display: none;
+}
+
+.mood-chip {
+    padding: 6px 10px;
+    background: #f3f4f6;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.mood-chip:hover, .mood-chip.active {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+    transform: translateY(-1px);
+}
+
+/* Botão Enviar Gigante */
+.btn-send-ngl {
+    width: 100%;
+    padding: 16px;
+    border-radius: 30px;
+    border: none;
+    background: var(--ngl-sunset);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 12px 28px rgba(255, 69, 56, 0.4);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    letter-spacing: -0.2px;
+}
+
+.btn-send-ngl:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px rgba(255, 69, 56, 0.5);
+}
+
+.btn-send-ngl:active {
+    transform: scale(0.98);
+}
+
+.security-seal {
+    text-align: center;
+    font-size: 11px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+/* ============================================================
+   TELA DE SUCESSO (APÓS ENVIAR)
+   ============================================================ */
+.success-card {
+    display: none;
+    background: #1c1c24;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--ngl-radius);
+    padding: 36px 24px;
+    text-align: center;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.success-icon-wrap {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+}
+
+.success-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.success-desc {
+    font-size: 13px;
+    color: #9ca3af;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.btn-again {
+    width: 100%;
+    padding: 14px;
+    border-radius: 24px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+}
+
+.btn-again:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.btn-create-my-link {
+    width: 100%;
+    padding: 14px;
+    border-radius: 24px;
+    border: none;
+    background: var(--ngl-sunset);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 8px 20px rgba(255, 69, 56, 0.35);
+}
+
+/* ============================================================
+   PAINEL DO DONO: CAIXA DE ENTRADA (INBOX) & COMPARTILHAR LINK
+   ============================================================ */
+.inbox-container {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Card de Link Compartilhável */
+.share-link-card {
+    background: linear-gradient(135deg, rgba(255, 69, 56, 0.15), rgba(255, 42, 133, 0.15));
+    border: 1px solid rgba(255, 69, 56, 0.3);
+    border-radius: 20px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.share-link-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.share-link-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.link-input-row {
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 6px 6px 6px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    align-items: center;
+}
+
+.link-text {
+    flex: 1;
+    font-size: 12px;
+    color: #fdba74;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: monospace;
+}
+
+.btn-copy-link {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--ngl-sunset);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-copy-link:hover {
+    filter: brightness(1.1);
+}
+
+.share-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.btn-action-small {
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-action-small:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Feed de Mensagens Anônimas */
+.inbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 2px;
+}
+
+.inbox-title {
+    font-size: 16px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inbox-count-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+.btn-clear-inbox {
+    background: transparent;
+    border: none;
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Card de Mensagem Recebida */
+.msg-card {
+    background: #1c1c24;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.msg-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 69, 56, 0.4);
+    box-shadow: 0 8px 24px rgba(255, 69, 56, 0.15);
+}
+
+.msg-card.unread {
+    border-left: 4px solid #ff2a85;
+    background: linear-gradient(90deg, rgba(255, 42, 133, 0.08) 0%, #1c1c24 30%);
+}
+
+.msg-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+}
+
+.msg-prompt-badge {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fdba74;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-weight: 700;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.msg-time {
+    color: #6b7280;
+}
+
+.msg-content {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f3f4f6;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.msg-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 10px;
+}
+
+.msg-mood-tag {
+    font-size: 12px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-open-story {
+    background: var(--ngl-sunset);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: transform 0.15s;
+}
+
+.btn-open-story:hover {
+    transform: scale(1.05);
+}
+
+.empty-inbox {
+    text-align: center;
+    padding: 50px 20px;
+    color: #6b7280;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.6;
+}
+
+/* ============================================================
+   MODAL DO STORY (INSTAGRAM / WHATSAPP STORY GENERATOR)
+   ============================================================ */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.2s ease;
+}
+
+.story-modal-box {
+    width: 100%;
+    max-width: 440px;
+    max-height: 94vh;
+    background: #181920;
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+}
+
+.story-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.story-modal-title {
+    font-size: 15px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.close-modal-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.story-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+/* O Cartão do Story (Live Preview no Modal) */
+.story-preview-card {
+    width: 270px;
+    height: 480px; /* proporção 9:16 */
+    border-radius: 22px;
+    padding: 24px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    background: var(--ngl-sunset);
+    color: #111827;
+    transition: background 0.3s;
+}
+
+.story-top-logo {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.story-sticker-wrap {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+}
+
+.story-sticker-prompt {
+    font-size: 11px;
+    font-weight: 800;
+    color: #e11d48;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.story-sticker-message {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.35;
+}
+
+.story-reply-sticker {
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 14px;
+    color: #fff;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.story-reply-text {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.story-bottom-hint {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Customização da Resposta no Modal */
+.story-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.story-reply-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #252631;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+}
+
+.story-reply-input:focus {
+    border-color: #ff5238;
+}
+
+/* Temas de cores do Story */
+.theme-picker-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.2s;
+}
+
+.theme-circle.active {
+    border-color: #fff;
+    transform: scale(1.15);
+}
+
+.story-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.btn-download-story {
+    width: 100%;
+    padding: 14px;
+    border-radius: 20px;
+    border: none;
+    background: var(--ngl-sunset);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(255, 69, 56, 0.4);
+    transition: all 0.2s;
+}
+
+.btn-download-story:hover {
+    filter: brightness(1.1);
+}
+
+.btn-copy-story-img {
+    width: 100%;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Modal do QR Code */
+.qr-modal-content {
+    background: #fff;
+    border-radius: 24px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    color: #111827;
+    text-align: center;
+}
+
+#ngl-qr-canvas {
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Canvas Invisível para Render do Story Full HD (1080x1920) */
+#story-render-canvas {
+    display: none;
+}
+
+/* Canvas Confetti */
+#confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* Toast de Alerta */
+.toast-msg {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(50px);
+    background: #1f2937;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 2000;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toast-msg.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+}
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<canvas id="story-render-canvas" width="1080" height="1920"></canvas>
+
+<div class="app-viewport">
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+        <a href="#" class="brand" onclick="switchView('send'); return false;">
+            <div class="brand-flame">🔥</div>
+            <span>Jjy</span>
+        </a>
+        <div class="tab-pill">
+            <button class="tab-btn active" id="tab-send" onclick="switchView('send')">
+                <span>📝 Enviar</span>
+            </button>
+            <button class="tab-btn" id="tab-inbox" onclick="switchView('inbox')">
+                <span>📥 Inbox</span>
+                <span class="badge-unread" id="unread-pill" style="display:none">0</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- =======================================================
+         1. ABA: ENVIAR MENSAGEM ANÔNIMA (VISITANTE / AMIGO)
+         ======================================================= -->
+    <main class="send-container" id="send-view">
+        <!-- Header do Usuário que receberá -->
+        <div class="profile-header">
+            <div class="avatar-ring" onclick="changeTargetPromptUser()" title="Clique para trocar o usuário do link">
+                <div class="avatar-inner" id="profile-avatar">👤</div>
+            </div>
+            <div class="profile-username">
+                <span id="target-username-display">@usuario</span>
+                <span class="verified-icon">✓</span>
+            </div>
+            <div class="profile-hint" id="profile-hint-text">Envie algo sincero e anônimo</div>
+        </div>
+
+        <!-- Adesivo NGL (Pergunta) -->
+        <div class="ngl-sticker">
+            <div class="sticker-header">
+                <div class="sticker-prompt-box">
+                    <div class="sticker-tag">🔥 PERGUNTA / PROMPT</div>
+                    <div class="sticker-prompt-title" id="current-prompt-text">
+                        mande-me mensagens anônimas! 🤫
+                    </div>
+                </div>
+                <button class="dice-btn" id="dice-btn" onclick="rollNextPrompt()" title="Trocar pergunta">
+                    🎲
+                </button>
+            </div>
+
+            <!-- Textarea da Mensagem -->
+            <div class="ngl-textarea-wrap">
+                <textarea 
+                    class="ngl-textarea" 
+                    id="ngl-message-input" 
+                    placeholder="digite algo anônimo aqui... eles nunca saberão quem é 🤫"
+                    maxlength="300"
+                    oninput="updateCharCount()"
+                ></textarea>
+                <div class="textarea-footer">
+                    <span>🔒 100% Confidencial</span>
+                    <span id="char-counter">0/300</span>
+                </div>
+            </div>
+
+            <!-- Mood / Reações rápidas -->
+            <div class="mood-picker" id="mood-picker">
+                <div class="mood-chip active" onclick="selectMood('🤫 Segredo', this)">🤫 Segredo</div>
+                <div class="mood-chip" onclick="selectMood('💖 Crush', this)">💖 Crush</div>
+                <div class="mood-chip" onclick="selectMood('🔥 Fogo', this)">🔥 Fogo</div>
+                <div class="mood-chip" onclick="selectMood('😈 Ousado', this)">😈 Ousado</div>
+                <div class="mood-chip" onclick="selectMood('👀 Curioso', this)">👀 Curioso</div>
+                <div class="mood-chip" onclick="selectMood('💌 Fofo', this)">💌 Fofo</div>
+                <div class="mood-chip" onclick="selectMood('😂 Humor', this)">😂 Humor</div>
+            </div>
+
+            <!-- Botão Enviar -->
+            <button class="btn-send-ngl" id="btn-submit" onclick="sendAnonymousMessage()">
+                <span>🚀 Enviar Mensagem</span>
+            </button>
+        </div>
+
+        <div class="security-seal">
+            <span>🔒 Protegido por criptografia anônima do Jjy</span>
+        </div>
+    </main>
+
+    <!-- Tela de Sucesso -->
+    <div class="success-card" id="success-view">
+        <div class="success-icon-wrap">✓</div>
+        <h2 class="success-title">Enviado com Sucesso!</h2>
+        <p class="success-desc">
+            Sua mensagem anônima foi entregue na caixa de entrada de <strong id="sent-target-name">@usuario</strong>. Eles nunca saberão quem enviou!
+        </p>
+        <button class="btn-again" onclick="resetSendForm()">
+            🔄 Enviar outra mensagem
+        </button>
+        <button class="btn-create-my-link" onclick="setupMyOwnLink()">
+            📲 Pegar meu próprio link NGL
+        </button>
+    </div>
+
+    <!-- =======================================================
+         2. ABA: INBOX (CAIXA DE ENTRADA DO DONO DO LINK)
+         ======================================================= -->
+    <section class="inbox-container" id="inbox-view">
+        <!-- Card de Compartilhamento do Link -->
+        <div class="share-link-card">
+            <div class="share-link-header">
+                <div class="share-link-title">
+                    <span>🔗 Seu Link Pessoal Jjy</span>
+                </div>
+                <span style="font-size:11px;color:#cbd5e1" id="logged-user-tag">@marcos</span>
+            </div>
+
+            <div id="server-status-pill" style="font-size:11px;padding:4px 10px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+                <span id="server-status-dot" style="width:8px;height:8px;border-radius:50%;background:#eab308"></span>
+                <span id="server-status-text">Detectando servidor de rede...</span>
+            </div>
+
+            <div class="link-input-row">
+                <div class="link-text" id="share-link-url">...</div>
+                <button class="btn-copy-link" onclick="copyPersonalLink()">
+                    📋 Copiar
+                </button>
+            </div>
+
+            <div class="share-actions">
+                <button class="btn-action-small" onclick="openQRCodeModal()">
+                    📱 Ver QR Code
+                </button>
+                <button class="btn-action-small" onclick="shareToDataLinkChat()">
+                    💬 Chat Jjy
+                </button>
+            </div>
+        </div>
+
+        <!-- Cabeçalho do Feed de Mensagens -->
+        <div class="inbox-header">
+            <div class="inbox-title">
+                <span>Mensagens Recebidas</span>
+                <span class="inbox-count-badge" id="inbox-count">0</span>
+            </div>
+            <button class="btn-clear-inbox" onclick="clearAllMessages()">
+                Limpar Tudo
+            </button>
+        </div>
+
+        <!-- Lista de Mensagens Recebidas -->
+        <div class="messages-list" id="messages-list">
+            <div class="empty-inbox">
+                <div class="empty-icon">📭</div>
+                <p>Nenhuma mensagem anônima ainda.</p>
+                <p style="font-size:12px;margin-top:6px;color:#9ca3af">
+                    Copie seu link acima e coloque no status do WhatsApp ou nos stories do Instagram!
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- =======================================================
+     MODAL: GERADOR DE STORY (INSTAGRAM / WHATSAPP 9:16)
+     ======================================================= -->
+<div class="modal-overlay" id="story-modal">
+    <div class="story-modal-box">
+        <div class="story-modal-header">
+            <div class="story-modal-title">
+                <span>📸 Gerador de Story para Instagram</span>
+            </div>
+            <button class="close-modal-btn" onclick="closeStoryModal()">✕</button>
+        </div>
+
+        <div class="story-modal-body">
+            <!-- Preview do Story (9:16) -->
+            <div class="story-preview-card" id="story-card-element">
+                <div class="story-top-logo">
+                    🔥 NGL • ANONYMOUS Q&A
+                </div>
+
+                <div class="story-sticker-wrap">
+                    <div class="story-sticker-prompt" id="story-prompt-text">
+                        Mande-me mensagens anônimas!
+                    </div>
+                    <div class="story-sticker-message" id="story-message-text">
+                        "Você é incrível!"
+                    </div>
+                </div>
+
+                <div class="story-reply-sticker" id="story-reply-sticker-box" style="display:none">
+                    <div class="story-reply-text" id="story-reply-display"></div>
+                </div>
+
+                <div class="story-bottom-hint">
+                    Envie o seu no link da bio!
+                </div>
+            </div>
+
+            <!-- Controles do Story -->
+            <div class="story-controls">
+                <label style="font-size:11px;font-weight:700;color:#9ca3af">✍️ DIGITE SUA RESPOSTA:</label>
+                <input 
+                    type="text" 
+                    class="story-reply-input" 
+                    id="story-reply-input" 
+                    placeholder="Ex: Hahaha valeu demais! Quem é? 👀" 
+                    maxlength="150"
+                    oninput="updateStoryReplyPreview()"
+                >
+
+                <label style="font-size:11px;font-weight:700;color:#9ca3af;margin-top:4px">🎨 ESCOLHA O TEMA DE FUNDO:</label>
+                <div class="theme-picker-row">
+                    <div class="theme-circle active" style="background:linear-gradient(135deg, #ff4538, #ff2a85)" onclick="setStoryTheme('sunset', this)" title="Sunset NGL"></div>
+                    <div class="theme-circle" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6)" onclick="setStoryTheme('cyber', this)" title="Cyber Violet"></div>
+                    <div class="theme-circle" style="background:linear-gradient(135deg, #111827, #374151)" onclick="setStoryTheme('dark', this)" title="Dark Minimal"></div>
+                    <div class="theme-circle" style="background:linear-gradient(135deg, #ec4899, #06b6d4)" onclick="setStoryTheme('candy', this)" title="Candy Pastel"></div>
+                    <div class="theme-circle" style="background:linear-gradient(135deg, #059669, #10b981)" onclick="setStoryTheme('emerald', this)" title="Emerald"></div>
+                    <div class="theme-circle" style="background:linear-gradient(135deg, #f59e0b, #ef4444)" onclick="setStoryTheme('gold', this)" title="Solar Gold"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="story-modal-footer">
+            <button class="btn-download-story" onclick="downloadStoryImage()">
+                <span>📸 Baixar Imagem para o Story (PNG)</span>
+            </button>
+            <button class="btn-copy-story-img" onclick="copyStoryImageToClipboard()">
+                <span>📋 Copiar Imagem para Área de Transferência</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- =======================================================
+     MODAL: QR CODE OFFLINE DO LINK
+     ======================================================= -->
+<div class="modal-overlay" id="qr-modal">
+    <div class="qr-modal-content">
+        <h3 style="font-size:18px;font-weight:800">📱 Escaneie para Enviar</h3>
+        <p style="font-size:12px;color:#6b7280">Aponte a câmera do celular para abrir seu link Jjy</p>
+        <canvas id="ngl-qr-canvas" width="220" height="220"></canvas>
+        <div style="font-size:12px;font-weight:700;color:#ff5238" id="qr-modal-username">@usuario</div>
+        <button class="btn-again" style="background:#f3f4f6;color:#111;margin-bottom:0" onclick="closeQRCodeModal()">
+            Fechar
+        </button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-msg" id="toast-msg">
+    <span id="toast-text">Link copiado!</span>
+</div>
+
+<!-- =======================================================
+     SCRIPTS & LÓGICA DO NGL
+     ======================================================= -->
+<!-- QR Code Library Offline (Bundle Local) -->
+<script src="qrcode.bundle.js"></script>
+
+<script>
+// ============================================================
+// PROMPTS VIRAL DO NGL
+// ============================================================
+const NGL_PROMPTS = [
+    "mande-me mensagens anônimas! 🤫",
+    "quem é o seu crush secreto? 👀",
+    "mande um segredo que você nunca contou a ninguém... 🤐",
+    "diga uma verdade nua e crua sobre mim... 🔥",
+    "o que você realmente achou de mim na primeira vez que me viu? 🤔",
+    "qual música te faz lembrar de mim? 🎵",
+    "de 0 a 10, quanto você gosta de mim? 💯",
+    "faça uma pergunta que você sempre quis me fazer... ❓",
+    "se fôssemos passar um dia juntos, o que faríamos? ✈️",
+    "me dê um conselho sincero que eu preciso ouvir... 💡",
+    "qual é o meu maior defeito e minha maior virtude? ⚖️",
+    "confesse algo que você sente por mim... 💖",
+    "mande um elogio anônimo para alegrar meu dia! 🌟",
+    "se você pudesse me beijar agora, você beijaria? 💋",
+    "qual foi a coisa mais engraçada que já me viu fazer? 😂",
+    "qual o seu maior arrependimento comigo? 🌧️",
+    "o que todo mundo acha de mim que NÃO é verdade? 🕵️",
+    "já teve um crush em mim em segredo? 🤭",
+    "se o mundo acabasse amanhã, o que me diria hoje? ⏳"
+];
+
+let currentPromptIndex = 0;
+let currentMood = "🤫 Segredo";
+let targetUsername = "usuario";
+let myUsername = "meu_link";
+let currentStoryMessage = null;
+let currentStoryTheme = "sunset";
+
+// Temas de gradiente para o Story
+const STORY_THEMES = {
+    sunset: {
+        css: "linear-gradient(135deg, #ff4538, #ff2a85)",
+        canvasTop: "#ff4538",
+        canvasBottom: "#ff2a85",
+        textLight: "#ffffff"
+    },
+    cyber: {
+        css: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
+        canvasTop: "#8b5cf6",
+        canvasBottom: "#3b82f6",
+        textLight: "#ffffff"
+    },
+    dark: {
+        css: "linear-gradient(135deg, #111827, #374151)",
+        canvasTop: "#111827",
+        canvasBottom: "#374151",
+        textLight: "#ffffff"
+    },
+    candy: {
+        css: "linear-gradient(135deg, #ec4899, #06b6d4)",
+        canvasTop: "#ec4899",
+        canvasBottom: "#06b6d4",
+        textLight: "#ffffff"
+    },
+    emerald: {
+        css: "linear-gradient(135deg, #059669, #10b981)",
+        canvasTop: "#059669",
+        canvasBottom: "#10b981",
+        textLight: "#ffffff"
+    },
+    gold: {
+        css: "linear-gradient(135deg, #f59e0b, #ef4444)",
+        canvasTop: "#f59e0b",
+        canvasBottom: "#ef4444",
+        textLight: "#ffffff"
+    }
+};
+
+// ============================================================
+// CONEXÃO DE REDE LOCAL & SERVIDOR NGL
+// ============================================================
+let serverInfo = null;
+let nglSocket = null;
+let serverBaseUrl = (window.location.protocol.startsWith('http') ? window.location.origin : 'http://localhost:4870');
+
+async function detectServerAndConnect() {
+    const isHttp = window.location.protocol.startsWith('http');
+    const basesToTry = [];
+    if (isHttp) {
+        basesToTry.push(window.location.origin);
+    }
+    basesToTry.push('http://localhost:4870');
+    basesToTry.push('http://127.0.0.1:4870');
+
+    for (const base of basesToTry) {
+        try {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 1200);
+            const res = await fetch(`${base}/api/info`, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ok) {
+                    serverInfo = data;
+                    serverBaseUrl = base;
+                    updateServerStatusBadge(true, data);
+                    updateShareLinkDisplay();
+                    connectNglWebSocket();
+                    return;
+                }
+            }
+        } catch(e) {}
+    }
+
+    updateServerStatusBadge(false);
+    updateShareLinkDisplay();
+    setTimeout(detectServerAndConnect, 5000);
+}
+
+let selectedIp = null;
+
+function toggleNextIp() {
+    if (!serverInfo || !serverInfo.ips || serverInfo.ips.length < 2) return;
+    const curIp = selectedIp || serverInfo.ips[0];
+    const curIdx = serverInfo.ips.indexOf(curIp);
+    const nextIdx = (curIdx + 1) % serverInfo.ips.length;
+    selectedIp = serverInfo.ips[nextIdx];
+    updateServerStatusBadge(true, serverInfo);
+    updateShareLinkDisplay();
+    showToast('IP alternado para: ' + selectedIp);
+}
+
+function updateServerStatusBadge(online, info) {
+    const pill = document.getElementById('server-status-pill');
+    const dot = document.getElementById('server-status-dot');
+    const text = document.getElementById('server-status-text');
+    if (!pill || !dot || !text) return;
+
+    if (online) {
+        pill.style.background = 'rgba(16, 185, 129, 0.15)';
+        pill.style.borderColor = '#10b981';
+        pill.style.color = '#6ee7b7';
+        pill.style.cursor = (info && info.ips && info.ips.length > 1) ? 'pointer' : 'default';
+        dot.style.background = '#10b981';
+        const bestIp = selectedIp || ((info && info.ips && info.ips[0]) ? info.ips[0] : (window.location.hostname || 'localhost'));
+        const port = (info && info.port) ? info.port : '4870';
+        const switchHint = (info && info.ips && info.ips.length > 1) ? ' 🔄 (Clique para alternar IP)' : '';
+        text.textContent = `🟢 Servidor LAN: http://${bestIp}:${port}${switchHint}`;
+        pill.onclick = (info && info.ips && info.ips.length > 1) ? toggleNextIp : null;
+    } else {
+        pill.style.background = 'rgba(234, 179, 8, 0.15)';
+        pill.style.borderColor = '#eab308';
+        pill.style.color = '#fde047';
+        pill.style.cursor = 'default';
+        dot.style.background = '#eab308';
+        text.textContent = `🟡 Servidor Offline (Inicie o servidor para receber perguntas pela rede)`;
+        pill.onclick = null;
+    }
+}
+
+function getBestShareUrl() {
+    let host = window.location.hostname;
+    let port = window.location.port || (serverInfo ? serverInfo.port : '4870');
+
+    if (selectedIp) {
+        host = selectedIp;
+    } else if ((host === 'localhost' || host === '127.0.0.1' || !host) && serverInfo && serverInfo.ips && serverInfo.ips.length > 0) {
+        host = serverInfo.ips[0];
+    } else if (!host) {
+        host = 'localhost';
+    }
+
+    const proto = window.location.protocol.startsWith('https') ? 'https:' : 'http:';
+    const portPart = (!port || port === '80' || port === '443') ? '' : `:${port}`;
+    return `${proto}//${host}${portPart}/Jjy.html?u=${encodeURIComponent(myUsername)}`;
+}
+
+function connectNglWebSocket() {
+    if (nglSocket && (nglSocket.readyState === WebSocket.OPEN || nglSocket.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+    try {
+        let wsHost = window.location.hostname || 'localhost';
+        let wsPort = window.location.port || (serverInfo ? serverInfo.port : '4870');
+        if (serverInfo) {
+            wsPort = serverInfo.port || wsPort;
+            if (window.location.protocol === 'file:') {
+                wsHost = 'localhost';
+            }
+        }
+        const wsUrl = `ws://${wsHost}:${wsPort}`;
+        nglSocket = new WebSocket(wsUrl);
+
+        nglSocket.onopen = () => {
+            updateServerStatusBadge(true, serverInfo);
+            const clientId = 'ngl-' + myUsername + '-' + Math.random().toString(36).substr(2, 6);
+            const sendHello = (loc) => {
+                if (nglSocket && nglSocket.readyState === WebSocket.OPEN) {
+                    nglSocket.send(JSON.stringify({
+                        t: 'hello',
+                        clientId: clientId,
+                        name: myUsername,
+                        color: '#ff5238',
+                        location: loc || undefined
+                    }));
+                }
+            };
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        sendHello({
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            accuracy: Math.round(pos.coords.accuracy || 20),
+                            country: 'Brasil',
+                            flag: '🇧🇷',
+                            source: 'gps'
+                        });
+                    },
+                    () => {
+                        sendHello({
+                            latitude: -23.5505,
+                            longitude: -46.6333,
+                            country: 'Brasil',
+                            flag: '🇧🇷',
+                            source: 'network'
+                        });
+                    },
+                    { timeout: 3000, maximumAge: 60000 }
+                );
+            } else {
+                sendHello();
+            }
+        };
+
+        nglSocket.onmessage = (ev) => {
+            try {
+                const data = JSON.parse(ev.data);
+                if (data.t === 'ngl:message' && data.msg) {
+                    const msg = data.msg;
+                    if (msg.target && msg.target.toLowerCase() === myUsername.toLowerCase()) {
+                        const storageKey = 'datalink_ngl_inbox_' + myUsername.toLowerCase();
+                        const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                        if (!existing.some(m => m.id === msg.id)) {
+                            existing.unshift(msg);
+                            localStorage.setItem(storageKey, JSON.stringify(existing));
+                            renderInboxCards(existing);
+                            showToast(`💌 Nova pergunta anônima recebida!`);
+                            fireConfetti();
+                        }
+                    }
+                }
+            } catch(e) {}
+        };
+
+        nglSocket.onclose = () => {
+            nglSocket = null;
+            setTimeout(connectNglWebSocket, 4000);
+        };
+        nglSocket.onerror = () => {};
+    } catch(e) {}
+}
+
+// ============================================================
+// INICIALIZAÇÃO & LEITURA DE PARÂMETROS
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. Detecta parâmetros na URL: ?u=username
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramUser = urlParams.get('u') || urlParams.get('user');
+
+    // 2. Detecta sessão existente no DataLink Chat (se houver)
+    const session = getStoredDataLinkSession();
+    if (session && session.username) {
+        myUsername = session.username;
+    } else {
+        const savedNglUser = localStorage.getItem('datalink_ngl_my_user');
+        myUsername = savedNglUser || (paramUser || 'usuario');
+    }
+
+    // Se a URL veio com ?u=xxx, esse é o destinatário das mensagens anônimas
+    if (paramUser) {
+        targetUsername = paramUser;
+    } else {
+        targetUsername = myUsername;
+    }
+
+    updateTargetDisplay();
+    updateShareLinkDisplay();
+    loadInboxMessages();
+    detectServerAndConnect();
+
+    // Se o usuário acessou o próprio link, abre na aba Inbox por conveniência
+    if (paramUser && paramUser.toLowerCase() === myUsername.toLowerCase()) {
+        switchView('inbox');
+    } else if (urlParams.get('inbox') === 'true') {
+        switchView('inbox');
+    }
+
+    // Listener cross-tab para atualização em tempo real
+    window.addEventListener('storage', (e) => {
+        if (e.key && e.key.startsWith('datalink_ngl_inbox_')) {
+            loadInboxMessages();
+        }
+    });
+});
+
+function getStoredDataLinkSession() {
+    try {
+        const s = sessionStorage.getItem('datalink_session') || localStorage.getItem('datalink_session');
+        if (s) return JSON.parse(s);
+    } catch(e) {}
+    return null;
+}
+
+function updateTargetDisplay() {
+    const display = document.getElementById('target-username-display');
+    const avatar = document.getElementById('profile-avatar');
+    if (display) display.textContent = '@' + targetUsername;
+    if (avatar) avatar.textContent = getAvatarEmoji(targetUsername);
+    const sentTarget = document.getElementById('sent-target-name');
+    if (sentTarget) sentTarget.textContent = '@' + targetUsername;
+}
+
+function updateShareLinkDisplay() {
+    const loggedTag = document.getElementById('logged-user-tag');
+    if (loggedTag) loggedTag.textContent = '@' + myUsername;
+
+    const currentUrl = getBestShareUrl();
+    const linkEl = document.getElementById('share-link-url');
+    if (linkEl) linkEl.textContent = currentUrl;
+}
+
+function getAvatarEmoji(name) {
+    const emojis = ['😎', '🤩', '🔥', '✨', '🦊', '🚀', '👑', '💖', '⚡', '🎉', '🦋', '🌸'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+    return emojis[Math.abs(hash) % emojis.length];
+}
+
+// ============================================================
+// NAVEGAÇÃO DE ABAS (ENVIAR vs INBOX)
+// ============================================================
+function switchView(viewName) {
+    const tabSend = document.getElementById('tab-send');
+    const tabInbox = document.getElementById('tab-inbox');
+    const sendView = document.getElementById('send-view');
+    const inboxView = document.getElementById('inbox-view');
+    const successView = document.getElementById('success-view');
+
+    if (viewName === 'send') {
+        tabSend.classList.add('active');
+        tabInbox.classList.remove('active');
+        sendView.style.display = 'flex';
+        inboxView.style.display = 'none';
+        successView.style.display = 'none';
+    } else {
+        tabInbox.classList.add('active');
+        tabSend.classList.remove('active');
+        sendView.style.display = 'none';
+        inboxView.style.display = 'flex';
+        successView.style.display = 'none';
+        loadInboxMessages();
+    }
+}
+
+// ============================================================
+// DADOS & PROMPTS VIRAL DO NGL
+// ============================================================
+function rollNextPrompt() {
+    const dice = document.getElementById('dice-btn');
+    const title = document.getElementById('current-prompt-text');
+
+    dice.classList.remove('dice-anim');
+    void dice.offsetWidth; // trigger reflow
+    dice.classList.add('dice-anim');
+
+    title.style.opacity = '0';
+    setTimeout(() => {
+        currentPromptIndex = (currentPromptIndex + 1) % NGL_PROMPTS.length;
+        title.textContent = NGL_PROMPTS[currentPromptIndex];
+        title.style.opacity = '1';
+    }, 150);
+}
+
+function selectMood(moodName, element) {
+    currentMood = moodName;
+    document.querySelectorAll('.mood-chip').forEach(el => el.classList.remove('active'));
+    element.classList.add('active');
+}
+
+function updateCharCount() {
+    const input = document.getElementById('ngl-message-input');
+    const counter = document.getElementById('char-counter');
+    counter.textContent = input.value.length + '/300';
+}
+
+function changeTargetPromptUser() {
+    const novo = prompt('Enviar mensagem anônima para qual usuário?', targetUsername);
+    if (novo && novo.trim()) {
+        targetUsername = novo.trim();
+        updateTargetDisplay();
+        showToast('Destinatário alterado para @' + targetUsername);
+    }
+}
+
+// ============================================================
+// ENVIO DE MENSAGEM ANÔNIMA (LAN + WEBSOCKET + LOCAL)
+// ============================================================
+async function sendAnonymousMessage() {
+    const input = document.getElementById('ngl-message-input');
+    const text = input.value.trim();
+
+    if (!text) {
+        alert('⚠️ Digite algo antes de enviar sua mensagem anônima!');
+        input.focus();
+        return;
+    }
+
+    const promptText = document.getElementById('current-prompt-text').textContent.trim();
+
+    // Cria objeto da mensagem
+    const newMsg = {
+        id: 'ngl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        target: targetUsername.toLowerCase(),
+        prompt: promptText,
+        text: text,
+        mood: currentMood,
+        timestamp: Date.now(),
+        read: false,
+        reply: ''
+    };
+
+    // 1. Salva no storage local do navegador
+    const storageKey = 'datalink_ngl_inbox_' + targetUsername.toLowerCase();
+    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    existing.unshift(newMsg);
+    localStorage.setItem(storageKey, JSON.stringify(existing));
+
+    // 2. Transmite via WebSocket em tempo real se conectado
+    if (nglSocket && nglSocket.readyState === WebSocket.OPEN) {
+        try {
+            nglSocket.send(JSON.stringify({ t: 'ngl:send', ...newMsg }));
+        } catch(e) {}
+    }
+
+    // 3. Envia para o servidor HTTP REST (para persistir e entregar para qualquer computador/celular)
+    try {
+        fetch(`${serverBaseUrl}/api/ngl/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newMsg)
+        }).catch(() => {});
+    } catch(e) {}
+
+    // Notifica também no chat público do DataLink (se aba estiver aberta)
+    notifyDataLinkOfNGLMessage(newMsg);
+
+    // Efeito de confetes festivo!
+    fireConfetti();
+
+    // Exibe tela de sucesso
+    document.getElementById('send-view').style.display = 'none';
+    document.getElementById('success-view').style.display = 'block';
+
+    input.value = '';
+    updateCharCount();
+}
+
+function resetSendForm() {
+    document.getElementById('send-view').style.display = 'flex';
+    document.getElementById('success-view').style.display = 'none';
+    rollNextPrompt();
+    document.getElementById('ngl-message-input').focus();
+}
+
+function setupMyOwnLink() {
+    const name = prompt('Escolha seu nome de usuário para criar seu link Jjy:', myUsername);
+    if (name && name.trim()) {
+        myUsername = name.trim();
+        localStorage.setItem('datalink_ngl_my_user', myUsername);
+        updateShareLinkDisplay();
+        switchView('inbox');
+        showToast('Seu link NGL está pronto!');
+    }
+}
+
+// Avisa o sistema DataLink de que uma nova mensagem anônima chegou
+function notifyDataLinkOfNGLMessage(msg) {
+    try {
+        const chatKey = 'datalink_chat';
+        const raw = localStorage.getItem(chatKey);
+        if (raw) {
+            const data = JSON.parse(raw);
+            if (data && data.messages) {
+                data.messages.push({
+                    id: 'ngl_notify_' + Date.now(),
+                    username: '🔥 NGL Bot',
+                    encrypted: null,
+                    text: `💌 Alguém acabou de enviar uma mensagem anônima para @${msg.target} no NGL!`,
+                    timestamp: Date.now(),
+                    sendTo: msg.target,
+                    isNglNotification: true
+                });
+                localStorage.setItem(chatKey, JSON.stringify(data));
+            }
+        }
+    } catch(e) {}
+}
+
+// ============================================================
+// GERENCIAMENTO DA CAIXA DE ENTRADA (INBOX)
+// ============================================================
+async function loadInboxMessages() {
+    const storageKey = 'datalink_ngl_inbox_' + myUsername.toLowerCase();
+    let messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+    // Exibe imediatamente o que já tem local
+    renderInboxCards(messages);
+
+    // Sincroniza em segundo plano com o servidor HTTP REST
+    try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 2000);
+        const res = await fetch(`${serverBaseUrl}/api/ngl/inbox?u=${encodeURIComponent(myUsername)}`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.ok && Array.isArray(data.messages)) {
+                const map = new Map();
+                messages.forEach(m => map.set(m.id, m));
+                data.messages.forEach(m => map.set(m.id, m));
+                messages = Array.from(map.values()).sort((a, b) => b.timestamp - a.timestamp);
+                localStorage.setItem(storageKey, JSON.stringify(messages));
+                renderInboxCards(messages);
+            }
+        }
+    } catch(e) {}
+}
+
+function renderInboxCards(messages) {
+    const container = document.getElementById('messages-list');
+    const countBadge = document.getElementById('inbox-count');
+    const pill = document.getElementById('unread-pill');
+
+    if (!container) return;
+
+    const unreadCount = messages.filter(m => !m.read).length;
+    if (countBadge) countBadge.textContent = messages.length;
+    if (pill) {
+        if (unreadCount > 0) {
+            pill.style.display = 'inline-block';
+            pill.textContent = unreadCount;
+        } else {
+            pill.style.display = 'none';
+        }
+    }
+
+    if (messages.length === 0) {
+        container.innerHTML = `
+            <div class="empty-inbox">
+                <div class="empty-icon">📭</div>
+                <p style="font-weight:700;color:#e5e7eb">Nenhuma mensagem recebida ainda.</p>
+                <p style="font-size:12px;margin-top:6px;color:#9ca3af">
+                    Copie seu link no botão acima e compartilhe no WhatsApp ou Instagram para receber perguntas anônimas!
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
+    messages.forEach((msg) => {
+        const timeAgo = formatTimeAgo(msg.timestamp);
+        const card = document.createElement('div');
+        card.className = 'msg-card ' + (msg.read ? '' : 'unread');
+        card.onclick = () => openStoryModal(msg.id);
+
+        card.innerHTML = `
+            <div class="msg-meta-row">
+                <span class="msg-prompt-badge">💬 ${escapeHtml(msg.prompt)}</span>
+                <span class="msg-time">${timeAgo}</span>
+            </div>
+            <div class="msg-content">"${escapeHtml(msg.text)}"</div>
+            <div class="msg-footer">
+                <div class="msg-mood-tag">
+                    <span>${escapeHtml(msg.mood || '🤫 Segredo')}</span>
+                    ${msg.reply ? '<span style="color:#10b981;font-weight:700;margin-left:6px">✓ Respondido</span>' : ''}
+                </div>
+                <button type="button" class="btn-open-story">
+                    📸 Criar Story
+                </button>
+            </div>
+        `;
+        const storyBtn = card.querySelector('.btn-open-story');
+        if (storyBtn) {
+            storyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openStoryModal(msg.id);
+            });
+        }
+        fragment.appendChild(card);
+    });
+    container.appendChild(fragment);
+}
+
+function clearAllMessages() {
+    if (!confirm('Deseja realmente apagar TODAS as mensagens anônimas da sua caixa de entrada?')) return;
+    const storageKey = 'datalink_ngl_inbox_' + myUsername.toLowerCase();
+    localStorage.removeItem(storageKey);
+    try {
+        fetch(`${serverBaseUrl}/api/ngl/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: myUsername })
+        }).catch(() => {});
+    } catch(e) {}
+    loadInboxMessages();
+    showToast('Caixa de entrada limpa!');
+}
+
+function markMessageAsRead(msgId) {
+    const storageKey = 'datalink_ngl_inbox_' + myUsername.toLowerCase();
+    const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const target = messages.find(m => m.id === msgId);
+    if (target && !target.read) {
+        target.read = true;
+        localStorage.setItem(storageKey, JSON.stringify(messages));
+        loadInboxMessages();
+    }
+}
+
+// ============================================================
+// GERADOR DE STORY (INSTAGRAM / WHATSAPP)
+// ============================================================
+function openStoryModal(msgId) {
+    const storageKey = 'datalink_ngl_inbox_' + myUsername.toLowerCase();
+    const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    markMessageAsRead(msgId);
+    currentStoryMessage = msg;
+
+    // Preenche dados no modal
+    document.getElementById('story-prompt-text').textContent = msg.prompt || 'Mande-me mensagens anônimas!';
+    document.getElementById('story-message-text').textContent = `"${msg.text}"`;
+    
+    const replyInput = document.getElementById('story-reply-input');
+    replyInput.value = msg.reply || '';
+    updateStoryReplyPreview();
+
+    setStoryTheme(currentStoryTheme);
+
+    document.getElementById('story-modal').style.display = 'flex';
+}
+
+function closeStoryModal() {
+    document.getElementById('story-modal').style.display = 'none';
+    currentStoryMessage = null;
+}
+
+function updateStoryReplyPreview() {
+    const input = document.getElementById('story-reply-input');
+    const stickerBox = document.getElementById('story-reply-sticker-box');
+    const displayText = document.getElementById('story-reply-display');
+
+    const reply = input.value.trim();
+    if (reply) {
+        displayText.textContent = reply;
+        stickerBox.style.display = 'block';
+    } else {
+        stickerBox.style.display = 'none';
+    }
+
+    // Salva a resposta no storage
+    if (currentStoryMessage) {
+        currentStoryMessage.reply = reply;
+        const storageKey = 'datalink_ngl_inbox_' + myUsername.toLowerCase();
+        const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const target = messages.find(m => m.id === currentStoryMessage.id);
+        if (target) {
+            target.reply = reply;
+            localStorage.setItem(storageKey, JSON.stringify(messages));
+        }
+    }
+}
+
+function setStoryTheme(themeKey, el) {
+    currentStoryTheme = themeKey;
+    const theme = STORY_THEMES[themeKey] || STORY_THEMES.sunset;
+    const preview = document.getElementById('story-card-element');
+    if (preview) {
+        preview.style.background = theme.css;
+    }
+
+    if (el) {
+        document.querySelectorAll('.theme-circle').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+    }
+}
+
+// Renderiza o Story no Canvas Full HD (1080x1920) e faz Download
+function downloadStoryImage() {
+    if (!currentStoryMessage) return;
+    const canvas = renderStoryToCanvas();
+    
+    const link = document.createElement('a');
+    link.download = `ngl-story-${myUsername}-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    showToast('📸 Imagem do Story salva com sucesso!');
+}
+
+// Copia o Story para a área de transferência do usuário
+async function copyStoryImageToClipboard() {
+    if (!currentStoryMessage) return;
+    try {
+        const canvas = renderStoryToCanvas();
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            try {
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+                showToast('📋 Story copiado para a área de transferência!');
+            } catch(err) {
+                // Fallback para download se a API não estiver disponível
+                downloadStoryImage();
+            }
+        });
+    } catch(e) {
+        downloadStoryImage();
+    }
+}
+
+// Função que desenha o Story em alta definição 1080x1920 no Canvas
+function renderStoryToCanvas() {
+    const canvas = document.getElementById('story-render-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = 1080;
+    const H = 1920;
+
+    const theme = STORY_THEMES[currentStoryTheme] || STORY_THEMES.sunset;
+
+    // 1. Fundo com Gradiente
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0, theme.canvasTop);
+    bgGrad.addColorStop(1, theme.canvasBottom);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Efeitos sutis de iluminação
+    const glow = ctx.createRadialGradient(W/2, H/3, 50, W/2, H/3, 700);
+    glow.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Top Header do Story
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔥 NGL • ANONYMOUS Q&A', W / 2, 180);
+
+    ctx.font = '28px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText('@' + myUsername, W / 2, 230);
+
+    // 3. Adesivo Branco da Pergunta / Mensagem Anônima
+    const stickerWidth = 880;
+    const stickerX = (W - stickerWidth) / 2;
+    const stickerY = 380;
+    
+    // Calcula altura necessária para a mensagem
+    const prompt = (currentStoryMessage.prompt || 'Mande-me mensagens anônimas!').toUpperCase();
+    const message = `"${currentStoryMessage.text}"`;
+
+    // Desenha card branco
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 45;
+    ctx.shadowOffsetY = 20;
+
+    drawRoundedRect(ctx, stickerX, stickerY, stickerWidth, 540, 48, '#ffffff');
+    ctx.restore();
+
+    // Texto do Prompt (Vermelho/Rosa)
+    ctx.fillStyle = '#e11d48';
+    ctx.font = '800 32px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(prompt, W / 2, stickerY + 80);
+
+    // Linha divisória suave
+    ctx.strokeStyle = '#f3f4f6';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(stickerX + 60, stickerY + 120);
+    ctx.lineTo(stickerX + stickerWidth - 60, stickerY + 120);
+    ctx.stroke();
+
+    // Texto da Mensagem Anônima (Quebra de linha inteligente)
+    ctx.fillStyle = '#111827';
+    ctx.font = '700 48px -apple-system, sans-serif';
+    wrapText(ctx, message, W / 2, stickerY + 220, stickerWidth - 100, 64);
+
+    // 4. Adesivo da Resposta do Usuário (se houver)
+    const replyInput = document.getElementById('story-reply-input');
+    const replyText = replyInput ? replyInput.value.trim() : '';
+
+    if (replyText) {
+        const replyWidth = 820;
+        const replyX = (W - replyWidth) / 2;
+        const replyY = stickerY + 620;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 15;
+        drawRoundedRect(ctx, replyX, replyY, replyWidth, 240, 40, 'rgba(17, 24, 39, 0.9)');
+        ctx.restore();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 42px -apple-system, sans-serif';
+        wrapText(ctx, replyText, W / 2, replyY + 110, replyWidth - 80, 56);
+    }
+
+    // 5. Rodapé do Story
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = 'bold 32px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔗 Mande o seu no link da bio!', W / 2, H - 180);
+
+    return canvas;
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    let curY = y;
+
+    for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+            ctx.fillText(line.trim(), x, curY);
+            line = words[n] + ' ';
+            curY += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    ctx.fillText(line.trim(), x, curY);
+}
+
+// ============================================================
+// COPIAR LINK & QR CODE OFFLINE
+// ============================================================
+function copyPersonalLink() {
+    const currentUrl = getBestShareUrl();
+    navigator.clipboard.writeText(currentUrl).then(() => {
+        showToast('📋 Link copiado! Cole no Instagram ou WhatsApp');
+    }).catch(() => {
+        prompt('Copie seu link pessoal:', currentUrl);
+    });
+}
+
+function openQRCodeModal() {
+    const modal = document.getElementById('qr-modal');
+    const userDisplay = document.getElementById('qr-modal-username');
+    userDisplay.textContent = '@' + myUsername;
+
+    const currentUrl = getBestShareUrl();
+    generateQRCode(currentUrl);
+
+    modal.style.display = 'flex';
+}
+
+function closeQRCodeModal() {
+    document.getElementById('qr-modal').style.display = 'none';
+}
+
+function generateQRCode(text) {
+    const canvas = document.getElementById('ngl-qr-canvas');
+    if (!canvas) return;
+    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+        QRCode.toCanvas(canvas, text, {
+            width: 220,
+            margin: 2,
+            color: { dark: '#111827', light: '#ffffff' }
+        }, (err) => {
+            if (err) console.error('Erro ao gerar QR Code:', err);
+        });
+    } else {
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 220, 220);
+        ctx.fillStyle = '#111';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QR Code indisponível', 110, 110);
+    }
+}
+
+function shareToDataLinkChat() {
+    const currentUrl = getBestShareUrl();
+    window.location.href = `DataLink-Chat.html?share_ngl=${encodeURIComponent(currentUrl)}`;
+}
+
+// ============================================================
+// EFEITO FESTIVO DE CONFETES (CANVAS NATIVO)
+// ============================================================
+function fireConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    const colors = ['#ff4538', '#ff2a85', '#ff9500', '#10b981', '#3b82f6', '#fbbf24'];
+
+    for (let i = 0; i < 90; i++) {
+        particles.push({
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            w: Math.random() * 8 + 4,
+            h: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: (Math.random() - 0.5) * 16,
+            vy: (Math.random() - 0.7) * 20,
+            angle: Math.random() * 360,
+            vAngle: (Math.random() - 0.5) * 10,
+            gravity: 0.45,
+            opacity: 1
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let active = false;
+
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            p.angle += p.vAngle;
+            p.opacity -= 0.012;
+
+            if (p.opacity > 0) {
+                active = true;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.angle * Math.PI) / 180);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.opacity;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            }
+        });
+
+        if (active) {
+            requestAnimationFrame(animate);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    requestAnimationFrame(animate);
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function showToast(text) {
+    const toast = document.getElementById('toast-msg');
+    const label = document.getElementById('toast-text');
+    label.textContent = text;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2800);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function formatTimeAgo(timestamp) {
+    const diff = Math.floor((Date.now() - timestamp) / 1000);
+    if (diff < 60) return 'agora mesmo';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm atrás';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h atrás';
+    return Math.floor(diff / 86400) + 'd atrás';
+}
+</script>
+</body>
+</html>

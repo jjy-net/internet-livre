@@ -4,8 +4,8 @@
   "description": "Comunicação P2P/LAN offline, Chat Seguro, QR Studio, Modem Acústico, Esteganografia e Central de Alertas.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#7c3aed",
+  "background_color": "#06060f",
+  "theme_color": "#06060f",
   "orientation": "any",
   "icons": [
     {
@@ -15,6 +15,9 @@
       "purpose": "any"
     }
   ],
-  "categories": ["utilities", "productivity"],
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
   "lang": "pt-BR"
 }

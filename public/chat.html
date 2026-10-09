@@ -1,0 +1,2739 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JJY Chat — Soberano, Criptografado & Sem Metadados</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<style>
+/* ============================================================
+   DESIGN SYSTEM: HYBRID SIMPLEX CHAT + WHATSAPP SOVEREIGN
+   ============================================================ */
+:root {
+  --wa-dark-bg: #0b141a;
+  --wa-sidebar-bg: #111b21;
+  --wa-header-bg: #202c33;
+  --wa-active-chat: #2a3942;
+  --wa-hover-bg: #202c33;
+  --wa-border: rgba(134, 150, 160, 0.15);
+  --wa-text-primary: #e9edef;
+  --wa-text-secondary: #8696a0;
+  --wa-text-muted: #667781;
+  --wa-emerald: #00a884;
+  --wa-emerald-hover: #029071;
+  --wa-outgoing-bubble: #005c4b;
+  --wa-incoming-bubble: #202c33;
+  --wa-check-blue: #53bdeb;
+  --wa-unread-badge: #25d366;
+  
+  --sx-neon-cyan: #06b6d4;
+  --sx-neon-emerald: #10b981;
+  --sx-neon-indigo: #6366f1;
+  --sx-panel-bg: #0f172a;
+  --sx-tag-bg: rgba(6, 182, 212, 0.12);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: var(--wa-dark-bg);
+  color: var(--wa-text-primary);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ============================================================
+   TOP BAR: SELETOR DE MODELOS DE CHAT (REQUISITO FUNDAMENTAL)
+   ============================================================ */
+.model-selector-bar {
+  background: #090e11;
+  border-bottom: 1px solid var(--wa-border);
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.model-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand-badge-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+}
+
+.brand-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--sx-neon-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.model-buttons-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+.model-buttons-scroll::-webkit-scrollbar { display: none; }
+
+.model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--wa-border);
+  background: #151f26;
+  color: var(--wa-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.model-btn:hover {
+  background: #1c2a33;
+  color: var(--wa-text-primary);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.model-btn.active {
+  background: linear-gradient(135deg, rgba(0, 168, 132, 0.2), rgba(6, 182, 212, 0.25));
+  color: #fff;
+  border-color: var(--wa-emerald);
+  box-shadow: 0 0 12px rgba(0, 168, 132, 0.35);
+}
+
+.model-btn.active .dot {
+  background: var(--wa-emerald);
+  box-shadow: 0 0 8px var(--wa-emerald);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--wa-text-muted);
+}
+
+.top-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-exit {
+  text-decoration: none;
+  background: #202c33;
+  border: 1px solid var(--wa-border);
+  color: var(--wa-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+.btn-exit:hover {
+  background: #2a3942;
+  color: #fff;
+}
+
+/* Informações do Modelo Ativo Expandidas */
+.model-status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(32, 44, 51, 0.6);
+  border: 1px dashed rgba(6, 182, 212, 0.3);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--wa-text-secondary);
+}
+
+.model-status-strip strong {
+  color: #06b6d4;
+}
+
+.model-crypto-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: monospace;
+  font-size: 10px;
+  color: #a5f3fc;
+  background: rgba(6, 182, 212, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Meshtastic Sub-bar & Telemetry Styles */
+.meshtastic-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(6, 78, 59, 0.4);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #a7f3d0;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mesh-left-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mesh-badge-pulse {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 10px;
+  font-family: monospace;
+}
+.mesh-freq-info {
+  font-weight: 600;
+  color: #6ee7b7;
+}
+.mesh-channel-info {
+  font-family: monospace;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.mesh-right-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-mesh-action {
+  background: #064e3b;
+  color: #ecfdf5;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+.btn-mesh-action:hover {
+  background: #047857;
+  color: #fff;
+  border-color: #10b981;
+}
+.lora-telemetry-pill {
+  font-size: 10px;
+  color: #34d399;
+  background: rgba(6, 78, 59, 0.35);
+  border: 1px dashed rgba(16, 185, 129, 0.4);
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-top: 4px;
+  font-family: monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============================================================
+   LAYOUT PRINCIPAL DUAL-PANE (WHATSAPP WEB + SIMPLEX)
+   ============================================================ */
+.app-container {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 86px);
+  overflow: hidden;
+  position: relative;
+}
+
+/* SIDEBAR ESQUERDA */
+.sidebar {
+  width: 380px;
+  min-width: 320px;
+  background: var(--wa-sidebar-bg);
+  border-right: 1px solid var(--wa-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+  z-index: 20;
+}
+
+.sidebar-header {
+  height: 60px;
+  background: var(--wa-header-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--wa-border);
+}
+
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.avatar-ring {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.avatar-ring.online::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background: var(--wa-unread-badge);
+  border: 2px solid var(--wa-header-bg);
+  border-radius: 50%;
+}
+
+.profile-meta h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wa-text-primary);
+}
+
+.profile-meta span {
+  font-size: 10px;
+  color: var(--sx-neon-cyan);
+  font-family: monospace;
+}
+
+.sidebar-icons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--wa-text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.icon-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--wa-text-primary);
+}
+
+/* Simplex Security Pill Notice */
+.simplex-security-pill {
+  background: #0f172a;
+  border-bottom: 1px solid var(--wa-border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.simplex-security-pill svg {
+  color: var(--sx-neon-emerald);
+  flex-shrink: 0;
+}
+
+/* Search bar */
+.search-wrapper {
+  padding: 8px 12px;
+  background: var(--wa-sidebar-bg);
+  border-bottom: 1px solid var(--wa-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-input-box {
+  background: #202c33;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 8px;
+  border: 1px solid transparent;
+}
+.search-input-box:focus-within {
+  border-color: var(--wa-emerald);
+}
+
+.search-input-box input {
+  background: none;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 13px;
+  width: 100%;
+}
+.search-input-box input::placeholder {
+  color: var(--wa-text-muted);
+}
+
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #202c33;
+  color: var(--wa-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: 0.2s;
+}
+.chip.active, .chip:hover {
+  background: var(--wa-active-chat);
+  color: var(--wa-emerald);
+}
+
+/* Chat list */
+.chats-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.chats-list::-webkit-scrollbar { width: 5px; }
+.chats-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.15s;
+  position: relative;
+}
+.chat-item:hover {
+  background: var(--wa-hover-bg);
+}
+.chat-item.active {
+  background: var(--wa-active-chat);
+}
+
+.contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 16px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.contact-avatar.avatar-simplex {
+  background: linear-gradient(135deg, #059669, #0d9488);
+}
+.contact-avatar.avatar-mesh {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+.contact-avatar.avatar-nostr {
+  background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.contact-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wa-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-time {
+  font-size: 11px;
+  color: var(--wa-text-muted);
+}
+.chat-item.has-unread .contact-time {
+  color: var(--wa-unread-badge);
+  font-weight: 600;
+}
+
+.contact-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.last-msg-snippet {
+  font-size: 12px;
+  color: var(--wa-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-unread {
+  background: var(--wa-unread-badge);
+  color: #0b141a;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.queue-tag {
+  font-size: 9px;
+  background: rgba(6, 182, 212, 0.15);
+  color: #38bdf8;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+/* ============================================================
+   PAINEL DIREITO: ÁREA DO CHAT ATIVO
+   ============================================================ */
+.main-chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0b141a;
+  background-image: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
+  position: relative;
+  min-width: 0;
+}
+
+/* Header do Chat */
+.chat-header {
+  height: 60px;
+  background: var(--wa-header-bg);
+  border-bottom: 1px solid var(--wa-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  z-index: 10;
+}
+
+.active-user-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.active-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 15px;
+}
+
+.active-user-text {
+  min-width: 0;
+}
+
+.active-user-text h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wa-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-user-text p {
+  font-size: 11px;
+  color: var(--wa-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Messages Scroll Container */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.messages-container::-webkit-scrollbar { width: 6px; }
+.messages-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+/* Date separator / Security pill */
+.date-separator {
+  align-self: center;
+  background: #182229;
+  color: var(--wa-text-secondary);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--wa-border);
+  margin: 8px 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.security-encryption-banner {
+  align-self: center;
+  max-width: 480px;
+  background: #182229;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  color: #fde047;
+  font-size: 11px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-align: center;
+  margin: 6px 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+/* Balões de Mensagem */
+.message-bubble {
+  max-width: 68%;
+  padding: 8px 12px 6px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  position: relative;
+  word-break: break-word;
+  animation: fadeIn 0.15s ease-out;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-bubble.incoming {
+  align-self: flex-start;
+  background: var(--wa-incoming-bubble);
+  color: var(--wa-text-primary);
+  border-top-left-radius: 2px;
+}
+
+.message-bubble.outgoing {
+  align-self: flex-end;
+  background: var(--wa-outgoing-bubble);
+  color: var(--wa-text-primary);
+  border-top-right-radius: 2px;
+}
+
+.bubble-sender {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--wa-emerald);
+  margin-bottom: 2px;
+}
+
+.bubble-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+}
+
+.check-marks {
+  display: inline-flex;
+  color: var(--wa-check-blue);
+}
+
+.burn-pill {
+  font-size: 9px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+}
+
+/* Audio Player Bubble */
+.audio-player-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  padding: 4px 0;
+}
+
+.play-audio-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #25d366;
+  color: #0b141a;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.play-audio-btn:hover {
+  transform: scale(1.05);
+}
+
+.audio-waveform-bars {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+}
+
+.waveform-bar {
+  flex: 1;
+  background: rgba(255,255,255,0.4);
+  border-radius: 2px;
+  height: 10px;
+}
+.waveform-bar:nth-child(even) { height: 18px; }
+.waveform-bar:nth-child(3n) { height: 24px; }
+.waveform-bar:nth-child(4n) { height: 14px; }
+.waveform-bar.active { background: #fff; }
+
+/* ============================================================
+   FOOTER INPUT BAR (WHATSAPP WEB ESTILO COMPLETO)
+   ============================================================ */
+.chat-footer {
+  min-height: 62px;
+  background: var(--wa-header-bg);
+  border-top: 1px solid var(--wa-border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 10;
+}
+
+.input-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-input-field {
+  flex: 1;
+  background: #2a3942;
+  border-radius: 12px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 14px;
+  border: none;
+  outline: none;
+  resize: none;
+  min-height: 42px;
+  max-height: 120px;
+  line-height: 1.4;
+}
+.message-input-field::placeholder {
+  color: var(--wa-text-muted);
+}
+
+.btn-send {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--wa-emerald);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 168, 132, 0.4);
+}
+.btn-send:hover {
+  background: var(--wa-emerald-hover);
+  transform: scale(1.05);
+}
+
+.btn-send.recording {
+  background: #ef4444;
+  animation: pulseRecording 1s infinite;
+}
+
+@keyframes pulseRecording {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Modals & Overlays */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-content {
+  background: #111b21;
+  border: 1px solid var(--wa-border);
+  border-radius: 20px;
+  max-width: 480px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+  position: relative;
+}
+
+.modal-content h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.modal-content p {
+  font-size: 13px;
+  color: var(--wa-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.code-invite-box {
+  background: #090e11;
+  border: 1px solid var(--wa-border);
+  padding: 12px;
+  border-radius: 12px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #38bdf8;
+  word-break: break-all;
+  margin-bottom: 16px;
+  user-select: all;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-secondary {
+  background: #202c33;
+  color: var(--wa-text-primary);
+  border: 1px solid var(--wa-border);
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn-primary {
+  background: var(--wa-emerald);
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Toast Notifications */
+.toast-msg {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast-msg.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    position: absolute;
+    inset: 0;
+  }
+  .sidebar.hidden-mobile {
+    transform: translateX(-100%);
+  }
+  .main-chat-area {
+    width: 100%;
+  }
+  .btn-back-sidebar {
+    display: inline-flex !important;
+  }
+}
+.btn-back-sidebar {
+  display: none;
+}
+
+/* ============================================================
+   MELHORIAS: FILTROS, CONTADORES, BUSCA, MENUS, ANEXOS, STATUS
+   ============================================================ */
+button.chip { font: inherit; font-size: 12px; cursor: pointer; }
+.chip:focus-visible, .model-btn:focus-visible, .icon-btn:focus-visible, .chat-item:focus-visible,
+.btn-send:focus-visible, .btn-exit:focus-visible, .btn-mesh-action:focus-visible {
+  outline: 2px solid var(--sx-neon-cyan);
+  outline-offset: 2px;
+}
+.filter-chips { overflow-x: auto; scrollbar-width: none; }
+.filter-chips .chip { white-space: nowrap; flex: none; }
+
+.model-count {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(134, 150, 160, 0.18);
+  color: var(--wa-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  text-align: center;
+}
+.model-count.unread { background: var(--wa-unread-badge); color: #06241a; }
+
+.demo-note { opacity: 0.85; margin-left: 6px; color: #fbbf24; cursor: help; }
+
+.empty-list { padding: 32px 20px; text-align: center; color: var(--wa-text-secondary); font-size: 13px; }
+.empty-list p { margin-bottom: 14px; }
+
+.typing-text { color: var(--wa-unread-badge); font-style: italic; }
+.typing-bubble { display: inline-flex; gap: 4px; align-items: center; padding: 12px 14px; width: auto; }
+.typing-bubble span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--wa-text-secondary);
+  animation: typing-bounce 1.1s infinite ease-in-out;
+}
+.typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+.typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+.check-marks.pending { color: var(--wa-text-secondary); }
+.sim-tag {
+  font-size: 9px; padding: 1px 6px; border-radius: 999px;
+  border: 1px dashed rgba(251, 191, 36, 0.5); color: #fbbf24;
+}
+.bubble-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble-text mark, .last-msg-snippet mark { background: #fbbf24; color: #1a1300; border-radius: 3px; padding: 0 2px; }
+
+.msg-image { display: block; max-width: min(280px, 100%); max-height: 300px; border-radius: 10px; margin-bottom: 4px; }
+.msg-file { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.22); min-width: 180px; }
+.msg-file-icon { font-size: 20px; }
+.msg-file strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.msg-file small { color: rgba(255, 255, 255, 0.65); font-size: 11px; font-family: ui-monospace, monospace; }
+
+.inchat-search {
+  display: none; align-items: center; gap: 10px;
+  padding: 8px 14px; background: var(--wa-sidebar-bg); border-bottom: 1px solid var(--wa-border);
+}
+.inchat-search.open { display: flex; }
+.inchat-search input {
+  flex: 1; min-width: 0; background: var(--wa-header-bg); border: 1px solid var(--wa-border);
+  border-radius: 8px; padding: 8px 12px; color: var(--wa-text-primary); font-size: 14px; outline: none;
+}
+.inchat-search input:focus { border-color: var(--sx-neon-cyan); }
+.inchat-search span { font-size: 11px; color: var(--wa-text-secondary); white-space: nowrap; font-family: ui-monospace, monospace; }
+
+.chat-header { position: relative; }
+.pop {
+  position: absolute; z-index: 60; background: #1b262d; border: 1px solid rgba(134, 150, 160, 0.3);
+  border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.menu-pop { top: calc(100% - 4px); right: 10px; min-width: 250px; padding: 6px; display: grid; }
+.menu-pop button {
+  text-align: left; background: none; border: 0; color: var(--wa-text-primary);
+  padding: 11px 12px; border-radius: 8px; font-size: 13.5px; cursor: pointer;
+}
+.menu-pop button:hover, .menu-pop button:focus-visible { background: var(--wa-active-chat); outline: none; }
+.menu-pop button.danger { color: #f87171; }
+.emoji-pop {
+  bottom: calc(100% + 8px); left: 10px; padding: 8px;
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: min(340px, calc(100vw - 20px));
+}
+.emoji-pop button { background: none; border: 0; font-size: 22px; line-height: 1; padding: 7px 0; border-radius: 8px; cursor: pointer; }
+.emoji-pop button:hover, .emoji-pop button:focus-visible { background: var(--wa-active-chat); outline: none; }
+
+.lora-counter {
+  display: none; flex: none; font-size: 10.5px; font-family: ui-monospace, monospace;
+  padding: 3px 7px; border-radius: 999px; color: #34d399;
+  background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.lora-counter.over { color: #fca5a5; background: rgba(239, 68, 68, 0.16); border-color: rgba(239, 68, 68, 0.5); }
+
+.toast-msg { opacity: 0; visibility: hidden; max-width: calc(100vw - 24px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s, visibility 0.2s; }
+.toast-msg.show { opacity: 1; visibility: visible; }
+
+@media (max-width: 768px) {
+  /* Cabeçalho enxuto: sobra tela para a conversa */
+  .model-selector-bar { padding-top: 8px; padding-bottom: 8px; }
+  .model-header-row { gap: 6px; }
+  .brand-badge-box { order: 1; }
+  .top-actions-right { order: 2; margin-left: auto; }
+  .model-buttons-scroll { order: 3; flex-basis: 100%; }
+  .brand-tag { display: none; }
+  .btn-exit { padding: 6px 10px; font-size: 11px; }
+  .model-status-strip { padding: 4px 8px; }
+  #modelStripTitle, .model-crypto-tag { display: none; }
+  .demo-note { margin-left: 0; font-size: 10.5px; }
+  .meshtastic-control-bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 5px 8px; }
+  .mesh-left-group, .mesh-right-group { flex-wrap: nowrap; flex: none; }
+  .mesh-channel-info { display: none; }
+  .btn-mesh-action { white-space: nowrap; flex: none; }
+  .simplex-security-pill { display: none; }
+  .chat-header { padding-left: 8px; padding-right: 8px; gap: 6px; }
+  .active-user-meta { min-width: 0; flex: 1; }
+  .active-user-text { min-width: 0; flex: 1; }
+  .active-user-text h3, .active-user-text p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-header-actions { flex: none; gap: 0; }
+  .chat-header-actions .icon-btn[onclick^="startSimulatedCall"] { display: none; }
+  .chat-footer { padding-left: 8px; padding-right: 8px; gap: 6px; }
+  .message-input-field { font-size: 16px; } /* evita zoom automático no iOS */
+  .menu-pop { right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-bubble span { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SELETOR DE MODELOS DE CHAT NO TOPO (REQUISITO PRINCIPAL)
+     ============================================================ -->
+<header class="model-selector-bar">
+  <div class="model-header-row">
+    <div class="brand-badge-box">
+      <div class="brand-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>JJY Chat Soberano</span>
+      </div>
+      <span class="brand-tag">v2.0 P2P</span>
+    </div>
+
+    <!-- Lista de Botões de Modelo de Chat -->
+    <div class="model-buttons-scroll" id="modelButtonsContainer">
+      <button class="model-btn active" data-model="simplex" onclick="selectChatModel('simplex')">
+        <span class="dot"></span>
+        <span>🟢 SimpleX Protocol</span>
+      </button>
+      <button class="model-btn" data-model="whatsapp" onclick="selectChatModel('whatsapp')">
+        <span class="dot"></span>
+        <span>💬 WhatsApp Sovereign</span>
+      </button>
+      <button class="model-btn" data-model="nostr" onclick="selectChatModel('nostr')">
+        <span class="dot"></span>
+        <span>⚡ Nostr NIP-17</span>
+      </button>
+      <button class="model-btn" data-model="matrix" onclick="selectChatModel('matrix')">
+        <span class="dot"></span>
+        <span>🌐 Matrix / Element</span>
+      </button>
+      <button class="model-btn" data-model="briar" onclick="selectChatModel('briar')">
+        <span class="dot"></span>
+        <span>📡 Briar Mesh RF</span>
+      </button>
+      <button class="model-btn" data-model="meshtastic" onclick="selectChatModel('meshtastic')">
+        <span class="dot"></span>
+        <span>📻 Meshtastic LoRa</span>
+      </button>
+    </div>
+
+    <div class="top-actions-right">
+      <button class="btn-exit" onclick="openNewContactModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        <span>+ Nova Fila</span>
+      </button>
+      <a href="/" class="btn-exit" title="Voltar ao portal principal JJY">
+        <span>← Voltar ao JJY</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Faixa de Diagnóstico e Arquitetura do Modelo Selecionado -->
+  <div class="model-status-strip" id="modelStatusStrip">
+    <div>
+      <span id="modelStripTitle">Modelo Ativo: <strong>SimpleX Protocol (Filas Unidirecionais)</strong></span>
+      <span class="demo-note" title="As conversas ficam salvas só neste aparelho. As respostas dos contatos são geradas localmente para demonstrar cada modelo.">• Demonstração local: respostas simuladas, nada sai deste aparelho</span>
+    </div>
+    <div class="model-crypto-tag" id="modelCryptoTag">
+      🔒 Double Ratchet + Pairwise Simplex Queue (0 Metadados)
+    </div>
+  </div>
+
+  <!-- Faixa de Controle e Hardware do Meshtastic (Visível quando Meshtastic ativo) -->
+  <div class="meshtastic-control-bar" id="meshtasticControlBar" style="display: none;">
+    <div class="mesh-left-group">
+      <span class="mesh-badge-pulse" id="meshHardwareStatus">● LoRa P2P</span>
+      <span class="mesh-freq-info" id="meshFreqInfo">📻 915.000 MHz • LongFast (SF11/BW250)</span>
+      <span class="mesh-channel-info" id="meshChannelInfo">Canal: #LongFast-JYY (AQ==)</span>
+    </div>
+    <div class="mesh-right-group">
+      <button class="btn-mesh-action" id="btnMeshUsbConnect" onclick="toggleChatMeshtasticUsb()">
+        🔌 Conectar USB WebSerial
+      </button>
+      <a href="/#lora" onclick="goToAppTab(event, 'lora')" class="btn-mesh-action" id="btnMeshOpenLora" title="Abrir a página Rádio LoRa &amp; Meshtastic do app">
+        📡 Abrir Rádio LoRa
+      </a>
+      <a href="/#mesh" onclick="goToMeshRefinement(event)" class="btn-mesh-action" id="btnMeshRefineProtocol" title="Abrir painel de refinamento do Protocolo JJY Sovereign Mesh">
+        ⚙️ Refinar no Protocolo JJY Mesh
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     CONTAINER PRINCIPAL DUAL-PANE (SIDEBAR + ACTIVE CHAT)
+     ============================================================ -->
+<div class="app-container">
+
+  <!-- SIDEBAR ESQUERDA -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Header do Usuário -->
+    <div class="sidebar-header">
+      <div class="profile-identity" onclick="showProfileFingerprint()">
+        <div class="avatar-ring online" title="Seu Nó SimpleX Local">
+          EU
+        </div>
+        <div class="profile-meta">
+          <h4>Nó Local (Você)</h4>
+          <span id="userFingerprintShort">simplex:u8f9...4c</span>
+        </div>
+      </div>
+
+      <div class="sidebar-icons">
+        <button class="icon-btn" onclick="toggleIncognito()" title="Alternar Modo Incógnito / Rotação de Chave">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="openNewContactModal()" title="Novo Contato / Gerar Link de Convite">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="22" y1="11" x2="16" y2="11"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="showSecurityOverview()" title="Inspecionar Filas Criptográficas">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="12" cy="5" r="1"/>
+            <circle cx="12" cy="19" r="1"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pílula de Garantia de Privacidade SimpleX -->
+    <div class="simplex-security-pill" onclick="showSecurityOverview()" style="cursor: pointer;" title="Clique para inspecionar a blindagem da assinatura OTP da fila">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <span>Zero identificadores globais. Assinatura OTP da fila blindada contra exposição.</span>
+    </div>
+
+    <!-- Barra de Pesquisa WhatsApp -->
+    <div class="search-wrapper">
+      <div class="search-input-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8696a0" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Pesquisar mensagens ou conexões..." oninput="filterContacts(this.value)">
+      </div>
+
+      <div class="filter-chips">
+        <button type="button" class="chip active" data-filter="all" aria-pressed="true" onclick="setFilter(this, 'all')">Todas</button>
+        <button type="button" class="chip" data-filter="model" aria-pressed="false" onclick="setFilter(this, 'model')" title="Só as conversas do modelo selecionado no topo">Do modelo ativo</button>
+        <button type="button" class="chip" data-filter="unread" aria-pressed="false" onclick="setFilter(this, 'unread')">Não lidas</button>
+        <button type="button" class="chip" data-filter="radio" aria-pressed="false" onclick="setFilter(this, 'radio')">Rádio &amp; Mesh</button>
+      </div>
+    </div>
+
+    <!-- Lista de Conversas -->
+    <div class="chats-list" id="chatsList">
+      <!-- Inserido dinamicamente via JS -->
+    </div>
+  </aside>
+
+  <!-- PAINEL DIREITO: CONVERSA ATIVA (CLONE WHATSAPP WEB + SIMPLEX) -->
+  <main class="main-chat-area" id="mainChatArea">
+    <!-- Header da Conversa Ativa -->
+    <div class="chat-header">
+      <div class="active-user-meta" onclick="showContactDetails(event)">
+        <button class="icon-btn btn-back-sidebar" onclick="toggleMobileSidebar()" style="margin-right: -4px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+
+        <div class="active-user-avatar" id="activeAvatar">
+          A
+        </div>
+
+        <div class="active-user-text">
+          <h3 id="activeContactName">
+            Soberano Alfa (Nó 01)
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#00a884"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          </h3>
+          <p id="activeContactStatus">
+            <span style="color: #00a884;">● Online</span> • Fila Duplex E2E Verificada
+          </p>
+        </div>
+      </div>
+
+      <div class="chat-header-actions">
+        <button class="icon-btn" onclick="startSimulatedCall('audio')" title="Chamada de Voz Segura">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="startSimulatedCall('video')" title="Chamada de Vídeo Segura">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="toggleSearchInChat()" title="Pesquisar na conversa">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+        <button class="icon-btn" data-pop-toggle onclick="openChatOptionsModal(event)" title="Mais opções" aria-label="Mais opções">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="12" cy="5" r="1"/>
+            <circle cx="12" cy="19" r="1"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Área de Mensagens com Rolagem -->
+    <div class="messages-container" id="messagesContainer">
+      <div class="date-separator">HOJE</div>
+
+      <div class="security-encryption-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span>As mensagens e chamadas são protegidas com criptografia de ponta a ponta. Nenhum terceiro pode lê-las ou ouvi-las.</span>
+      </div>
+
+      <!-- Mensagens inseridas dinamicamente -->
+    </div>
+
+    <!-- Barra de Digitação Inferior (Estilo WhatsApp) -->
+    <footer class="chat-footer">
+      <div class="input-actions-left">
+        <button class="icon-btn" data-pop-toggle onclick="insertQuickEmoji(event)" title="Emojis" aria-label="Emojis">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="openAttachmentModal()" title="Anexar arquivo ou foto" aria-label="Anexar arquivo ou foto">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
+      </div>
+
+      <textarea
+        class="message-input-field"
+        id="messageInput"
+        placeholder="Digite uma mensagem…"
+        aria-label="Mensagem"
+        rows="1"
+        onkeydown="handleInputKeydown(event)"
+        oninput="handleInputChange(this)"
+      ></textarea>
+
+      <button class="btn-send" id="btnSendOrMic" onclick="handleSendOrMicClick()" title="Enviar mensagem">
+        <svg id="iconSend" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </footer>
+  </main>
+</div>
+
+<!-- ============================================================
+     MODAL DE NOVA CONEXÃO / CONVITE SIMPLEX
+     ============================================================ -->
+<div class="modal-overlay" id="newContactModal">
+  <div class="modal-content">
+    <h3>Nova Fila de Conexão SimpleX</h3>
+    <p>Gere um link ou escaneie o código para estabelecer uma conexão duplex isolada com outra pessoa sem revelar seu perfil.</p>
+
+    <div style="font-size: 11px; color: var(--wa-emerald); margin-bottom: 6px; font-weight: 600;">
+      SEU LINK DESCARTÁVEL DE CONVITE:
+    </div>
+    <div class="code-invite-box" id="inviteLinkText">
+      simplex://contact/invite?id=sq_81f09e84ad2&relay=wss://relay.jjy.mesh/simplex
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="font-size: 11px; color: var(--wa-text-secondary); display: block; margin-bottom: 4px;">Nome ou Apelido da Conexão:</label>
+      <input type="text" id="newPeerNameInput" placeholder="Ex: Bob (SimpleX Nó 02)" style="width: 100%; background: #202c33; border: 1px solid var(--wa-border); border-radius: 8px; padding: 10px; color: #fff; font-size: 13px; outline: none;">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('newContactModal')">Cancelar</button>
+      <button class="btn-primary" onclick="copyInviteAndAddContact()">Copiar & Criar Fila</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL DE AUDITORIA CRIPTOGRÁFICA & BLINDAGEM DA ASSINATURA OTP
+     ============================================================ -->
+<div class="modal-overlay" id="securityOverviewModal">
+  <div class="modal-content" style="max-width: 560px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <h3 style="display: flex; align-items: center; gap: 8px; font-size: 17px; margin-bottom: 0;">
+        <span style="color: #10b981;">🛡️</span> Blindagem da Assinatura OTP da Fila
+      </h3>
+      <span style="font-size: 10px; font-family: monospace; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.4);">
+        ZERO METADADOS EXPOSTOS
+      </span>
+    </div>
+
+    <p style="font-size: 12px; color: #94a3b8; line-height: 1.5; margin-bottom: 14px;">
+      No protocolo SimpleX e JJY Sovereign Mesh, as <strong>Assinaturas OTP da fila</strong> são segredos efêmeros de uso único (<em>One-Time Proof</em>). Elas são processadas exclusivamente na memória local (RAM) e <strong>NUNCA são expostas a servidores, relays ou terceiros</strong>.
+    </p>
+
+    <!-- STATUS DE BLINDAGEM -->
+    <div style="background: #090e11; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11px; font-weight: 700; color: #e2e8f0;">Status de Blindagem Ativa:</span>
+        <span style="font-size: 11px; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+          <span>✓</span> 100% Protegido Contra Vazamento
+        </span>
+      </div>
+
+      <div style="font-size: 11px; font-family: monospace; color: #94a3b8; line-height: 1.6;">
+        <div>• <strong>Cifra Primária:</strong> Double Ratchet + Curva X25519 + AES-256-GCM</div>
+        <div>• <strong>Assinatura da Fila:</strong> HMAC-SHA256 Blind Token (Sem vínculo de ID)</div>
+        <div>• <strong>Rotação OTP:</strong> Consumo único por pacote com destruição imediata</div>
+      </div>
+    </div>
+
+    <!-- COMPARATIVO: O QUE O RELAY VÊ VS O QUE VOCÊ VÊ -->
+    <div style="margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div style="background: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 10px;">
+        <span style="font-size: 10px; font-weight: 700; color: #f87171; display: block; margin-bottom: 4px;">
+          👁️ O QUE O RELAY / PROVEDOR VÊ:
+        </span>
+        <span style="font-size: 11px; font-family: monospace; color: #fca5a5; word-break: break-all;">
+          0x7e8b91... ruído aleatório (0 remetente, 0 destinatário, 0 metadados)
+        </span>
+      </div>
+
+      <div style="background: rgba(16, 185, 129, 0.08); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 10px;">
+        <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block; margin-bottom: 4px;">
+          🔒 O QUE SEU DISPOSITIVO VÊ:
+        </span>
+        <span style="font-size: 11px; font-family: monospace; color: #86efac; word-break: break-all;" id="modalLocalQueueProof">
+          Fila pareada duplex e autenticada com prova OTP de sessão
+        </span>
+      </div>
+    </div>
+
+    <!-- FILAS DO CONTATO ATUAL -->
+    <div style="background: #151f26; border-radius: 10px; padding: 10px; margin-bottom: 16px; font-size: 11px; font-family: monospace;">
+      <div style="color: #64748b; margin-bottom: 4px;">FILAS DO CONTATO ATIVO: <strong id="modalContactName" style="color: #fff;">Soberano Alfa</strong></div>
+      <div style="display: flex; justify-content: space-between; color: #38bdf8;">
+        <span>Fila TX (Envio):</span>
+        <span id="modalTxQueueId">sq_tx_49a0...8e21 (Blind Token)</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; color: #34d399; margin-top: 2px;">
+        <span>Fila RX (Recebimento):</span>
+        <span id="modalRxQueueId">sq_rx_91c4...3b7a (Blind Token)</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; color: #a78bfa; margin-top: 2px;">
+        <span>Assinatura OTP da Fila:</span>
+        <span id="modalOtpSignatureStatus">Válida • Consumo Efêmero • Não Exposta</span>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center;">
+      <button class="btn-secondary" onclick="rotateQueueOtpKeys()" style="border-color: rgba(16, 185, 129, 0.4); color: #34d399;">
+        🔄 Rotacionar Assinatura OTP Agora
+      </button>
+      <button class="btn-primary" onclick="closeModal('securityOverviewModal')">
+        Entendido & Blindado
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-msg" id="toastMsg" role="status" aria-live="polite">
+  <span>✓</span>
+  <span id="toastText">Ação realizada com sucesso</span>
+</div>
+
+<!-- ÁUDIO SINTÉTICO PARA SONS DE MENSAGEM -->
+<script>
+/* ============================================================
+   ESTADO GLOBAL DO JJY CHAT
+   ============================================================ */
+let activeModel = localStorage.getItem('jjy_chat_model') || 'simplex';
+// Verifica se foi passado modelo via URL (ex: ?model=meshtastic)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('model')) {
+  activeModel = urlParams.get('model');
+}
+
+let currentContactId = '1';
+let isRecordingAudio = false;
+let mediaRecorder = null;
+let audioChunks = [];
+
+// Controlador de Hardware WebSerial USB para Meshtastic
+let chatSerialPort = null;
+let chatSerialWriter = null;
+
+// Definições dos Modelos
+const CHAT_MODELS = {
+  simplex: {
+    name: 'SimpleX Protocol',
+    subtitle: 'Filas Unidirecionais P2P • Sem ID de Usuário • 0 Metadados',
+    crypto: 'Double Ratchet + Pairwise Simplex Queue (0 Metadados)',
+    color: '#10b981',
+    info: 'Modelo SimpleX ativo: Mensagens são enviadas através de duas filas independentes sem identificador compartilhado.'
+  },
+  whatsapp: {
+    name: 'WhatsApp Sovereign',
+    subtitle: 'Signal Protocol E2EE • Recibos Duplex • Números Sintéticos',
+    crypto: 'Curva X25519 + Signal Double Ratchet + AES-256-GCM',
+    color: '#00a884',
+    info: 'Modelo WhatsApp ativo: Interface nativa com status em tempo real, recibos azuis de leitura e chaves ratcheting.'
+  },
+  nostr: {
+    name: 'Nostr NIP-17',
+    subtitle: 'DMs Descentralizadas em Relays Globais Criptografadas',
+    crypto: 'NIP-04/17 + Secp256k1 Ephemeral Gift Wraps',
+    color: '#f59e0b',
+    info: 'Modelo Nostr ativo: Envelopes criptografados distribuídos através de relays descentralizados resistentes a censura.'
+  },
+  matrix: {
+    name: 'Matrix / Element',
+    subtitle: 'Salas Federadas Criptografadas • Multi-Dispositivo',
+    crypto: 'Olm / Megolm E2E Encryption + Federação descentralizada',
+    color: '#06b6d4',
+    info: 'Modelo Matrix ativo: Salas federadas com criptografia de grupo e sincronização de chaves entre dispositivos.'
+  },
+  briar: {
+    name: 'Briar Mesh RF',
+    subtitle: 'Off-Grid Mesh via Wi-Fi Local, Bluetooth BLE e Rádio LoRa',
+    crypto: 'BTP (Briar Transport) + Zero Dependência de Servidores',
+    color: '#8b5cf6',
+    info: 'Modelo Briar ativo: Comunicação peer-to-peer sem servidor rodando em redes mesh de salto local e RF.'
+  },
+  meshtastic: {
+    name: 'Meshtastic LoRa Mesh',
+    subtitle: 'Long-Range Off-Grid RF • Roteamento Multi-Salto • Sem Internet',
+    crypto: 'AES-256-CTR (Chave PSK de Canal) + LoRa SyncWord 0x2B + Hop Limit',
+    color: '#10b981',
+    info: 'Modelo Meshtastic ativo: Transmissão direta em RF 915 MHz com topologia Mesh distribuída, múltiplos saltos e zero dependência de infraestrutura.'
+  }
+};
+
+// Contatos Mock Iniciais
+const CONTACTS = [
+  {
+    id: '1',
+    name: 'Soberano Alfa (Nó 01)',
+    avatarClass: 'avatar-simplex',
+    initials: 'SA',
+    model: 'simplex',
+    verified: true,
+    lastTime: '15:14',
+    unreadCount: 0,
+    statusText: 'Online • Fila Duplex E2E Verificada',
+    messages: [
+      { id: 'm1', from: 'them', text: 'Conexão simplex inicializada com sucesso. Chaves pareadas.', time: '15:10', read: true },
+      { id: 'm2', from: 'me', text: 'Perfeito! Verifiquei a assinatura OTP efêmera da fila. Todas as chaves blindadas e ZERO metadados expostos ao relay.', time: '15:11', read: true },
+      { id: 'm3', from: 'them', text: 'Sim, qualquer pacote interceptado parece apenas ruído de bytes sem ID.', time: '15:12', read: true },
+      { id: 'm4', from: 'them', text: 'Acabei de enviar a telemetria da estação mesh pelo canal criptografado.', time: '15:14', read: true }
+    ]
+  },
+  {
+    id: '2',
+    name: 'Alice (Canal Privado)',
+    avatarClass: 'avatar-simplex',
+    initials: 'AL',
+    model: 'whatsapp',
+    verified: true,
+    lastTime: '14:52',
+    unreadCount: 1,
+    statusText: 'Online • Criptografia Ponta a Ponta',
+    messages: [
+      { id: 'm20', from: 'them', text: 'Oi! O protocolo JJY está funcionando muito rápido aqui na LAN.', time: '14:48', read: true },
+      { id: 'm21', from: 'me', text: 'Sim! Testamos o áudio acústico e o rádio tático também.', time: '14:50', read: true },
+      { id: 'm22', from: 'them', text: 'Consegue me mandar a nova chave efêmera de sessão?', time: '14:52', read: false }
+    ]
+  },
+  {
+    id: '3',
+    name: 'Canal Geral JJY Mesh',
+    avatarClass: 'avatar-mesh',
+    initials: 'GM',
+    model: 'briar',
+    verified: false,
+    lastTime: '13:40',
+    unreadCount: 0,
+    statusText: '8 Peers Conectados na Rede Mesh',
+    messages: [
+      { id: 'm30', from: 'them', senderName: 'Nó Gateway', text: 'Relay LoRa 915MHz ativo em modo de contingência.', time: '13:35', read: true },
+      { id: 'm31', from: 'me', text: 'Confirmado. Recepção estável com SNR +9dB.', time: '13:40', read: true }
+    ]
+  },
+  {
+    id: '4',
+    name: 'Bob (Relay Nostr)',
+    avatarClass: 'avatar-nostr',
+    initials: 'BO',
+    model: 'nostr',
+    verified: true,
+    lastTime: '11:15',
+    unreadCount: 0,
+    statusText: 'Visto por último hoje às 11:15',
+    messages: [
+      { id: 'm40', from: 'them', text: 'Enviando Gift Wrap NIP-17 para o seu npub efêmero.', time: '11:14', read: true },
+      { id: 'm41', from: 'me', text: 'Recebido e decifrado localmente.', time: '11:15', read: true }
+    ]
+  },
+  {
+    id: '5',
+    name: 'Repetidor Pico da Serra (TB-REP)',
+    avatarClass: 'avatar-mesh',
+    initials: 'TR',
+    model: 'meshtastic',
+    verified: true,
+    lastTime: '15:20',
+    unreadCount: 0,
+    statusText: 'Router Ativo • Salto 1/3 • SNR +9.2dB • Bateria 88%',
+    messages: [
+      { id: 'mt1', from: 'them', text: 'Beacon LoRa recebido via slot 915.000 MHz. Rota repetidora estabelecida.', time: '15:15', read: true, isLora: true, toaMs: 142, snr: '+9.2 dB', hops: 1 },
+      { id: 'mt2', from: 'me', text: 'Confirmado. Telemetria do JJY Sovereign Mesh sincronizada com sucesso.', time: '15:18', read: true, isLora: true, toaMs: 168, snr: '+8.8 dB', hops: 1 },
+      { id: 'mt3', from: 'them', text: 'Canal criptografado AES-256 verificado. Hop Limit configurado.', time: '15:20', read: true, isLora: true, toaMs: 135, snr: '+9.5 dB', hops: 1 }
+    ]
+  },
+  {
+    id: '6',
+    name: 'Mochila Tática WisBlock (RAK-03)',
+    avatarClass: 'avatar-mesh',
+    initials: 'RA',
+    model: 'meshtastic',
+    verified: true,
+    lastTime: '14:40',
+    unreadCount: 0,
+    statusText: 'Tracker GPS • Salto 2/3 • SNR +4.1dB • Solar 74%',
+    messages: [
+      { id: 'mt10', from: 'them', text: 'Posição GPS atual: -23.5820, -46.6850 (Alt 790m). Operação 100% off-grid.', time: '14:40', read: true, isLora: true, toaMs: 182, snr: '+4.1 dB', hops: 2 }
+    ]
+  },
+  {
+    id: '7',
+    name: 'Broadcast Geral Meshtastic (^all)',
+    avatarClass: 'avatar-mesh',
+    initials: 'ALL',
+    model: 'meshtastic',
+    verified: false,
+    lastTime: '13:00',
+    unreadCount: 0,
+    statusText: 'Canal Público Aberto #LongFast • Flood Routing',
+    messages: [
+      { id: 'mt20', from: 'them', senderName: 'Heltec-Base', text: 'Chamada geral na malha LoRa brasileira 915MHz. Todos os nós operacionais.', time: '13:00', read: true, isLora: true, toaMs: 154, snr: '+11.0 dB', hops: 0 }
+    ]
+  }
+];
+
+/* ============================================================
+   NÚCLEO DO CHAT: PERSISTÊNCIA LOCAL, MODELOS, LISTA E CONVERSA
+   Tudo roda neste aparelho. As respostas dos contatos são uma
+   simulação de demonstração (marcadas como "simulada").
+   ============================================================ */
+const STORE_KEY = 'jjy_chat_state_v2';
+const LORA_MAX_BYTES = 200; // carga útil segura de texto Meshtastic
+const DEMO_CONTACTS = JSON.parse(JSON.stringify(CONTACTS));
+const AUDIO_URLS = {};      // id da mensagem -> URL do áudio gravado (só nesta sessão)
+const BASE_TITLE = document.title;
+const drafts = {};
+let listFilter = 'all';     // all | unread | model | radio
+let inChatQuery = '';
+let typingContactId = null;
+let recordStartedAt = 0;
+let activeAudio = null;
+
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const nowTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+const getContact = (id) => CONTACTS.find((c) => c.id === id);
+const currentContact = () => getContact(currentContactId);
+const byteLength = (text) => new TextEncoder().encode(text).length;
+const formatBytes = (n) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+function saveState() {
+  const pack = (contacts) => JSON.stringify({ v: 2, contacts, current: currentContactId });
+  try {
+    localStorage.setItem(STORE_KEY, pack(CONTACTS));
+  } catch (e) {
+    // Sem espaço: guarda as conversas sem as imagens embutidas
+    try {
+      localStorage.setItem(STORE_KEY, pack(CONTACTS.map((c) => ({ ...c, messages: c.messages.map((m) => (m.dataUrl ? { ...m, dataUrl: null } : m)) }))));
+    } catch (e2) { /* armazenamento indisponível: segue só em memória */ }
+  }
+}
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (!saved || !Array.isArray(saved.contacts)) return;
+    const valid = saved.contacts.filter((c) => c && c.id && CHAT_MODELS[c.model] && Array.isArray(c.messages));
+    if (!valid.length) return;
+    CONTACTS.splice(0, CONTACTS.length, ...valid);
+    if (getContact(saved.current)) currentContactId = saved.current;
+  } catch (e) { /* estado corrompido: mantém a demonstração */ }
+}
+
+function messagePreview(m) {
+  if (!m) return 'Sem mensagens';
+  if (m.isAudio) return '🎤 Mensagem de voz';
+  if (m.isImage) return '🖼️ ' + (m.fileName || 'Foto');
+  if (m.isFile) return '📎 ' + (m.fileName || 'Arquivo');
+  return m.text || '';
+}
+
+function ticksHtml(m) {
+  if (m.from !== 'me') return '';
+  const status = m.status || 'read';
+  if (status === 'sent') return '<span class="check-marks pending" title="Enviada">✓</span>';
+  if (status === 'delivered') return '<span class="check-marks pending" title="Entregue">✓✓</span>';
+  return '<span class="check-marks" title="Lida">✓✓</span>';
+}
+
+function highlight(text, query) {
+  const safe = escapeHtml(text);
+  if (!query) return safe;
+  const q = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp(q, 'gi'), (hit) => `<mark>${hit}</mark>`);
+}
+
+/* ============================================================
+   INICIALIZAÇÃO
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  const urlModel = urlParams.get('model');
+  if (urlModel && CHAT_MODELS[urlModel]) {
+    const first = CONTACTS.find((c) => c.model === urlModel);
+    if (first) currentContactId = first.id;
+    activeModel = urlModel;
+  } else {
+    const c = currentContact() || CONTACTS[0];
+    currentContactId = c.id;
+    activeModel = c.model;
+  }
+  buildDynamicUi();
+  selectChatModel(activeModel, false, true);
+  renderContactList();
+  renderActiveChat();
+  updateComposerState();
+
+  // Escuta alterações do painel do Protocolo JJY Mesh em tempo real
+  window.addEventListener('storage', () => { refreshMeshtasticChatBar(); });
+  window.addEventListener('jjy_mesh_sync', () => { refreshMeshtasticChatBar(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.open').forEach((m) => m.classList.remove('open'));
+      closePopovers();
+      if (inChatQuery || document.getElementById('inChatSearchBar').classList.contains('open')) closeSearchInChat();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      document.getElementById('sidebar').classList.remove('hidden-mobile');
+      document.getElementById('searchInput').focus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.pop, [data-pop-toggle]')) closePopovers();
+  });
+});
+
+/* Elementos criados por script: contadores, busca na conversa, menus */
+function buildDynamicUi() {
+  document.querySelectorAll('.model-btn').forEach((btn) => {
+    const count = document.createElement('span');
+    count.className = 'model-count';
+    btn.appendChild(count);
+  });
+
+  const header = document.querySelector('.chat-header');
+  const bar = document.createElement('div');
+  bar.className = 'inchat-search';
+  bar.id = 'inChatSearchBar';
+  bar.innerHTML = `
+    <input type="text" id="inChatSearchInput" placeholder="Buscar nesta conversa…" aria-label="Buscar nesta conversa">
+    <span id="inChatSearchCount"></span>
+    <button class="icon-btn" title="Fechar busca" aria-label="Fechar busca">✕</button>`;
+  header.insertAdjacentElement('afterend', bar);
+  bar.querySelector('input').addEventListener('input', (e) => {
+    inChatQuery = e.target.value.trim();
+    renderActiveChat();
+  });
+  bar.querySelector('button').addEventListener('click', closeSearchInChat);
+
+  const footer = document.querySelector('.chat-footer');
+  const counter = document.createElement('span');
+  counter.className = 'lora-counter';
+  counter.id = 'loraCounter';
+  footer.insertBefore(counter, document.getElementById('btnSendOrMic'));
+
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.id = 'attachInput';
+  picker.hidden = true;
+  picker.addEventListener('change', () => {
+    if (picker.files && picker.files[0]) attachFile(picker.files[0]);
+    picker.value = '';
+  });
+  document.body.appendChild(picker);
+}
+
+/* ============================================================
+   SELETOR DE MODELOS DE CHAT
+   ============================================================ */
+function selectChatModel(modelKey, showToast = true, fromContact = false) {
+  if (!CHAT_MODELS[modelKey]) modelKey = 'simplex';
+  activeModel = modelKey;
+  try { localStorage.setItem('jjy_chat_model', modelKey); } catch (e) {}
+
+  document.querySelectorAll('.model-btn').forEach((btn) => {
+    const on = btn.dataset.model === modelKey;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on && btn.scrollIntoView) btn.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
+
+  const m = CHAT_MODELS[modelKey];
+  document.getElementById('modelStripTitle').innerHTML = `Modelo Ativo: <strong>${m.name} (${m.subtitle.split('•')[0].trim()})</strong>`;
+  document.getElementById('modelCryptoTag').textContent = `🔒 ${m.crypto}`;
+
+  const meshBar = document.getElementById('meshtasticControlBar');
+  if (meshBar) {
+    meshBar.style.display = modelKey === 'meshtastic' ? 'flex' : 'none';
+    if (modelKey === 'meshtastic') refreshMeshtasticChatBar();
+  }
+
+  if (!fromContact) {
+    // Clicar num modelo mostra as conversas dele e abre a primeira
+    setFilter(document.querySelector('.chip[data-filter="model"]'), 'model');
+    const cur = currentContact();
+    if (!cur || cur.model !== modelKey) {
+      const first = CONTACTS.find((c) => c.model === modelKey);
+      if (first) selectContact(first.id, true);
+    }
+  }
+  renderContactList();
+  updateComposerState();
+  if (showToast) showToastNotification(`Modelo de chat: ${m.name}`);
+}
+
+function refreshModelCounts() {
+  let totalUnread = 0;
+  document.querySelectorAll('.model-btn').forEach((btn) => {
+    const mine = CONTACTS.filter((c) => c.model === btn.dataset.model);
+    const unread = mine.reduce((n, c) => n + (c.unreadCount || 0), 0);
+    totalUnread += unread;
+    const el = btn.querySelector('.model-count');
+    if (!el) return;
+    el.textContent = unread > 0 ? String(unread) : String(mine.length);
+    el.classList.toggle('unread', unread > 0);
+    el.title = unread > 0 ? `${unread} não lida(s)` : `${mine.length} conversa(s)`;
+  });
+  document.title = (totalUnread > 0 ? `(${totalUnread}) ` : '') + BASE_TITLE;
+}
+
+function refreshMeshtasticChatBar() {
+  const raw = localStorage.getItem('jjy_meshtastic_mesh_config');
+  let cfg = {
+    frequencyMhz: 915.0,
+    regionId: 'BR_915',
+    modemPresetId: 'LONG_FAST',
+    channelName: 'LongFast-JYY',
+    channelKeyPsk: 'AQ==',
+    hopLimit: 3
+  };
+  if (raw) {
+    try { cfg = { ...cfg, ...JSON.parse(raw) }; } catch(e){}
+  }
+
+  const freqEl = document.getElementById('meshFreqInfo');
+  const chEl = document.getElementById('meshChannelInfo');
+  const hwEl = document.getElementById('meshHardwareStatus');
+
+  if (freqEl) freqEl.textContent = `📻 ${cfg.frequencyMhz.toFixed(3)} MHz (${cfg.regionId}) • ${cfg.modemPresetId}`;
+  if (chEl) chEl.textContent = `Canal: #${cfg.channelName} • HopLimit: ${cfg.hopLimit}`;
+  if (hwEl) {
+    hwEl.textContent = chatSerialPort ? '🟢 USB WebSerial Ativo' : '● LoRa P2P';
+    hwEl.style.borderColor = chatSerialPort ? '#10b981' : 'rgba(16, 185, 129, 0.5)';
+  }
+}
+
+async function toggleChatMeshtasticUsb() {
+  const btn = document.getElementById('btnMeshUsbConnect');
+  if (chatSerialPort) {
+    try { await chatSerialPort.close(); } catch(e){}
+    chatSerialPort = null;
+    chatSerialWriter = null;
+    btn.textContent = '🔌 Conectar USB WebSerial';
+    showToastNotification('Porta USB desconectada.');
+    refreshMeshtasticChatBar();
+    return;
+  }
+
+  if (!navigator.serial) {
+    showToastNotification('WebSerial API não suportada neste navegador. Use Chrome ou Edge.');
+    return;
+  }
+
+  try {
+    chatSerialPort = await navigator.serial.requestPort();
+    await chatSerialPort.open({ baudRate: 115200 });
+    const textEncoder = new TextEncoderStream();
+    textEncoder.readable.pipeTo(chatSerialPort.writable);
+    chatSerialWriter = textEncoder.writable.getWriter();
+
+    btn.textContent = 'Desconectar USB';
+    showToastNotification('Dispositivo Meshtastic USB conectado ao chat!');
+    refreshMeshtasticChatBar();
+  } catch(err) {
+    if (!String(err).includes('No port selected')) {
+      showToastNotification('Erro ao conectar USB: ' + (err.message || err));
+    }
+  }
+}
+
+
+/* Abre uma aba do app principal (#mesh, #lora…) na mesma origem */
+function goToAppTab(e, tab) {
+  if (e && e.preventDefault) e.preventDefault();
+  let targetUrl = '/#' + tab;
+  if (window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file')) {
+    targetUrl = window.location.origin + '/#' + tab;
+  }
+  window.location.href = targetUrl;
+}
+
+function goToMeshRefinement(e) {
+  try {
+    localStorage.setItem('jjy_mesh_subtab', 'meshtastic');
+    sessionStorage.setItem('jjy_mesh_subtab', 'meshtastic');
+  } catch (err) {
+    console.warn('Storage sync err:', err);
+  }
+  goToAppTab(e, 'mesh');
+}
+
+/* ============================================================
+   LISTA DE CONVERSAS
+   ============================================================ */
+function renderContactList() {
+  const container = document.getElementById('chatsList');
+  const q = norm(document.getElementById('searchInput').value.trim());
+  container.innerHTML = '';
+
+  const filtered = CONTACTS.filter((c) => {
+    if (listFilter === 'unread' && !(c.unreadCount > 0)) return false;
+    if (listFilter === 'model' && c.model !== activeModel) return false;
+    if (listFilter === 'radio' && c.model !== 'briar' && c.model !== 'meshtastic') return false;
+    if (q) return norm(c.name).includes(q) || c.messages.some((m) => m.text && norm(m.text).includes(q));
+    return true;
+  });
+
+  if (!filtered.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-list';
+    const why = q
+      ? 'Nada encontrado para essa busca.'
+      : listFilter === 'unread'
+      ? 'Nenhuma conversa com mensagens não lidas.'
+      : listFilter === 'model'
+      ? `Ainda não há conversas em ${CHAT_MODELS[activeModel].name}.`
+      : 'Nenhuma conversa aqui.';
+    empty.innerHTML = `<p>${escapeHtml(why)}</p><button class="btn-primary" type="button">+ Nova conexão</button>`;
+    empty.querySelector('button').onclick = openNewContactModal;
+    container.appendChild(empty);
+    refreshModelCounts();
+    return;
+  }
+
+  filtered.forEach((c) => {
+    const lastMsg = c.messages[c.messages.length - 1];
+    const isSelected = c.id === currentContactId;
+    const typing = typingContactId === c.id;
+
+    const div = document.createElement('div');
+    div.className = `chat-item ${isSelected ? 'active' : ''} ${c.unreadCount > 0 ? 'has-unread' : ''}`;
+    div.setAttribute('role', 'button');
+    div.tabIndex = 0;
+    div.onclick = () => selectContact(c.id);
+    div.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectContact(c.id);
+      }
+    };
+
+    const snippet = typing
+      ? '<span class="typing-text">digitando…</span>'
+      : (lastMsg && lastMsg.from === 'me' ? ticksHtml(lastMsg) + ' ' : '') + escapeHtml(messagePreview(lastMsg));
+
+    div.innerHTML = `
+      <div class="contact-avatar ${escapeHtml(c.avatarClass)}">${escapeHtml(c.initials)}</div>
+      <div class="contact-info">
+        <div class="contact-top-row">
+          <span class="contact-name">${escapeHtml(c.name)}</span>
+          <span class="contact-time">${escapeHtml(c.lastTime)}</span>
+        </div>
+        <div class="contact-bottom-row">
+          <span class="last-msg-snippet">${snippet}</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="queue-tag">${escapeHtml(c.model.toUpperCase())}</span>
+            ${c.unreadCount > 0 ? `<span class="badge-unread">${c.unreadCount}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+  refreshModelCounts();
+}
+
+function selectContact(id, keepFilter) {
+  const previous = currentContact();
+  const input = document.getElementById('messageInput');
+  if (previous) drafts[previous.id] = input.value;
+
+  const contact = getContact(id);
+  if (!contact) return;
+  currentContactId = id;
+  contact.unreadCount = 0;
+  if (inChatQuery) closeSearchInChat(true);
+
+  // A conversa manda no modelo: abrir um contato Meshtastic ativa o modelo Meshtastic
+  if (contact.model !== activeModel) selectChatModel(contact.model, false, true);
+
+  input.value = drafts[id] || '';
+  handleInputChange(input);
+  renderContactList();
+  renderActiveChat();
+  updateComposerState();
+  saveState();
+
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.add('hidden-mobile');
+  } else if (!keepFilter) {
+    input.focus();
+  }
+}
+
+function toggleMobileSidebar() {
+  document.getElementById('sidebar').classList.toggle('hidden-mobile');
+}
+
+function filterContacts() {
+  renderContactList();
+}
+
+function setFilter(el, type) {
+  listFilter = type;
+  document.querySelectorAll('.filter-chips .chip').forEach((c) => {
+    const on = c === el;
+    c.classList.toggle('active', on);
+    c.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  renderContactList();
+}
+
+/* ============================================================
+   CONVERSA ATIVA
+   ============================================================ */
+function renderActiveChat() {
+  const contact = currentContact();
+  if (!contact) return;
+  const model = CHAT_MODELS[contact.model] || CHAT_MODELS.simplex;
+  const isLoraChat = contact.model === 'meshtastic';
+  const typing = typingContactId === contact.id;
+
+  document.getElementById('activeContactName').innerHTML = `
+    ${escapeHtml(contact.name)}
+    ${contact.verified ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="#00a884"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' : ''}`;
+  document.getElementById('activeContactStatus').innerHTML = typing
+    ? '<span class="typing-text">digitando…</span>'
+    : `<span style="color: #00a884;">●</span> ${escapeHtml(contact.statusText || 'Online')} • ${escapeHtml(model.name)}`;
+  document.getElementById('activeAvatar').className = `active-user-avatar ${contact.avatarClass}`;
+  document.getElementById('activeAvatar').textContent = contact.initials;
+
+  const container = document.getElementById('messagesContainer');
+  container.innerHTML = `
+    <div class="date-separator">HOJE</div>
+    <div class="security-encryption-banner" onclick="showSecurityOverview()" style="cursor: pointer;" title="Clique para ver os detalhes de segurança desta conversa">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <span>${escapeHtml(model.crypto)}. <strong>[Inspecionar Blindagem 🛡️]</strong></span>
+    </div>`;
+
+  const q = norm(inChatQuery);
+  let shown = 0;
+  contact.messages.forEach((msg) => {
+    if (q && !(msg.text && norm(msg.text).includes(q))) return;
+    shown++;
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${msg.from === 'me' ? 'outgoing' : 'incoming'}`;
+
+    if (msg.senderName && msg.from !== 'me') {
+      const sender = document.createElement('div');
+      sender.className = 'bubble-sender';
+      sender.textContent = msg.senderName;
+      bubble.appendChild(sender);
+    }
+
+    if (msg.isAudio) {
+      const box = document.createElement('div');
+      box.className = 'audio-player-box';
+      box.innerHTML = `
+        <button class="play-audio-btn" title="Ouvir mensagem de voz" aria-label="Ouvir mensagem de voz">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+        <div class="audio-waveform-bars">${Array.from({ length: 24 }).map(() => '<span class="waveform-bar"></span>').join('')}</div>
+        <span style="font-size: 11px; color: rgba(255,255,255,0.7); font-family: monospace;">${escapeHtml(msg.duration || '0:00')}</span>`;
+      box.querySelector('button').onclick = (e) => playAudio(e.currentTarget, msg.id);
+      bubble.appendChild(box);
+    } else if (msg.isImage && msg.dataUrl) {
+      const img = document.createElement('img');
+      img.className = 'msg-image';
+      img.src = msg.dataUrl;
+      img.alt = msg.fileName || 'Imagem enviada';
+      bubble.appendChild(img);
+    } else if (msg.isImage || msg.isFile) {
+      const file = document.createElement('div');
+      file.className = 'msg-file';
+      file.innerHTML = `<span class="msg-file-icon">${msg.isImage ? '🖼️' : '📎'}</span>
+        <span><strong>${escapeHtml(msg.fileName || 'Arquivo')}</strong><small>${escapeHtml(formatBytes(msg.size || 0))}</small></span>`;
+      bubble.appendChild(file);
+    } else {
+      const textNode = document.createElement('div');
+      textNode.className = 'bubble-text';
+      textNode.innerHTML = highlight(msg.text || '', inChatQuery);
+      bubble.appendChild(textNode);
+    }
+
+    if (msg.isLora || (isLoraChat && !msg.isAudio)) {
+      const pill = document.createElement('div');
+      pill.className = 'lora-telemetry-pill';
+      pill.textContent = `📡 LoRa RF • ${msg.toaMs || 142}ms ToA • SNR ${msg.snr || '+9.2dB'} • ${msg.hops || 1} salto(s)`;
+      bubble.appendChild(pill);
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'bubble-meta';
+    meta.innerHTML = `
+      ${msg.sim ? '<span class="sim-tag" title="Resposta gerada localmente para demonstração">simulada</span>' : ''}
+      ${contact.model === 'simplex' ? '<span class="burn-pill">🔥 24h</span>' : ''}
+      ${isLoraChat ? '<span class="burn-pill" style="color: #34d399; background: rgba(16, 185, 129, 0.2);">📻 RF</span>' : ''}
+      <span>${escapeHtml(msg.time)}</span>
+      ${ticksHtml(msg)}`;
+    bubble.appendChild(meta);
+    container.appendChild(bubble);
+  });
+
+  if (q) {
+    document.getElementById('inChatSearchCount').textContent = shown === 1 ? '1 mensagem' : `${shown} mensagens`;
+    if (!shown) {
+      const none = document.createElement('div');
+      none.className = 'date-separator';
+      none.textContent = 'Nenhuma mensagem com esse termo';
+      container.appendChild(none);
+    }
+  }
+
+  if (typing && !q) {
+    const dots = document.createElement('div');
+    dots.className = 'message-bubble incoming typing-bubble';
+    dots.innerHTML = '<span></span><span></span><span></span>';
+    container.appendChild(dots);
+  }
+
+  container.scrollTop = container.scrollHeight;
+}
+
+/* ============================================================
+   COMPOSITOR: TEXTO, LIMITE LoRa, ENVIO E RESPOSTA SIMULADA
+   ============================================================ */
+function handleInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function handleInputChange(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.min(Math.max(textarea.scrollHeight, 42), 120) + 'px';
+  updateSendOrMicButton();
+  updateComposerState();
+}
+
+function updateComposerState() {
+  const contact = currentContact();
+  const input = document.getElementById('messageInput');
+  const counter = document.getElementById('loraCounter');
+  if (!contact || !input || !counter) return;
+  if (contact.model === 'meshtastic') {
+    const bytes = byteLength(input.value);
+    counter.style.display = 'inline-flex';
+    counter.textContent = `${bytes}/${LORA_MAX_BYTES} B`;
+    counter.classList.toggle('over', bytes > LORA_MAX_BYTES);
+    counter.title = `Pacote LoRa: ${bytes} de ${LORA_MAX_BYTES} bytes • tempo no ar estimado ${Math.round(52 + bytes * 1.7)} ms`;
+    input.placeholder = 'Mensagem LoRa…';
+  } else {
+    counter.style.display = 'none';
+    input.placeholder = 'Digite uma mensagem…';
+  }
+}
+
+function updateSendOrMicButton() {
+  const text = document.getElementById('messageInput').value.trim();
+  const btn = document.getElementById('btnSendOrMic');
+  const icon = document.getElementById('iconSend');
+  if (isRecordingAudio) return;
+  if (text.length > 0) {
+    btn.title = 'Enviar mensagem';
+    icon.innerHTML = '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+  } else {
+    btn.title = 'Gravar áudio';
+    icon.innerHTML = '<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>';
+  }
+  btn.setAttribute('aria-label', btn.title);
+}
+
+function handleSendOrMicClick() {
+  const text = document.getElementById('messageInput').value.trim();
+  if (text.length > 0) sendMessage();
+  else toggleVoiceRecording();
+}
+
+function pushOutgoing(contact, fields) {
+  const isLora = contact.model === 'meshtastic';
+  const msg = {
+    id: 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    from: 'me',
+    time: nowTime(),
+    status: 'sent',
+    isLora,
+    toaMs: isLora ? Math.round(52 + byteLength(fields.text || '') * 1.7) : 0,
+    snr: '+9.4 dB',
+    hops: 1,
+    ...fields,
+  };
+  contact.messages.push(msg);
+  contact.lastTime = msg.time;
+  saveState();
+  renderActiveChat();
+  renderContactList();
+  runDeliveryFlow(contact, msg);
+  return msg;
+}
+
+/* enviada ✓ → entregue ✓✓ → "digitando…" → resposta simulada → lida ✓✓ azul */
+function runDeliveryFlow(contact, msg) {
+  const refresh = () => {
+    saveState();
+    if (contact.id === currentContactId) renderActiveChat();
+    renderContactList();
+  };
+  setTimeout(() => { msg.status = 'delivered'; refresh(); }, 450);
+  setTimeout(() => { typingContactId = contact.id; refresh(); }, 900);
+  setTimeout(() => {
+    if (typingContactId === contact.id) typingContactId = null;
+    if (!getContact(contact.id)) return; // conversa apagada no meio do caminho
+    msg.status = 'read';
+    simulateIncomingReply(contact);
+  }, 2100);
+}
+
+function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  const contact = currentContact();
+  if (!text || !contact) return;
+
+  const isLora = contact.model === 'meshtastic';
+  if (isLora && byteLength(text) > LORA_MAX_BYTES) {
+    showToastNotification(`Mensagem longa demais para um pacote LoRa (${byteLength(text)}/${LORA_MAX_BYTES} bytes). Encurte o texto.`);
+    return;
+  }
+
+  // Se a porta serial USB estiver conectada, o texto também sai pelo rádio
+  if (isLora && chatSerialWriter) {
+    try { chatSerialWriter.write(text + '\n'); } catch (e) { console.warn('Erro na transmissão serial:', e); }
+  }
+
+  input.value = '';
+  drafts[contact.id] = '';
+  input.style.height = '42px';
+  updateSendOrMicButton();
+  updateComposerState();
+  pushOutgoing(contact, { text });
+  input.focus();
+}
+
+function simulateIncomingReply(contact) {
+  const modelName = (CHAT_MODELS[contact.model] || {}).name || contact.model;
+  let replies = [
+    `Recebido pelo canal ${modelName}.`,
+    'Mensagem recebida. Tudo certo por aqui.',
+    'Confirmado. Câmbio.',
+  ];
+  if (contact.model === 'meshtastic') {
+    replies = [
+      '[LoRa ACK] Pacote recebido via repetidor (salto 1/3, SNR +9.1 dB, RSSI -81 dBm).',
+      '[Meshtastic] Entregue pela malha, sem internet.',
+      '[RF ACK] Salto direto recebido (SNR +10.2 dB).',
+    ];
+  }
+  const text = replies[Math.floor(Math.random() * replies.length)];
+  const isLora = contact.model === 'meshtastic';
+  const time = nowTime();
+
+  contact.messages.push({
+    id: 'm_' + Date.now() + '_r',
+    from: 'them',
+    text,
+    time,
+    sim: true,
+    isLora,
+    toaMs: isLora ? Math.round(52 + text.length * 1.7) : 0,
+    snr: '+9.1 dB',
+    hops: 1,
+  });
+  contact.lastTime = time;
+  if (contact.id !== currentContactId) contact.unreadCount = (contact.unreadCount || 0) + 1;
+
+  saveState();
+  if (contact.id === currentContactId) renderActiveChat();
+  renderContactList();
+}
+
+/* ============================================================
+   ÁUDIO: GRAVAÇÃO E REPRODUÇÃO REAIS (MediaRecorder)
+   ============================================================ */
+async function toggleVoiceRecording() {
+  const btn = document.getElementById('btnSendOrMic');
+  const contact = currentContact();
+
+  if (isRecordingAudio) {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    return;
+  }
+  if (contact && contact.model === 'meshtastic') {
+    showToastNotification('LoRa não transporta áudio. Envie texto curto neste canal.');
+    return;
+  }
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    showToastNotification('Este navegador não permite gravar áudio aqui.');
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const target = contact;
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      isRecordingAudio = false;
+      btn.classList.remove('recording');
+      updateSendOrMicButton();
+      const seconds = Math.max(1, Math.round((Date.now() - recordStartedAt) / 1000));
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      if (!target || !blob.size) return;
+      const msg = pushOutgoing(target, { isAudio: true, duration: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` });
+      AUDIO_URLS[msg.id] = URL.createObjectURL(blob);
+    };
+    mediaRecorder.start();
+    recordStartedAt = Date.now();
+    isRecordingAudio = true;
+    btn.classList.add('recording');
+    btn.title = 'Parar e enviar o áudio';
+    btn.setAttribute('aria-label', btn.title);
+    showToastNotification('Gravando… toque de novo para enviar');
+  } catch (err) {
+    showToastNotification('Não foi possível usar o microfone. Verifique a permissão do navegador.');
+  }
+}
+
+function playAudio(btn, id) {
+  const PLAY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  const PAUSE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+  if (activeAudio) {
+    const same = activeAudio.dataset.msg === id;
+    activeAudio.pause();
+    activeAudio = null;
+    document.querySelectorAll('.play-audio-btn').forEach((b) => { b.innerHTML = PLAY; });
+    if (same) return;
+  }
+  const url = AUDIO_URLS[id];
+  if (!url) {
+    showToastNotification('Este áudio só fica disponível na sessão em que foi gravado.');
+    return;
+  }
+  const audio = new Audio(url);
+  audio.dataset.msg = id;
+  audio.onended = () => { btn.innerHTML = PLAY; activeAudio = null; };
+  audio.play().then(() => { btn.innerHTML = PAUSE; activeAudio = audio; }).catch(() => showToastNotification('Não foi possível reproduzir o áudio.'));
+}
+
+/* ============================================================
+   ANEXOS, EMOJIS, BUSCA NA CONVERSA E MENU DE OPÇÕES
+   ============================================================ */
+function closePopovers() {
+  document.querySelectorAll('.pop').forEach((p) => p.remove());
+}
+
+function openAttachmentModal() {
+  const contact = currentContact();
+  if (contact && contact.model === 'meshtastic') {
+    showToastNotification('LoRa não transporta arquivos. Use "Arquivos em Chunks" no app ou outro modelo de chat.');
+    return;
+  }
+  document.getElementById('attachInput').click();
+}
+
+function attachFile(file) {
+  const contact = currentContact();
+  if (!contact) return;
+  const base = { fileName: file.name, size: file.size };
+  if (file.type.startsWith('image/') && file.size <= 1.5 * 1024 * 1024) {
+    const reader = new FileReader();
+    reader.onload = () => pushOutgoing(contact, { ...base, isImage: true, dataUrl: String(reader.result) });
+    reader.onerror = () => pushOutgoing(contact, { ...base, isFile: true });
+    reader.readAsDataURL(file);
+  } else {
+    pushOutgoing(contact, { ...base, isFile: true, isImage: file.type.startsWith('image/') });
+  }
+}
+
+const QUICK_EMOJIS = ['😀', '😂', '😊', '😍', '😎', '🤔', '😢', '😡', '👍', '👎', '🙏', '👏', '🤝', '💪', '👀', '🎉', '❤️', '🔥', '⚡', '✅', '❌', '⚠️', '🔒', '🔑', '🛡️', '📡', '📻', '🛰️', '📍', '🚀', '☀️', '🌙'];
+
+function insertQuickEmoji(ev) {
+  const footer = document.querySelector('.chat-footer');
+  const open = footer.querySelector('.emoji-pop');
+  closePopovers();
+  if (open) return;
+  const pop = document.createElement('div');
+  pop.className = 'pop emoji-pop';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Escolher emoji');
+  QUICK_EMOJIS.forEach((emoji) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = emoji;
+    b.onclick = () => {
+      const input = document.getElementById('messageInput');
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? input.value.length;
+      input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+      input.focus();
+      input.selectionStart = input.selectionEnd = start + emoji.length;
+      handleInputChange(input);
+    };
+    pop.appendChild(b);
+  });
+  footer.appendChild(pop);
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+}
+
+function toggleSearchInChat() {
+  const bar = document.getElementById('inChatSearchBar');
+  if (bar.classList.contains('open')) {
+    closeSearchInChat();
+    return;
+  }
+  bar.classList.add('open');
+  document.getElementById('inChatSearchInput').focus();
+}
+
+function closeSearchInChat(skipRender) {
+  const bar = document.getElementById('inChatSearchBar');
+  bar.classList.remove('open');
+  document.getElementById('inChatSearchInput').value = '';
+  document.getElementById('inChatSearchCount').textContent = '';
+  inChatQuery = '';
+  if (!skipRender) renderActiveChat();
+}
+
+function openChatOptionsModal(ev) {
+  const host = document.querySelector('.chat-header');
+  const open = host.querySelector('.menu-pop');
+  closePopovers();
+  if (open) return;
+  const pop = document.createElement('div');
+  pop.className = 'pop menu-pop';
+  pop.setAttribute('role', 'menu');
+  const item = (label, run, danger) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'menuitem');
+    b.textContent = label;
+    if (danger) b.className = 'danger';
+    let armed = false;
+    b.onclick = (e) => {
+      e.stopPropagation();
+      // Ações destrutivas pedem um segundo toque para confirmar
+      if (danger && !armed) {
+        armed = true;
+        b.textContent = 'Toque de novo para confirmar';
+        setTimeout(() => { armed = false; b.textContent = label; }, 3500);
+        return;
+      }
+      closePopovers();
+      run();
+    };
+    pop.appendChild(b);
+  };
+  item('Buscar na conversa', toggleSearchInChat);
+  item('Exportar conversa (.txt)', exportActiveChat);
+  item('Detalhes de segurança', showSecurityOverview);
+  item('Limpar mensagens', clearActiveChat, true);
+  item('Apagar esta conexão', deleteActiveContact, true);
+  item('Restaurar conversas de demonstração', resetDemo, true);
+  host.appendChild(pop);
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+}
+
+function exportActiveChat() {
+  const contact = currentContact();
+  if (!contact) return;
+  const lines = contact.messages.map((m) => `[${m.time}] ${m.from === 'me' ? 'Você' : m.senderName || contact.name}: ${messagePreview(m)}`);
+  const header = `JJY Chat — ${contact.name} (${(CHAT_MODELS[contact.model] || {}).name || contact.model})\n\n`;
+  const blob = new Blob([header + lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `jjy-chat-${norm(contact.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'conversa'}.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  showToastNotification('Conversa exportada.');
+}
+
+function clearActiveChat() {
+  const contact = currentContact();
+  if (!contact) return;
+  contact.messages = [];
+  saveState();
+  renderActiveChat();
+  renderContactList();
+  showToastNotification('Mensagens apagadas deste aparelho.');
+}
+
+function deleteActiveContact() {
+  const idx = CONTACTS.findIndex((c) => c.id === currentContactId);
+  if (idx < 0) return;
+  if (CONTACTS.length === 1) {
+    showToastNotification('Esta é a última conversa. Crie outra antes de apagar.');
+    return;
+  }
+  CONTACTS.splice(idx, 1);
+  const next = CONTACTS.find((c) => c.model === activeModel) || CONTACTS[0];
+  currentContactId = next.id;
+  selectContact(next.id, true);
+  showToastNotification('Conexão apagada.');
+}
+
+function resetDemo() {
+  CONTACTS.splice(0, CONTACTS.length, ...JSON.parse(JSON.stringify(DEMO_CONTACTS)));
+  currentContactId = CONTACTS[0].id;
+  setFilter(document.querySelector('.chip[data-filter="all"]'), 'all');
+  selectContact(currentContactId, true);
+  showToastNotification('Conversas de demonstração restauradas.');
+}
+
+/* ============================================================
+   NOVA CONEXÃO, CHAMADAS, PERFIL E SEGURANÇA
+   ============================================================ */
+function openNewContactModal() {
+  const randId = Math.random().toString(36).substring(2, 10);
+  document.getElementById('inviteLinkText').textContent = `simplex://contact/invite?id=sq_${randId}&relay=wss://relay.jjy.mesh/${activeModel}`;
+  const title = document.querySelector('#newContactModal h3');
+  if (title) title.textContent = `Nova conexão — ${CHAT_MODELS[activeModel].name}`;
+  document.getElementById('newPeerNameInput').value = '';
+  document.getElementById('newContactModal').classList.add('open');
+  setTimeout(() => document.getElementById('newPeerNameInput').focus(), 50);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function copyInviteAndAddContact() {
+  const name = document.getElementById('newPeerNameInput').value.trim().slice(0, 48) || `Nova conexão ${CHAT_MODELS[activeModel].name}`;
+  const newId = 'c_' + Date.now();
+  const link = document.getElementById('inviteLinkText').textContent.trim();
+  const avatarClass = activeModel === 'nostr' ? 'avatar-nostr' : activeModel === 'briar' || activeModel === 'meshtastic' ? 'avatar-mesh' : 'avatar-simplex';
+  let copied = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(link);
+      copied = true;
+    }
+  } catch (e) {}
+
+  CONTACTS.unshift({
+    id: newId,
+    name,
+    avatarClass,
+    initials: name.replace(/[^\p{L}\p{N} ]/gu, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '??',
+    model: activeModel,
+    verified: false,
+    lastTime: nowTime(),
+    unreadCount: 0,
+    statusText: 'Conexão recém-criada',
+    messages: [{ id: 'init_' + newId, from: 'them', text: `Canal criado no modelo ${CHAT_MODELS[activeModel].name}.`, time: nowTime(), sim: true }],
+  });
+
+  closeModal('newContactModal');
+  selectContact(newId);
+  showToastNotification(copied ? 'Link copiado e conexão criada.' : 'Conexão criada.');
+}
+
+function startSimulatedCall(type) {
+  showToastNotification(`Chamadas de ${type === 'video' ? 'vídeo' : 'voz'} ainda não estão disponíveis nesta versão.`);
+}
+
+function showContactDetails(ev) {
+  if (ev && ev.target && ev.target.closest && ev.target.closest('.btn-back-sidebar')) return;
+  showSecurityOverview();
+}
+
+function showProfileFingerprint() {
+  showToastNotification('Fingerprint SimpleX: 7b9a:f401:ec82:9103 (Zero identificador global)');
+}
+
+function toggleIncognito() {
+  showToastNotification('Modo Incógnito estrito ativo: Endereço temporário renovado');
+}
+
+function showSecurityOverview() {
+  const contact = CONTACTS.find(c => c.id === currentContactId) || CONTACTS[0];
+  if (contact) {
+    const contactNameEl = document.getElementById('modalContactName');
+    if (contactNameEl) contactNameEl.textContent = contact.name;
+    const hash = Math.abs(contact.name.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)).toString(16);
+    const txEl = document.getElementById('modalTxQueueId');
+    const rxEl = document.getElementById('modalRxQueueId');
+    const otpEl = document.getElementById('modalOtpSignatureStatus');
+    if (txEl) txEl.textContent = `sq_tx_${hash.slice(0, 4)}...${hash.slice(4, 8)} (Blind Token HMAC-SHA256)`;
+    if (rxEl) rxEl.textContent = `sq_rx_${hash.slice(2, 6)}...${hash.slice(0, 4)} (Blind Token HMAC-SHA256)`;
+    if (otpEl) otpEl.textContent = `100% Blindada • Uso Único RAM • Zero Vazamento ao Relay`;
+  }
+  const modal = document.getElementById('securityOverviewModal');
+  if (modal) modal.classList.add('open');
+}
+
+function rotateQueueOtpKeys() {
+  const randTx = Math.random().toString(36).substring(2, 8);
+  const randRx = Math.random().toString(36).substring(2, 8);
+  const txEl = document.getElementById('modalTxQueueId');
+  const rxEl = document.getElementById('modalRxQueueId');
+  const otpEl = document.getElementById('modalOtpSignatureStatus');
+  if (txEl) txEl.textContent = `sq_tx_${randTx}...${Math.random().toString(36).substring(2, 6)} (Blind Token HMAC-SHA256)`;
+  if (rxEl) rxEl.textContent = `sq_rx_${randRx}...${Math.random().toString(36).substring(2, 6)} (Blind Token HMAC-SHA256)`;
+  if (otpEl) otpEl.textContent = `Rotacionada com Sucesso às ${new Date().toLocaleTimeString()} (Chave Anterior Destruída)`;
+  showToastNotification('Assinatura OTP da fila e segredos rotacionados com sucesso!');
+}
+
+let toastTimer = null;
+function showToastNotification(text) {
+  const toast = document.getElementById('toastMsg');
+  document.getElementById('toastText').textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, tag => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[tag] || tag));
+}
+</script>
+
+</body>
+</html>

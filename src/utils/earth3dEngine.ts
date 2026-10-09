@@ -3,13 +3,71 @@
 // JJY Communication Suite v2.0 - Argon-4 Class 3D Planetary Mesh System
 // ============================================================================
 
+export type LocationPrecisionMode = 'privacy_10km' | 'neighborhood_1km' | 'high_precision';
+
+export interface LocationPrecisionOption {
+  id: LocationPrecisionMode;
+  name: string;
+  shortName: string;
+  iconName: string;
+  icon: string;
+  radiusKm: number;
+  radiusLabel: string;
+  description: string;
+  recommendedFor: string;
+  badgeColor: string;
+  warning?: string;
+}
+
+export const LOCATION_PRECISION_OPTIONS: LocationPrecisionOption[] = [
+  {
+    id: 'privacy_10km',
+    name: 'Segurança Máxima (Erro de 10 km)',
+    shortName: '±10 km (Privacidade)',
+    iconName: 'Shield',
+    icon: '🛡️',
+    radiusKm: 10,
+    radiusLabel: '±10 km (Protegido)',
+    description: 'Padrão recomendado: Adiciona erro proposital de 8 a 10 km num ângulo aleatório para proteger sua casa ou ponto de operação contra rastreamento físico.',
+    recommendedFor: 'Navegação cotidiana, privacidade doméstica e proteção anti-triangulação.',
+    badgeColor: 'amber',
+  },
+  {
+    id: 'high_precision',
+    name: 'Alta Precisão (Exata GPS / Metro a Metro)',
+    shortName: 'GPS Exato (Resgate)',
+    iconName: 'Navigation',
+    icon: '🎯',
+    radiusKm: 0.015,
+    radiusLabel: 'GPS Real (Exato)',
+    description: 'Transmite suas coordenadas GPS reais sem qualquer ofuscação. Permite que amigos localizem você ou que equipes de resgate encontrem sua posição em emergências e desastres.',
+    recommendedFor: 'Operações de resgate em desastres, encontros presenciais e visada direta de rádio.',
+    badgeColor: 'emerald',
+    warning: 'Aviso de Segurança: Suas coordenadas geográficas exatas estarão visíveis publicamente no mapa 3D.',
+  },
+  {
+    id: 'neighborhood_1km',
+    name: 'Vizinhança / Bairro (Erro de 1 km)',
+    shortName: '±1 km (Bairro)',
+    iconName: 'MapPin',
+    icon: '🏘️',
+    radiusKm: 1.0,
+    radiusLabel: '±1 km (Bairro)',
+    description: 'Aproximação regional com raio de 1 km. Dá uma referência geral de bairro para malhas locais sem expor o número da sua casa.',
+    recommendedFor: 'Redes comunitárias de bairro e enlaces locais sem revelar endereço residencial.',
+    badgeColor: 'blue',
+  },
+];
+
 export interface GlobeUserNode {
   id: string;
   callsign: string;
   fullName: string;
   fuzzyLat: number;
   fuzzyLon: number;
-  fuzzRadiusKm: number; // Sempre 10 km para privacidade estrita
+  fuzzRadiusKm: number; // 10 km padrão ou 0 para alta precisão
+  isExactGps?: boolean;
+  precisionMode?: LocationPrecisionMode;
   country: string;
   flag: string;
   city: string;
@@ -92,6 +150,82 @@ export function apply10kmFuzzyObfuscation(
     fuzzyLon,
     offsetKm: Math.round(offsetKm * 10) / 10,
     bearingDeg,
+  };
+}
+
+/**
+ * Calcula a localização efetiva com base no nível de precisão escolhido pelo usuário:
+ * - 'privacy_10km' (padrão): erro proposital de 10 km para máxima privacidade.
+ * - 'high_precision': coordenadas exatas metro a metro para resgate, desastres e amigos.
+ * - 'neighborhood_1km': aproximação regional de bairro de ~1 km.
+ */
+export function applyPrecisionToCoordinates(
+  realLat: number,
+  realLon: number,
+  mode: LocationPrecisionMode = 'privacy_10km',
+  seedKey?: string
+): {
+  lat: number;
+  lon: number;
+  radiusKm: number;
+  isExact: boolean;
+  offsetKm: number;
+} {
+  if (mode === 'high_precision') {
+    return {
+      lat: Math.round(realLat * 1000000) / 1000000,
+      lon: Math.round(realLon * 1000000) / 1000000,
+      radiusKm: 0.015, // Precisão GPS de ~15 metros
+      isExact: true,
+      offsetKm: 0,
+    };
+  }
+
+  if (mode === 'neighborhood_1km') {
+    let seedNum = 0;
+    if (seedKey) {
+      for (let i = 0; i < seedKey.length; i++) seedNum += seedKey.charCodeAt(i) * (i + 1);
+    } else {
+      seedNum = Math.floor(Date.now() / (1000 * 3600 * 24));
+    }
+    const p1 = Math.abs(Math.sin(seedNum * 23.456)) % 1;
+    const p2 = Math.abs(Math.cos(seedNum * 45.678)) % 1;
+    const offsetKm = 0.8 + p1 * 0.4;
+    const bearingRad = p2 * 2 * Math.PI;
+
+    const EARTH_RADIUS_KM = 6371.0;
+    const latRad = (realLat * Math.PI) / 180;
+    const lonRad = (realLon * Math.PI) / 180;
+    const distRatio = offsetKm / EARTH_RADIUS_KM;
+
+    const fuzzyLatRad = Math.asin(
+      Math.sin(latRad) * Math.cos(distRatio) +
+        Math.cos(latRad) * Math.sin(distRatio) * Math.cos(bearingRad)
+    );
+    const fuzzyLonRad =
+      lonRad +
+      Math.atan2(
+        Math.sin(bearingRad) * Math.sin(distRatio) * Math.cos(latRad),
+        Math.cos(distRatio) - Math.sin(latRad) * Math.sin(fuzzyLatRad)
+      );
+
+    return {
+      lat: Math.round(((fuzzyLatRad * 180) / Math.PI) * 10000) / 10000,
+      lon: Math.round(((fuzzyLonRad * 180) / Math.PI) * 10000) / 10000,
+      radiusKm: 1.0,
+      isExact: false,
+      offsetKm: Math.round(offsetKm * 10) / 10,
+    };
+  }
+
+  // Padrão de segurança: 10 km
+  const fuzz = apply10kmFuzzyObfuscation(realLat, realLon, seedKey);
+  return {
+    lat: fuzz.fuzzyLat,
+    lon: fuzz.fuzzyLon,
+    radiusKm: 10.0,
+    isExact: false,
+    offsetKm: fuzz.offsetKm,
   };
 }
 

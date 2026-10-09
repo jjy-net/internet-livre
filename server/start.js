@@ -91,6 +91,14 @@ try {
     console.log('  🔥 Jjy Mensagens Anônimas:');
     console.log(`     http://localhost:${port}/Jjy.html`);
     for (const ip of ips) console.log(`     http://${ip}:${port}/Jjy.html`);
+    console.log('');
+    console.log('  💬 JJY Chat Soberano (SimpleX + WhatsApp):');
+    console.log(`     http://localhost:${port}/chat.html`);
+    for (const ip of ips) console.log(`     http://${ip}:${port}/chat.html`);
+    console.log('');
+    console.log('  🔐 Portal Restrito do Administrador:');
+    console.log(`     http://localhost:${port}/admin.html (ou http://localhost:${port}/#admin)`);
+    for (const ip of ips) console.log(`     http://${ip}:${port}/admin.html`);
   } else {
     console.log('  ⚠️  Pasta web estática não encontrada — servindo apenas WebSocket.');
   }
@@ -104,7 +112,9 @@ try {
   }
   console.log('');
   console.log('  🛡️  Segurança & Blue Team Defensivo:');
-  console.log(`     Senha de Administrador: ${server.getAdminPassword()}`);
+  const pw = server.getAdminPassword();
+  const maskedPw = pw.length > 6 ? pw.slice(0, 4) + '*'.repeat(pw.length - 6) + pw.slice(-2) : '****';
+  console.log(`     Senha de Administrador: ${maskedPw}  (defina DATALINK_ADMIN_PASSWORD para personalizar)`);
   console.log('     Proteções Ativas: Rate Limiting, Fail2Ban, Anti-DDoS, Tarpit, Blacklist, HTTPS LAN');
   console.log(`  ${line}`);
   console.log('  Pressione Ctrl+C para encerrar.\n');

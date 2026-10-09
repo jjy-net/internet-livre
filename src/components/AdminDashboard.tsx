@@ -56,11 +56,6 @@ import {
   Columns,
   Minimize2,
   SendHorizontal,
-  Coffee,
-  ShoppingBag,
-  Receipt,
-  DollarSign,
-  Timer,
   Baby,
   Tv,
   Grid,
@@ -74,13 +69,15 @@ import {
   MapPin,
   Globe,
   Navigation,
-  Compass,
   Bot,
+  QrCode,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { GeoLocationData, getGoogleMapsUrl, getOpenStreetMapUrl } from '../utils/geo';
 import { GpsHoverBadge } from './GpsHoverBadge';
 import { AdminContainmentView } from './AdminContainmentView';
 import { AdminAiCopilotView } from './AdminAiCopilotView';
+import { AdminNsiteView } from './AdminNsiteView';
 import { getPrivacyShieldManager } from '../utils/antiFingerprintEngine';
 import {
   PieChart,
@@ -326,29 +323,6 @@ export interface ConnectedStation {
   location?: GeoLocationData;
 }
 
-export interface LanTerminal {
-  id: string;
-  slotNumber: number;
-  name: string;
-  clientId?: string;
-  customerName?: string;
-  status: 'available' | 'in_use' | 'paused' | 'locked' | 'time_out';
-  mode: 'prepaid' | 'postpaid';
-  allocatedMinutes: number;
-  usedSeconds: number;
-  hourlyRate: number;
-  startedAt?: number;
-  orders: { id: string; name: string; price: number; quantity: number; time: number }[];
-  lockMessage?: string;
-}
-
-export interface CafeProduct {
-  id: string;
-  name: string;
-  category: 'drink' | 'snack' | 'print' | 'time' | 'other';
-  price: number;
-  icon: string;
-}
 
 export interface ParentalPolicy {
   clientId: string;
@@ -373,26 +347,17 @@ export interface ParentalViolationAlert {
   actionTaken: string;
 }
 
-export const DEFAULT_CAFE_PRODUCTS: CafeProduct[] = [
-  { id: 'prod_coca', name: 'Refrigerante Lata 350ml', category: 'drink', price: 5.0, icon: '🥤' },
-  { id: 'prod_energy', name: 'Energético Red Bull 250ml', category: 'drink', price: 10.0, icon: '⚡' },
-  { id: 'prod_water', name: 'Água Mineral 500ml', category: 'drink', price: 3.5, icon: '💧' },
-  { id: 'prod_snack', name: 'Salgadinho Doritos / Fandangos', category: 'snack', price: 6.5, icon: '🍟' },
-  { id: 'prod_choco', name: 'Chocolate / Barra Doce', category: 'snack', price: 4.0, icon: '🍫' },
-  { id: 'prod_coffee', name: 'Café Expresso', category: 'drink', price: 3.5, icon: '☕' },
-  { id: 'prod_print_bw', name: 'Impressão Preto e Branco (P&B)', category: 'print', price: 0.5, icon: '📄' },
-  { id: 'prod_print_col', name: 'Impressão Colorida A4', category: 'print', price: 1.5, icon: '🎨' },
-  { id: 'prod_scan', name: 'Digitalização de Documento', category: 'print', price: 2.0, icon: '📑' },
-  { id: 'prod_time_30', name: 'Tempo Extra Lan (30 min)', category: 'time', price: 3.0, icon: '⏳' },
-  { id: 'prod_time_60', name: 'Tempo Extra Lan (1 Hora)', category: 'time', price: 6.0, icon: '⌛' },
-];
 
 export const DEFAULT_PARENTAL_KEYWORDS = [
   'adulto', 'xxx', 'porn', 'sexo', 'bet365', 'cassino', 'aposta',
   'blaze', 'tigrinho', 'gore', 'violencia', 'drogas', 'torrent', 'warez', 'hack'
 ];
 
-export const AdminDashboard: React.FC = () => {
+export interface AdminDashboardProps {
+  onExit?: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   const [serverUrl, setServerUrl] = useState(() => {
     const loc = window.location;
     if (loc.protocol.startsWith('http')) {
@@ -410,9 +375,23 @@ export const AdminDashboard: React.FC = () => {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [otpInput, setOtpInput] = useState('');
+  const [requireOtp, setRequireOtp] = useState(false);
 
-  // Tabs do Painel de Admin (Central Unificada: CFTV, Lan House, Controle Parental, Telemetria, Defesa, Contenção Zero-Trust e Copilot IA)
-  const [activeTab, setActiveTab] = useState<'surveillance' | 'lanhouse' | 'parental' | 'telemetry' | 'defense' | 'containment' | 'ai_copilot'>('surveillance');
+  // TOTP 2FA — Configuração
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpSetupPending, setTotpSetupPending] = useState(false);
+  const [totpSecret, setTotpSecret] = useState('');
+  const [totpUri, setTotpUri] = useState('');
+  const [totpQrDataUrl, setTotpQrDataUrl] = useState('');
+  const [totpConfirmCode, setTotpConfirmCode] = useState('');
+  const [totpLoading, setTotpLoading] = useState(false);
+  const [totpMessage, setTotpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [totpDisablePassword, setTotpDisablePassword] = useState('');
+  const [showTotpSection, setShowTotpSection] = useState(false);
+
+  // Tabs do Painel de Admin (Central Unificada: CFTV, Controle Parental, Telemetria, Defesa, Contenção Zero-Trust, Copilot IA e Nsite Nostr)
+  const [activeTab, setActiveTab] = useState<'surveillance' | 'parental' | 'telemetry' | 'defense' | 'containment' | 'ai_copilot' | 'nsite'>('surveillance');
 
   // Feeds e Recepção de Vigilância em Tempo Real (Admin Exclusivo)
   const [surveillanceFeeds, setSurveillanceFeeds] = useState<Record<string, SurveillanceFeed>>({});
@@ -439,24 +418,6 @@ export const AdminDashboard: React.FC = () => {
   // Modo de exibição da mini tela de cada estação ('camera' | 'screen' | 'split')
   const [stationViewModes, setStationViewModes] = useState<Record<string, 'camera' | 'screen' | 'split'>>({});
 
-  // --- GERENCIADOR DE LAN HOUSE & CYBER CAFÉ (NEXCAFÉ) ---
-  const [terminals, setTerminals] = useState<Record<string, LanTerminal>>({});
-  const [cafeProducts, setCafeProducts] = useState<CafeProduct[]>(DEFAULT_CAFE_PRODUCTS);
-  const [selectedTerminalForSession, setSelectedTerminalForSession] = useState<string | null>(null);
-  const [selectedTerminalForOrder, setSelectedTerminalForOrder] = useState<string | null>(null);
-  const [selectedTerminalReceipt, setSelectedTerminalReceipt] = useState<LanTerminal | null>(null);
-  const [sessionModalConfig, setSessionModalConfig] = useState<{
-    customerName: string;
-    mode: 'prepaid' | 'postpaid';
-    minutes: number;
-    hourlyRate: number;
-  }>({ customerName: '', mode: 'prepaid', minutes: 60, hourlyRate: 6.0 });
-  const [cashierDailyStats, setCashierDailyStats] = useState<{
-    totalRevenue: number;
-    timeRevenue: number;
-    productRevenue: number;
-    sessionsClosed: number;
-  }>({ totalRevenue: 142.0, timeRevenue: 98.0, productRevenue: 44.0, sessionsClosed: 9 });
 
   // --- CONTROLE PARENTAL & MODERAÇÃO ---
   const [parentalPolicies, setParentalPolicies] = useState<Record<string, ParentalPolicy>>({});
@@ -564,7 +525,9 @@ export const AdminDashboard: React.FC = () => {
     setReceivedFiles([]);
     setSecurityAlerts([]);
     setPasswordInput('');
-  }, [serverUrl, token]);
+    window.dispatchEvent(new CustomEvent('jjy_admin_auth_changed', { detail: { token: '' } }));
+    if (onExit) onExit();
+  }, [serverUrl, token, onExit]);
 
   // Login de Administrador
   const handleLogin = async (e?: React.FormEvent) => {
@@ -577,16 +540,22 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(`${serverUrl}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: passwordInput.trim() }),
+        body: JSON.stringify({ password: passwordInput.trim(), otp: otpInput.trim() }),
       });
       const json = await res.json();
       if (res.ok && json.ok && json.token) {
         sessionStorage.setItem('datalink_admin_token', json.token);
         setToken(json.token);
         setLoginError(null);
+        setRequireOtp(false);
+        setOtpInput('');
+        window.dispatchEvent(new CustomEvent('jjy_admin_auth_changed', { detail: { token: json.token } }));
       } else {
         if (json.banned) {
           setLoginError('🚨 IP BLOQUEADO POR 30 MINUTOS (Fail2Ban: Excesso de tentativas incorretas).');
+        } else if (json.requireOtp) {
+          setRequireOtp(true);
+          setLoginError(json.error || 'Código TOTP obrigatório.');
         } else {
           setLoginError(json.error || 'Senha incorreta.');
           if (json.attemptsRemaining !== undefined) {
@@ -598,6 +567,125 @@ export const AdminDashboard: React.FC = () => {
       setLoginError('Erro de conexão ao servidor de autenticação.');
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  // TOTP 2FA — Buscar Status
+  const fetchTotpStatus = useCallback(async () => {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${serverUrl}/api/admin/totp/status`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        const isEnabled = !!json.enabled;
+        setTotpEnabled(isEnabled);
+        if (token) setTotpSetupPending(!!json.setupPending);
+        if (isEnabled) setRequireOtp(true);
+      }
+    } catch { /* silencioso */ }
+  }, [serverUrl, token]);
+
+  // TOTP 2FA — Iniciar Setup
+  const handleTotpSetup = async () => {
+    setTotpLoading(true);
+    setTotpMessage(null);
+    try {
+      const res = await fetch(`${serverUrl}/api/admin/totp/setup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setTotpSecret(json.secret);
+        setTotpUri(json.uri);
+        setTotpSetupPending(true);
+        if (json.uri) {
+          try {
+            const dataUrl = await QRCode.toDataURL(json.uri, {
+              width: 240,
+              margin: 1,
+              color: { dark: '#020617', light: '#ffffff' }
+            });
+            setTotpQrDataUrl(dataUrl);
+          } catch (qrErr) {
+            console.error('Erro ao gerar imagem QR Code:', qrErr);
+          }
+        }
+        setTotpMessage({ type: 'ok', text: 'Segredo e QR Code gerados! Escaneie no Google Authenticator ou Authy.' });
+      } else {
+        setTotpMessage({ type: 'err', text: json.error || 'Erro ao gerar segredo TOTP.' });
+      }
+    } catch {
+      setTotpMessage({ type: 'err', text: 'Erro de conexão com o servidor.' });
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
+  // TOTP 2FA — Ativar (confirmar com código)
+  const handleTotpEnable = async () => {
+    if (totpConfirmCode.length !== 6) {
+      setTotpMessage({ type: 'err', text: 'Digite o código de 6 dígitos gerado pelo seu app autenticador.' });
+      return;
+    }
+    setTotpLoading(true);
+    setTotpMessage(null);
+    try {
+      const res = await fetch(`${serverUrl}/api/admin/totp/enable`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: totpConfirmCode.trim() }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setTotpEnabled(true);
+        setTotpSetupPending(false);
+        setTotpSecret('');
+        setTotpUri('');
+        setTotpQrDataUrl('');
+        setTotpConfirmCode('');
+        setTotpMessage({ type: 'ok', text: '✅ 2FA TOTP ativado com sucesso! Qualquer futuro login exigirá o código dinâmico.' });
+      } else {
+        setTotpMessage({ type: 'err', text: json.error || 'Código incorreto ou expirado.' });
+      }
+    } catch {
+      setTotpMessage({ type: 'err', text: 'Erro de conexão ao ativar 2FA.' });
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
+  // TOTP 2FA — Desativar
+  const handleTotpDisable = async () => {
+    if (!totpDisablePassword.trim()) {
+      setTotpMessage({ type: 'err', text: 'Digite a senha mestra para confirmar a desativação do 2FA.' });
+      return;
+    }
+    setTotpLoading(true);
+    setTotpMessage(null);
+    try {
+      const res = await fetch(`${serverUrl}/api/admin/totp/disable`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: totpDisablePassword.trim() }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setTotpEnabled(false);
+        setTotpSetupPending(false);
+        setTotpSecret('');
+        setTotpUri('');
+        setTotpQrDataUrl('');
+        setTotpDisablePassword('');
+        setTotpMessage({ type: 'ok', text: '2FA TOTP desativado com sucesso. O login agora requer apenas a senha.' });
+      } else {
+        setTotpMessage({ type: 'err', text: json.error || 'Senha incorreta.' });
+      }
+    } catch {
+      setTotpMessage({ type: 'err', text: 'Erro de conexão ao desativar 2FA.' });
+    } finally {
+      setTotpLoading(false);
     }
   };
 
@@ -752,12 +840,17 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchTotpStatus();
+  }, [fetchTotpStatus]);
+
+  useEffect(() => {
     if (!token) return;
     fetchTelemetry();
+    fetchTotpStatus();
     if (!autoRefresh) return;
     const timer = setInterval(fetchTelemetry, 3000);
     return () => clearInterval(timer);
-  }, [fetchTelemetry, autoRefresh, token]);
+  }, [fetchTelemetry, fetchTotpStatus, autoRefresh, token]);
 
   // Conexão WebSocket Segura Exclusiva do Administrador
   useEffect(() => {
@@ -1135,21 +1228,6 @@ export const AdminDashboard: React.FC = () => {
                   starredCount: msg.recording.starred ? prev.starredCount + 1 : prev.starredCount,
                 } : null);
               }
-            } else if (msg.t === 'terminal-session') {
-              if (msg.fromClientId) {
-                setTerminals((prev) => {
-                  const existing = prev[msg.fromClientId];
-                  if (!existing) return prev;
-                  return {
-                    ...prev,
-                    [msg.fromClientId]: {
-                      ...existing,
-                      status: msg.status || existing.status,
-                      usedSeconds: msg.usedSeconds !== undefined ? msg.usedSeconds : existing.usedSeconds,
-                    },
-                  };
-                });
-              }
             }
           } catch {
             // Ignora frames não-JSON
@@ -1276,72 +1354,6 @@ export const AdminDashboard: React.FC = () => {
     return receivedAudios.find((a) => a.fromClientId === stationClientId);
   };
 
-  // --- SINCRONIZAÇÃO E OPERAÇÕES DA LAN HOUSE & CYBER CAFÉ (NEXCAFÉ) ---
-  useEffect(() => {
-    setTerminals((prev) => {
-      const updated = { ...prev };
-      connectedStations.forEach((station, idx) => {
-        if (!updated[station.clientId]) {
-          updated[station.clientId] = {
-            id: station.clientId,
-            slotNumber: idx + 1,
-            name: `Terminal ${(idx + 1).toString().padStart(2, '0')}`,
-            clientId: station.clientId,
-            customerName: station.name,
-            status: 'available',
-            mode: 'prepaid',
-            allocatedMinutes: 60,
-            usedSeconds: 0,
-            hourlyRate: 6.0,
-            orders: [],
-          };
-        } else {
-          updated[station.clientId] = {
-            ...updated[station.clientId],
-            clientId: station.clientId,
-            customerName: updated[station.clientId].customerName || station.name,
-          };
-        }
-      });
-      return updated;
-    });
-  }, [connectedStations]);
-
-  // Timer de 1 segundo para tarifação e contagem regressiva de terminais
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTerminals((prev) => {
-        let changed = false;
-        const next: Record<string, LanTerminal> = {};
-
-        for (const [id, term] of Object.entries(prev)) {
-          if (term.status === 'in_use') {
-            changed = true;
-            const newUsedSeconds = term.usedSeconds + 1;
-            const isPrepaidExpired = term.mode === 'prepaid' && newUsedSeconds >= term.allocatedMinutes * 60;
-
-            if (isPrepaidExpired) {
-              sendRemoteCommand('lock', term.clientId);
-              next[id] = {
-                ...term,
-                usedSeconds: term.allocatedMinutes * 60,
-                status: 'time_out',
-                lockMessage: 'Tempo de sessão esgotado! Recarregue no caixa para continuar navegando.',
-              };
-            } else {
-              next[id] = { ...term, usedSeconds: newUsedSeconds };
-            }
-          } else {
-            next[id] = term;
-          }
-        }
-
-        return changed ? next : prev;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   // Ronda Automática de Câmeras CFTV (Patrol Mode)
   useEffect(() => {
@@ -1769,196 +1781,6 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
-  // Iniciar Sessão no Terminal
-  const handleStartSession = (terminalId: string) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    const allocatedMinutes = sessionModalConfig.mode === 'prepaid' ? sessionModalConfig.minutes : 0;
-    const customer = sessionModalConfig.customerName.trim() || term.customerName || 'Cliente Balcão';
-
-    setTerminals((prev) => ({
-      ...prev,
-      [terminalId]: {
-        ...prev[terminalId],
-        customerName: customer,
-        mode: sessionModalConfig.mode,
-        allocatedMinutes,
-        usedSeconds: 0,
-        hourlyRate: sessionModalConfig.hourlyRate,
-        status: 'in_use',
-        startedAt: Date.now(),
-        orders: [],
-      },
-    }));
-
-    // Dispara comando remoto de liberação com os parâmetros de sessão
-    if (adminWsRef.current && adminWsRef.current.readyState === WebSocket.OPEN) {
-      adminWsRef.current.send(JSON.stringify({
-        t: 'remote-command',
-        room: 'monitor',
-        action: 'unlock',
-        targetClientId: term.clientId,
-        session: {
-          customerName: customer,
-          mode: sessionModalConfig.mode,
-          allocatedMinutes,
-          remainingSeconds: allocatedMinutes * 60,
-        },
-      }));
-    }
-
-    setSelectedTerminalForSession(null);
-    setCommandSuccessStatus(`Sessão iniciada no ${term.name} para "${customer}".`);
-    setTimeout(() => setCommandSuccessStatus(null), 3000);
-  };
-
-  // Bloquear Terminal Imediatamente
-  const handleLockTerminal = (terminalId: string, reason?: string) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    const lockMsg = reason || 'Terminal Bloqueado pela Administração da Lan House.';
-    setTerminals((prev) => ({
-      ...prev,
-      [terminalId]: {
-        ...prev[terminalId],
-        status: 'locked',
-        lockMessage: lockMsg,
-      },
-    }));
-
-    sendRemoteCommand('lock', term.clientId);
-    setCommandSuccessStatus(`${term.name} bloqueado com sucesso.`);
-    setTimeout(() => setCommandSuccessStatus(null), 3000);
-  };
-
-  // Desbloquear Terminal
-  const handleUnlockTerminal = (terminalId: string) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    setTerminals((prev) => ({
-      ...prev,
-      [terminalId]: {
-        ...prev[terminalId],
-        status: 'in_use',
-        lockMessage: undefined,
-      },
-    }));
-
-    sendRemoteCommand('unlock', term.clientId);
-    setCommandSuccessStatus(`${term.name} desbloqueado.`);
-    setTimeout(() => setCommandSuccessStatus(null), 3000);
-  };
-
-  // Adicionar Tempo Extra
-  const handleAddTimeToTerminal = (terminalId: string, minutes: number) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    setTerminals((prev) => ({
-      ...prev,
-      [terminalId]: {
-        ...prev[terminalId],
-        allocatedMinutes: prev[terminalId].allocatedMinutes + minutes,
-        status: prev[terminalId].status === 'time_out' || prev[terminalId].status === 'locked' ? 'in_use' : prev[terminalId].status,
-      },
-    }));
-
-    if (adminWsRef.current && adminWsRef.current.readyState === WebSocket.OPEN) {
-      adminWsRef.current.send(JSON.stringify({
-        t: 'remote-command',
-        room: 'monitor',
-        action: 'add-time',
-        targetClientId: term.clientId,
-        minutes,
-      }));
-    }
-
-    setCommandSuccessStatus(`+${minutes} minutos adicionados ao ${term.name}.`);
-    setTimeout(() => setCommandSuccessStatus(null), 3000);
-  };
-
-  // Pausar / Retomar Terminal
-  const handleTogglePauseTerminal = (terminalId: string) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    if (term.status === 'in_use') {
-      setTerminals((prev) => ({ ...prev, [terminalId]: { ...prev[terminalId], status: 'paused' } }));
-      sendRemoteCommand('lock', term.clientId);
-      setCommandSuccessStatus(`${term.name} pausado.`);
-    } else if (term.status === 'paused') {
-      setTerminals((prev) => ({ ...prev, [terminalId]: { ...prev[terminalId], status: 'in_use' } }));
-      sendRemoteCommand('unlock', term.clientId);
-      setCommandSuccessStatus(`${term.name} retomado.`);
-    }
-    setTimeout(() => setCommandSuccessStatus(null), 3000);
-  };
-
-  // Lançar Venda de Produto/Impressão na Comanda do Terminal
-  const handleAddOrderToTerminal = (terminalId: string, product: CafeProduct) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    const newOrder = {
-      id: 'ord_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      time: Date.now(),
-    };
-
-    setTerminals((prev) => ({
-      ...prev,
-      [terminalId]: {
-        ...prev[terminalId],
-        orders: [...(prev[terminalId].orders || []), newOrder],
-      },
-    }));
-
-    setCommandSuccessStatus(`"${product.name}" lançado na comanda do ${term.name}.`);
-    setTimeout(() => setCommandSuccessStatus(null), 2500);
-  };
-
-  // Encerrar Sessão & Gerar Recibo NexCafé
-  const handleCloseSession = (terminalId: string) => {
-    const term = terminals[terminalId];
-    if (!term) return;
-
-    // Calcula tempo e custos
-    const timeInHours = term.mode === 'prepaid' ? term.allocatedMinutes / 60 : term.usedSeconds / 3600;
-    const timeCost = Math.round(timeInHours * term.hourlyRate * 100) / 100;
-    const productsCost = (term.orders || []).reduce((sum, o) => sum + o.price * o.quantity, 0);
-    const totalBill = timeCost + productsCost;
-
-    // Salva recibo para exibição
-    setSelectedTerminalReceipt({ ...term });
-
-    // Atualiza estatísticas do caixa
-    setCashierDailyStats((prev) => ({
-      totalRevenue: prev.totalRevenue + totalBill,
-      timeRevenue: prev.timeRevenue + timeCost,
-      productRevenue: prev.productRevenue + productsCost,
-      sessionsClosed: prev.sessionsClosed + 1,
-    }));
-
-    // Bloqueia e reseta terminal
-    sendRemoteCommand('lock', term.clientId);
-    setTerminals((prev) => ({
-      ...prev,
-      [terminalId]: {
-        ...prev[terminalId],
-        status: 'available',
-        usedSeconds: 0,
-        allocatedMinutes: 60,
-        customerName: undefined,
-        orders: [],
-      },
-    }));
-  };
-
   // Salvar e Aplicar Diretriz de Controle Parental
   const handleApplyParentalPolicy = (clientId: string, updates: Partial<ParentalPolicy>) => {
     const current = parentalPolicies[clientId] || {
@@ -1986,17 +1808,18 @@ export const AdminDashboard: React.FC = () => {
       }));
     }
 
-    setCommandSuccessStatus('Diretriz Parental aplicada no terminal com sucesso.');
+    setCommandSuccessStatus('Diretriz Parental aplicada na estação com sucesso.');
     setTimeout(() => setCommandSuccessStatus(null), 3000);
   };
 
   // Bloqueio de Emergência Parental
   const handleEmergencyParentalLock = (clientId: string) => {
-    handleLockTerminal(clientId, 'Terminal bloqueado por intervenção de Controle Parental.');
+    sendRemoteCommand('lock', clientId);
+    const station = connectedStations.find((s) => s.clientId === clientId);
     const newAlert: ParentalViolationAlert = {
       id: 'violation_' + Date.now(),
       timestamp: Date.now(),
-      stationName: terminals[clientId]?.name || 'Terminal',
+      stationName: station?.name || 'Estação',
       clientId,
       reason: 'Intervenção Imediata do Responsável / Administrador',
       actionTaken: 'Bloqueio total de tela executado',
@@ -2141,21 +1964,33 @@ export const AdminDashboard: React.FC = () => {
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center shadow-inner">
-                <ShieldAlert className="w-7 h-7 text-rose-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-slate-100">Painel do Administrador & Blue Team</h2>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold uppercase tracking-wider">
-                    RESTRICTED
-                  </span>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center shadow-inner">
+                  <ShieldAlert className="w-7 h-7 text-rose-400" />
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Protegido contra infiltração, força bruta e ataques DDoS por salvaguardas ativas.
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-slate-100">Painel do Administrador & Blue Team</h2>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold uppercase tracking-wider">
+                      RESTRICTED
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Protegido contra infiltração, força bruta e ataques DDoS por salvaguardas ativas.
+                  </p>
+                </div>
               </div>
+              {onExit && (
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="self-start sm:self-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-slate-700 transition-all flex items-center gap-1.5"
+                  title="Retornar para a visualização comum de usuário"
+                >
+                  ← Modo Usuário
+                </button>
+              )}
             </div>
 
             {loginError && (
@@ -2212,15 +2047,51 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* Campo OTP — aparece quando 2FA está ativo ou exigido */}
+              {(requireOtp || totpEnabled) ? (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/40 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-amber-300">
+                      Código TOTP (App Autenticador)
+                    </label>
+                    <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-700/50 px-2 py-0.5 rounded-full font-bold">
+                      2FA OBRIGATÓRIO
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpInput}
+                    onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    className="w-full bg-slate-950 border border-amber-500/60 focus:border-amber-400 rounded-xl px-4 py-3 text-sm text-amber-200 placeholder-slate-600 font-mono text-center text-lg tracking-[0.5em] focus:outline-none transition-all shadow-inner"
+                    autoFocus={!!passwordInput}
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Abra seu app autenticador (Google Authenticator, Authy, etc.) e digite o código dinâmico de 6 dígitos.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-[11px] text-slate-400">
+                  <Smartphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>2FA TOTP: Proteção extra disponível. Você poderá ativá-lo na aba <strong>Defesa Blue Team</strong> após o login.</span>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="submit"
-                  disabled={loginLoading || !passwordInput.trim()}
+                  disabled={loginLoading || !passwordInput.trim() || ((requireOtp || totpEnabled) && otpInput.length !== 6)}
                   className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2 transition-all"
                 >
                   {loginLoading ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" /> Verificando Credenciais...
+                    </>
+                  ) : (requireOtp || totpEnabled) ? (
+                    <>
+                      <ShieldCheck className="w-4 h-4" /> Verificar Senha + 2FA e Entrar
                     </>
                   ) : (
                     <>
@@ -2311,6 +2182,30 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Status de Segurança e 2FA */}
+        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${totpEnabled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  2FA (TOTP RFC 6238)
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${totpEnabled ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                  {totpEnabled ? 'ATIVO NO SERVIDOR' : 'DESATIVADO'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {totpEnabled 
+                  ? 'Login protegido por autenticação em dois fatores offline (Google Authenticator / Authy).'
+                  : 'Camada de proteção extra que pode ser ativada na aba Defesa Blue Team após o login.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Mecanismos de Defesa Ativos */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-2xl text-xs space-y-1">
@@ -2373,6 +2268,22 @@ export const AdminDashboard: React.FC = () => {
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
                 SESSÃO AUTORIZADA
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('defense');
+                  setShowTotpSection(true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+                  totpEnabled
+                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/50 hover:bg-emerald-900/60'
+                    : 'bg-amber-950/80 text-amber-300 border-amber-600/50 hover:bg-amber-900/60'
+                }`}
+                title="Configurar 2FA TOTP na aba de Defesa"
+              >
+                <Smartphone className="w-3 h-3" />
+                <span>2FA: {totpEnabled ? 'ATIVO' : 'DESATIVADO (CONFIGURAR)'}</span>
+              </button>
             </div>
             <p className="text-xs text-slate-400">
               Defesa ativa contra infiltração • Monitoramento em tempo real • Quarentena de IPs
@@ -2399,21 +2310,6 @@ export const AdminDashboard: React.FC = () => {
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('lanhouse')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                activeTab === 'lanhouse'
-                  ? 'bg-amber-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Coffee className="w-3.5 h-3.5" />
-              <span>Lan House (NexCafé)</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-950 text-amber-300 border border-amber-700/50">
-                {Object.values(terminals).filter((t) => t.status === 'in_use').length}/{Math.max(1, Object.keys(terminals).length)}
-              </span>
-            </button>
 
             <button
               type="button"
@@ -2495,6 +2391,22 @@ export const AdminDashboard: React.FC = () => {
                 <Sparkles className="w-2.5 h-2.5" /> IA
               </span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('nsite')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === 'nsite'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-400'
+                  : 'text-emerald-400/90 hover:text-emerald-200 hover:bg-emerald-950/40'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Nsite & Nostr</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                NIP-5A
+              </span>
+            </button>
           </div>
 
           <button
@@ -2537,6 +2449,17 @@ export const AdminDashboard: React.FC = () => {
           >
             <LogOut className="w-3.5 h-3.5" /> Sair
           </button>
+
+          {onExit && (
+            <button
+              type="button"
+              onClick={onExit}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold rounded-xl transition-all"
+              title="Alternar para a visualização comum de usuário"
+            >
+              ← Modo Usuário
+            </button>
+          )}
         </div>
       </div>
 
@@ -4721,557 +4644,6 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ABA: GERENCIADOR DE LAN HOUSE & CYBER CAFÉ (NEXCAFÉ PRO) */}
-      {activeTab === 'lanhouse' && (
-        <div className="space-y-6">
-          {/* Header do Gerenciador NexCafé */}
-          <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-800 p-5 shadow-xl flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Coffee className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-100">
-                    Gerenciador de Lan House & Cyber Café (NexCafé Pro)
-                  </h3>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                    TARIFADOR & CAIXA ATIVOS
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Controle remoto de tempo de acesso, sessões pré-pagas e pós-pagas, bloqueio automático e comanda de consumo.
-                </p>
-              </div>
-            </div>
-
-            {/* Ações Globais de Lan House */}
-            <div className="flex items-center flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  Object.keys(terminals).forEach((id) => handleLockTerminal(id, 'Todos os terminais bloqueados pelo caixa.'));
-                }}
-                className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
-                title="Bloquear todos os computadores da lan house de uma vez"
-              >
-                <Lock className="w-3.5 h-3.5" /> Bloquear Todos
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  Object.keys(terminals).forEach((id) => handleUnlockTerminal(id));
-                }}
-                className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
-                title="Desbloquear todos os computadores da lan house"
-              >
-                <Unlock className="w-3.5 h-3.5" /> Liberar Todos
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const newSlot = Object.keys(terminals).length + 1;
-                  const newId = 'manual_term_' + newSlot;
-                  setTerminals((prev) => ({
-                    ...prev,
-                    [newId]: {
-                      id: newId,
-                      slotNumber: newSlot,
-                      name: `Terminal ${newSlot.toString().padStart(2, '0')}`,
-                      status: 'available',
-                      mode: 'prepaid',
-                      allocatedMinutes: 60,
-                      usedSeconds: 0,
-                      hourlyRate: 6.0,
-                      orders: [],
-                    },
-                  }));
-                }}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" /> + Novo Terminal
-              </button>
-            </div>
-          </div>
-
-          {/* KPIs Financeiros & Operacionais do NexCafé */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 shadow-xl">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Faturamento Hoje</span>
-                <DollarSign className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="text-xl font-bold text-emerald-400 font-mono">
-                R$ {cashierDailyStats.totalRevenue.toFixed(2)}
-              </div>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Caixa integrado NexCafé
-              </span>
-            </div>
-
-            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 shadow-xl">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Horas de Acesso</span>
-                <Clock className="w-4 h-4 text-indigo-400" />
-              </div>
-              <div className="text-xl font-bold text-indigo-300 font-mono">
-                R$ {cashierDailyStats.timeRevenue.toFixed(2)}
-              </div>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Tarifação de computadores
-              </span>
-            </div>
-
-            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 shadow-xl">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Lanches & Impressões</span>
-                <ShoppingBag className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="text-xl font-bold text-amber-300 font-mono">
-                R$ {cashierDailyStats.productRevenue.toFixed(2)}
-              </div>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Consumo de balcão
-              </span>
-            </div>
-
-            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 shadow-xl">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Ocupação Atual</span>
-                <Monitor className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div className="text-xl font-bold text-cyan-300 font-mono">
-                {Object.values(terminals).filter((t) => t.status === 'in_use').length} / {Math.max(1, Object.keys(terminals).length)}
-              </div>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Máquinas ativas
-              </span>
-            </div>
-
-            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 shadow-xl">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Sessões Fechadas</span>
-                <Receipt className="w-4 h-4 text-purple-400" />
-              </div>
-              <div className="text-xl font-bold text-purple-300 font-mono">
-                {cashierDailyStats.sessionsClosed}
-              </div>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Comprovantes emitidos
-              </span>
-            </div>
-          </div>
-
-          {/* GRID DOS TERMINAIS DE COMPUTADORES DA LAN HOUSE */}
-          <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-5 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Monitor className="w-5 h-5 text-amber-400" />
-                <h3 className="font-semibold text-xs text-slate-200 uppercase tracking-wider">
-                  Mural dos Terminais da Lan House ({Object.keys(terminals).length})
-                </h3>
-              </div>
-              <span className="text-xs text-slate-400">
-                Tarifador em tempo real • Travamento automático em término de tempo
-              </span>
-            </div>
-
-            {Object.keys(terminals).length === 0 ? (
-              <div className="text-center py-12 px-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-3">
-                <Coffee className="w-10 h-10 text-amber-500/60 mx-auto" />
-                <h4 className="text-sm font-semibold text-slate-200">
-                  Nenhum terminal conectado no momento
-                </h4>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Quando computadores ou celulares abrirem a página do sistema na rede, eles aparecerão automaticamente aqui. Você também pode criar um terminal para simular e configurar.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTerminals({
-                      term_01: {
-                        id: 'term_01',
-                        slotNumber: 1,
-                        name: 'Terminal 01 (PC Gamer)',
-                        status: 'available',
-                        mode: 'prepaid',
-                        allocatedMinutes: 60,
-                        usedSeconds: 0,
-                        hourlyRate: 6.0,
-                        orders: [],
-                      },
-                      term_02: {
-                        id: 'term_02',
-                        slotNumber: 2,
-                        name: 'Terminal 02 (PC Office)',
-                        customerName: 'Lucas Ferreira',
-                        status: 'in_use',
-                        mode: 'prepaid',
-                        allocatedMinutes: 60,
-                        usedSeconds: 1250,
-                        hourlyRate: 6.0,
-                        orders: [
-                          { id: '1', name: 'Refrigerante Lata 350ml', price: 5.0, quantity: 1, time: Date.now() },
-                        ],
-                      },
-                      term_03: {
-                        id: 'term_03',
-                        slotNumber: 3,
-                        name: 'Terminal 03 (PC Gamer)',
-                        status: 'available',
-                        mode: 'postpaid',
-                        allocatedMinutes: 0,
-                        usedSeconds: 0,
-                        hourlyRate: 7.0,
-                        orders: [],
-                      },
-                    });
-                  }}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow"
-                >
-                  Inicializar Terminais de Demonstração
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.values(terminals).map((term) => {
-                  const feed = term.clientId ? (screenFeeds[term.clientId] || surveillanceFeeds[term.clientId]) : null;
-                  const isAvailable = term.status === 'available';
-                  const isPrepaid = term.mode === 'prepaid';
-                  const remainingSeconds = isPrepaid ? Math.max(0, term.allocatedMinutes * 60 - term.usedSeconds) : 0;
-                  const percentUsed = isPrepaid ? Math.min(100, (term.usedSeconds / (term.allocatedMinutes * 60 || 1)) * 100) : 0;
-
-                  return (
-                    <div
-                      key={term.id}
-                      className={`rounded-2xl border overflow-hidden shadow-lg flex flex-col transition-all ${
-                        term.status === 'in_use'
-                          ? 'bg-slate-950 border-indigo-500/50 ring-1 ring-indigo-500/20'
-                          : term.status === 'locked'
-                          ? 'bg-slate-950 border-rose-500/50'
-                          : term.status === 'time_out'
-                          ? 'bg-slate-950 border-amber-500/50'
-                          : term.status === 'paused'
-                          ? 'bg-slate-950 border-yellow-500/50'
-                          : 'bg-slate-950 border-slate-800'
-                      }`}
-                    >
-                      {/* Top Header do Card do Terminal */}
-                      <div className="p-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-[11px] font-bold text-amber-400 font-mono">
-                            #{term.slotNumber.toString().padStart(2, '0')}
-                          </span>
-                          <span className="font-bold text-xs text-slate-100 truncate max-w-[130px]">
-                            {term.name}
-                          </span>
-                        </div>
-
-                        {/* Status Badge */}
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${
-                            term.status === 'in_use'
-                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                              : term.status === 'locked'
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                              : term.status === 'time_out'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
-                              : term.status === 'paused'
-                              ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
-                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          }`}
-                        >
-                          {term.status === 'in_use'
-                            ? '🔵 EM USO'
-                            : term.status === 'locked'
-                            ? '🔴 BLOQUEADO'
-                            : term.status === 'time_out'
-                            ? '🟠 TEMPO ESGOTADO'
-                            : term.status === 'paused'
-                            ? '🟡 PAUSADO'
-                            : '🟢 LIVRE'}
-                        </span>
-                      </div>
-
-                      {/* Mini Preview de Tela ou Câmera */}
-                      <div className="relative aspect-video bg-black flex items-center justify-center border-b border-slate-800 overflow-hidden">
-                        {feed ? (
-                          <>
-                            <img
-                              src={feed.frameData}
-                              alt={term.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1 backdrop-blur">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                              MONITOR AO VIVO
-                            </div>
-                            {(() => {
-                              const tLoc = (term.clientId ? connectedStations.find((s) => s.clientId === term.clientId)?.location : undefined) ||
-                                (term.clientId ? data?.peers?.find((p) => p.clientId === term.clientId)?.location : undefined) ||
-                                feed.location;
-                              if (!tLoc) return null;
-                              return (
-                                <div className="absolute bottom-2 left-2 bg-slate-950/85 px-2 py-0.5 rounded text-[10px] text-emerald-300 font-mono flex items-center gap-1.5 border border-slate-700/80 shadow">
-                                  <span>{tLoc.flag || '🇧🇷'}</span>
-                                  <span className="font-bold text-white">{tLoc.country || 'Brasil'}</span>
-                                  <span className="text-slate-300">{tLoc.latitude.toFixed(4)}, {tLoc.longitude.toFixed(4)}</span>
-                                </div>
-                              );
-                            })()}
-                          </>
-                        ) : (
-                          <div className="text-center p-3 text-slate-600 space-y-1">
-                            <Monitor className="w-8 h-8 mx-auto" />
-                            <div className="text-[11px] font-mono text-slate-400">
-                              {isAvailable ? 'Terminal em Espera' : 'Sessão em Andamento'}
-                            </div>
-                          </div>
-                        )}
-
-                        {term.status === 'locked' && (
-                          <div className="absolute inset-0 bg-rose-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-rose-200 p-2 text-center">
-                            <Lock className="w-7 h-7 text-rose-400 mb-1" />
-                            <span className="text-xs font-bold">TERMINAL BLOQUEADO</span>
-                            <span className="text-[10px] text-rose-300 line-clamp-1">{term.lockMessage || 'Acesso travado'}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Informações da Sessão e do Cliente */}
-                      <div className="p-3.5 space-y-3 flex-1 flex flex-col justify-between text-xs">
-                        {isAvailable ? (
-                          <div className="py-4 text-center space-y-3">
-                            <p className="text-slate-400 text-xs">
-                              Pronto para novo cliente. Tarifa atual: <strong>R$ {term.hourlyRate.toFixed(2)}/h</strong>
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedTerminalForSession(term.id);
-                                setSessionModalConfig((prev) => ({
-                                  ...prev,
-                                  customerName: '',
-                                  hourlyRate: term.hourlyRate,
-                                }));
-                              }}
-                              className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-1.5 transition-all"
-                            >
-                              <Unlock className="w-4 h-4" /> Abrir Sessão / Liberar
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-400">Cliente:</span>
-                              <span className="font-bold text-slate-100 truncate max-w-[150px]">
-                                {term.customerName || 'Cliente Balcão'}
-                              </span>
-                            </div>
-
-                            {/* Cronômetro e Tarifação */}
-                            <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] text-slate-400 uppercase font-semibold">
-                                  {isPrepaid ? 'Tempo Restante:' : 'Tempo Decorrido:'}
-                                </span>
-                                <span className={`font-mono text-sm font-bold ${
-                                  isPrepaid && remainingSeconds <= 300
-                                    ? 'text-rose-400 animate-pulse'
-                                    : 'text-amber-400'
-                                }`}>
-                                  {isPrepaid
-                                    ? `${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`
-                                    : `${Math.floor(term.usedSeconds / 3600).toString().padStart(2, '0')}:${Math.floor((term.usedSeconds % 3600) / 60).toString().padStart(2, '0')}:${(term.usedSeconds % 60).toString().padStart(2, '0')}`
-                                  }
-                                </span>
-                              </div>
-
-                              {isPrepaid && (
-                                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full transition-all ${
-                                      percentUsed >= 90 ? 'bg-rose-500' : percentUsed >= 75 ? 'bg-amber-500' : 'bg-emerald-500'
-                                    }`}
-                                    style={{ width: `${percentUsed}%` }}
-                                  />
-                                </div>
-                              )}
-
-                              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-                                <span>Valor do Tempo:</span>
-                                <span className="font-mono text-slate-200 font-semibold">
-                                  R$ {(
-                                    (isPrepaid ? term.allocatedMinutes / 60 : term.usedSeconds / 3600) * term.hourlyRate
-                                  ).toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Consumo / Pedidos na comanda */}
-                            {(term.orders || []).length > 0 && (
-                              <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-[11px] space-y-1">
-                                <div className="flex justify-between text-slate-400 font-semibold">
-                                  <span>Consumo na Comanda:</span>
-                                  <span className="text-amber-400 font-mono">
-                                    R$ {term.orders.reduce((sum, o) => sum + o.price * o.quantity, 0).toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] text-slate-500 truncate">
-                                  {term.orders.map((o) => `${o.quantity}x ${o.name}`).join(', ')}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Ações Rápidas do Terminal */}
-                            <div className="pt-1 space-y-1.5">
-                              {/* Botões de Tempo Rápido */}
-                              <div className="grid grid-cols-3 gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddTimeToTerminal(term.id, 15)}
-                                  className="py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-semibold border border-slate-700"
-                                >
-                                  +15m
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddTimeToTerminal(term.id, 30)}
-                                  className="py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-semibold border border-slate-700"
-                                >
-                                  +30m
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddTimeToTerminal(term.id, 60)}
-                                  className="py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-semibold border border-slate-700"
-                                >
-                                  +1h
-                                </button>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePauseTerminal(term.id)}
-                                  className="py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1"
-                                >
-                                  {term.status === 'paused' ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-                                  {term.status === 'paused' ? 'Retomar' : 'Pausar'}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedTerminalForOrder(term.id)}
-                                  className="py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1"
-                                >
-                                  <ShoppingBag className="w-3 h-3" /> + Pedido
-                                </button>
-                              </div>
-
-                              <div className="flex items-center gap-1.5">
-                                {term.status === 'locked' ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUnlockTerminal(term.id)}
-                                    className="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1"
-                                  >
-                                    <Unlock className="w-3 h-3" /> Desbloquear
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleLockTerminal(term.id)}
-                                    className="flex-1 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1"
-                                  >
-                                    <Lock className="w-3 h-3" /> Bloquear
-                                  </button>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleCloseSession(term.id)}
-                                  className="flex-1 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl text-[11px] font-bold uppercase tracking-wider shadow flex items-center justify-center gap-1"
-                                >
-                                  <Receipt className="w-3 h-3" /> Fechar Conta
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* CATÁLOGO RÁPIDO DO CYBER CAFÉ & LANCHONETE (QUICK POS) */}
-          <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-5 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Coffee className="w-5 h-5 text-amber-400" />
-                <h3 className="font-semibold text-xs text-slate-200 uppercase tracking-wider">
-                  Catálogo do Cyber Café & Serviços ({cafeProducts.length} itens)
-                </h3>
-              </div>
-              <span className="text-xs text-slate-400">
-                Lançamento direto de produtos nas comandas
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {cafeProducts.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex flex-col justify-between text-xs space-y-2 group hover:border-amber-500/40 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{prod.icon}</span>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-slate-200 truncate">
-                        {prod.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 uppercase">
-                        {prod.category}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
-                    <span className="font-mono font-bold text-emerald-400 text-xs">
-                      R$ {prod.price.toFixed(2)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const inUse = Object.values(terminals).filter((t) => t.status === 'in_use');
-                        if (inUse.length === 0) {
-                          alert('Nenhum terminal está em uso para debitar este produto.');
-                          return;
-                        }
-                        if (inUse.length === 1) {
-                          handleAddOrderToTerminal(inUse[0].id, prod);
-                        } else {
-                          const chosen = prompt(`Lançar "${prod.name}" em qual terminal?\n` + inUse.map((t) => `${t.slotNumber}: ${t.name}`).join('\n'));
-                          if (chosen) {
-                            const found = inUse.find((t) => String(t.slotNumber) === chosen.trim());
-                            if (found) handleAddOrderToTerminal(found.id, prod);
-                          }
-                        }
-                      }}
-                      className="px-2 py-0.5 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 rounded text-[10px] font-bold"
-                    >
-                      + Debitar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ABA: CONTROLE PARENTAL & MODERAÇÃO FAMILIAR */}
       {activeTab === 'parental' && (
@@ -6167,6 +5539,194 @@ export const AdminDashboard: React.FC = () => {
       {/* ABA 2: CENTRAL DE DEFESA BLUE TEAM & BLOQUEIO DE IPS */}
       {activeTab === 'defense' && (
         <div className="space-y-6">
+          {/* Card de Configuração e Status da Autenticação 2FA TOTP */}
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
+                  totpEnabled
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                }`}>
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
+                      Autenticação em Dois Fatores (2FA TOTP Offline)
+                    </h3>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      totpEnabled
+                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-600/50'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}>
+                      {totpEnabled ? 'PROTEÇÃO ATIVA' : 'DESATIVADO'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Padrão RFC 6238 compatível com Google Authenticator, Authy, Proton Authenticator e 1Password. 100% offline sem internet.
+                  </p>
+                </div>
+              </div>
+
+              {!totpEnabled && !totpSetupPending && (
+                <button
+                  type="button"
+                  onClick={handleTotpSetup}
+                  disabled={totpLoading}
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  {totpLoading ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Gerando Chave...</>
+                  ) : (
+                    <><ShieldCheck className="w-4 h-4" /> Configurar 2FA Agora</>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Mensagem de Feedback */}
+            {totpMessage && (
+              <div className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                totpMessage.type === 'ok'
+                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+              }`}>
+                {totpMessage.type === 'ok' ? <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />}
+                <span>{totpMessage.text}</span>
+              </div>
+            )}
+
+            {/* Fluxo de Configuração do Setup Pendente (QR Code + Chave + Confirmação) */}
+            {!totpEnabled && totpSetupPending && totpSecret && (
+              <div className="p-5 bg-slate-950/80 rounded-2xl border border-amber-500/30 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  {/* Lado Esquerdo: Imagem do QR Code gerado */}
+                  <div className="flex flex-col items-center text-center p-4 bg-slate-900/60 rounded-2xl border border-slate-800">
+                    <span className="text-xs font-bold text-amber-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <QrCode className="w-4 h-4" /> 1. Escaneie com seu Celular
+                    </span>
+                    {totpQrDataUrl ? (
+                      <div className="p-3 bg-white rounded-2xl shadow-xl">
+                        <img src={totpQrDataUrl} alt="QR Code TOTP" className="w-48 h-48 block" />
+                      </div>
+                    ) : (
+                      <div className="w-48 h-48 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 text-xs">
+                        Carregando QR Code...
+                      </div>
+                    )}
+                    <p className="text-[11px] text-slate-400 mt-3 max-w-xs">
+                      Abra o <strong>Google Authenticator</strong> ou <strong>Authy</strong> no seu celular e aponte a câmera para o QR Code acima.
+                    </p>
+                  </div>
+
+                  {/* Lado Direito: Chave Secreta manual e Confirmação com código */}
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                        <Key className="w-4 h-4 text-amber-400" /> 2. Chave Secreta Manual
+                      </span>
+                      <div className="flex items-center gap-2 bg-slate-900 px-3 py-2.5 rounded-xl border border-slate-800">
+                        <code className="flex-1 text-xs font-mono text-amber-200 break-all select-all">{totpSecret}</code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(totpSecret);
+                            setTotpMessage({ type: 'ok', text: 'Chave secreta copiada para a área de transferência!' });
+                          }}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 shrink-0 font-medium transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" /> Copiar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                        3. Digite o Código de 6 dígitos gerado
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={totpConfirmCode}
+                        onChange={(e) => setTotpConfirmCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 text-emerald-300 placeholder-slate-600 font-mono text-center text-xl tracking-[0.5em] focus:outline-none transition-all shadow-inner"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleTotpEnable}
+                        disabled={totpLoading || totpConfirmCode.length !== 6}
+                        className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        {totpLoading ? (
+                          <><RefreshCw className="w-4 h-4 animate-spin" /> Validando...</>
+                        ) : (
+                          <><CheckCircle className="w-4 h-4" /> Validar e Ativar 2FA</>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTotpSetupPending(false);
+                          setTotpSecret('');
+                          setTotpUri('');
+                          setTotpQrDataUrl('');
+                          setTotpConfirmCode('');
+                          setTotpMessage(null);
+                        }}
+                        className="px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-xl transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Painel Quando 2FA Já Está Ativo */}
+            {totpEnabled && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-emerald-300 block">
+                      Proteção Dupla em Vigor
+                    </span>
+                    <p className="text-[11px] text-slate-400">
+                      O acesso ao painel SOC do administrador requer senha mestra e código gerado pelo aplicativo autenticador a cada 30 segundos.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    type="password"
+                    value={totpDisablePassword}
+                    onChange={(e) => setTotpDisablePassword(e.target.value)}
+                    placeholder="Senha para desativar..."
+                    className="w-44 bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-600 font-mono focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTotpDisable}
+                    disabled={totpLoading || !totpDisablePassword.trim()}
+                    className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {totpLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
+                    <span>Desativar</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Métricas de Defesa Cibernética */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <div className="bg-slate-900/60 border border-slate-800 p-3.5 rounded-2xl shadow-lg">
@@ -6789,6 +6349,15 @@ export const AdminDashboard: React.FC = () => {
           }}
         />
       )}
+
+      {/* ABA 8: NSITE & HOSPEDAGEM NOSTR DESCENTRALIZADA (NIP-5A & BLOSSOM) */}
+      {activeTab === 'nsite' && (
+        <AdminNsiteView
+          serverUrl={serverUrl}
+          token={token}
+        />
+      )}
+
       {/* Modal de Tela Cheia para Câmera ou Tela */}
       {fullscreenMedia && (
         <div
@@ -6853,361 +6422,6 @@ export const AdminDashboard: React.FC = () => {
               alt={fullscreenMedia.title}
               className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
             />
-          </div>
-        </div>
-      )}
-
-      {/* MODAL NEXCAFÉ: ABERTURA DE SESSÃO */}
-      {selectedTerminalForSession && terminals[selectedTerminalForSession] && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in"
-          onClick={() => setSelectedTerminalForSession(null)}
-        >
-          <div
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Coffee className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-100">
-                    Abrir Sessão: {terminals[selectedTerminalForSession].name}
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Defina o cliente e a modalidade de tarifação
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTerminalForSession(null)}
-                className="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Nome do Cliente / Usuário
-                </label>
-                <input
-                  type="text"
-                  value={sessionModalConfig.customerName}
-                  onChange={(e) => setSessionModalConfig((prev) => ({ ...prev, customerName: e.target.value }))}
-                  placeholder={terminals[selectedTerminalForSession].customerName || 'Ex: João Silva'}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Modalidade de Sessão
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSessionModalConfig((prev) => ({ ...prev, mode: 'prepaid' }))}
-                    className={`py-2 px-3 rounded-xl border font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                      sessionModalConfig.mode === 'prepaid'
-                        ? 'bg-amber-600/30 border-amber-500 text-amber-300 shadow'
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
-                    }`}
-                  >
-                    <Timer className="w-3.5 h-3.5" /> Pré-pago (Tempo Fixo)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSessionModalConfig((prev) => ({ ...prev, mode: 'postpaid' }))}
-                    className={`py-2 px-3 rounded-xl border font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                      sessionModalConfig.mode === 'postpaid'
-                        ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300 shadow'
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
-                    }`}
-                  >
-                    <DollarSign className="w-3.5 h-3.5" /> Pós-pago (Livre)
-                  </button>
-                </div>
-              </div>
-
-              {sessionModalConfig.mode === 'prepaid' && (
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Tempo Pré-pago Contratado
-                  </label>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {[15, 30, 60, 120].map((mins) => (
-                      <button
-                        key={mins}
-                        type="button"
-                        onClick={() => setSessionModalConfig((prev) => ({ ...prev, minutes: mins }))}
-                        className={`py-2 rounded-xl border text-xs font-semibold ${
-                          sessionModalConfig.minutes === mins
-                            ? 'bg-amber-600 text-white border-amber-500 shadow'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Minutos personalizados:</span>
-                    <input
-                      type="number"
-                      min={5}
-                      step={5}
-                      value={sessionModalConfig.minutes}
-                      onChange={(e) => setSessionModalConfig((prev) => ({ ...prev, minutes: Number(e.target.value) || 15 }))}
-                      className="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-right text-slate-100"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between bg-slate-950 p-3 rounded-2xl border border-slate-800">
-                <span className="text-slate-400">Tarifa por Hora:</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">R$</span>
-                  <input
-                    type="number"
-                    step={0.5}
-                    value={sessionModalConfig.hourlyRate}
-                    onChange={(e) => setSessionModalConfig((prev) => ({ ...prev, hourlyRate: Number(e.target.value) || 6.0 }))}
-                    className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right text-emerald-400 font-bold"
-                  />
-                </div>
-              </div>
-
-              {sessionModalConfig.mode === 'prepaid' && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between">
-                  <span className="text-amber-300 font-medium">Valor Estimado do Tempo:</span>
-                  <span className="text-base font-bold text-amber-400 font-mono">
-                    R$ {((sessionModalConfig.minutes / 60) * sessionModalConfig.hourlyRate).toFixed(2)}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedTerminalForSession(null)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartSession(selectedTerminalForSession)}
-                className="flex-1 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-amber-900/40 flex items-center justify-center gap-1.5"
-              >
-                <Unlock className="w-4 h-4" /> Liberar Terminal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL NEXCAFÉ: LANÇAR PEDIDO / PRODUTO NA COMANDA */}
-      {selectedTerminalForOrder && terminals[selectedTerminalForOrder] && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in"
-          onClick={() => setSelectedTerminalForOrder(null)}
-        >
-          <div
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-                  <ShoppingBag className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-100">
-                    Lançar Produto: {terminals[selectedTerminalForOrder].name}
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Cliente: {terminals[selectedTerminalForOrder].customerName || 'Cliente Balcão'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTerminalForOrder(null)}
-                className="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {cafeProducts.map((prod) => (
-                  <button
-                    key={prod.id}
-                    type="button"
-                    onClick={() => handleAddOrderToTerminal(selectedTerminalForOrder, prod)}
-                    className="p-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 rounded-2xl flex items-center justify-between text-left transition-all group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl">{prod.icon}</span>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-200 group-hover:text-white truncate max-w-[140px]">
-                          {prod.name}
-                        </div>
-                        <div className="text-[10px] text-slate-400 uppercase">
-                          {prod.category}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-bold text-emerald-400 font-mono">
-                        R$ {prod.price.toFixed(2)}
-                      </div>
-                      <span className="text-[10px] text-indigo-400 font-medium group-hover:underline">
-                        + Lançar
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-              <div className="text-xs text-slate-400">
-                Itens na comanda:{' '}
-                <span className="font-bold text-slate-200">
-                  {terminals[selectedTerminalForOrder].orders?.length || 0}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTerminalForOrder(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
-              >
-                Concluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL NEXCAFÉ: RECIBO & FECHAMENTO DE CONTA */}
-      {selectedTerminalReceipt && (
-        <div
-          className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in"
-          onClick={() => setSelectedTerminalReceipt(null)}
-        >
-          <div
-            className="bg-slate-950 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 font-mono text-xs"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header do Cupom NexCafé */}
-            <div className="text-center border-b border-dashed border-slate-700 pb-3 space-y-1">
-              <div className="flex items-center justify-center gap-1.5 text-amber-400 font-bold text-sm uppercase tracking-wider">
-                <Coffee className="w-4 h-4" /> NEXCAFÉ PRO • CYBER CAFÉ
-              </div>
-              <p className="text-[10px] text-slate-400">
-                Jjy Network Management System
-              </p>
-              <p className="text-[10px] text-slate-400">
-                {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}
-              </p>
-              <div className="text-xs font-bold text-slate-200 pt-1">
-                COMPROVANTE DE ENCERRAMENTO DE SESSÃO
-              </div>
-            </div>
-
-            {/* Informações da Máquina e Cliente */}
-            <div className="space-y-1 py-1 border-b border-dashed border-slate-700 text-[11px]">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Terminal:</span>
-                <span className="text-slate-200 font-bold">{selectedTerminalReceipt.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Cliente:</span>
-                <span className="text-slate-200 font-bold">{selectedTerminalReceipt.customerName || 'Cliente Balcão'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Modalidade:</span>
-                <span className="text-amber-400 uppercase font-semibold">
-                  {selectedTerminalReceipt.mode === 'prepaid' ? 'Pré-pago' : 'Pós-pago'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Tempo Total:</span>
-                <span className="text-slate-200">
-                  {Math.floor(selectedTerminalReceipt.usedSeconds / 60)} min ({selectedTerminalReceipt.usedSeconds}s)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Tarifa Horária:</span>
-                <span className="text-slate-200">R$ {selectedTerminalReceipt.hourlyRate.toFixed(2)}/h</span>
-              </div>
-            </div>
-
-            {/* Detalhamento de Cobrança */}
-            <div className="space-y-1.5 py-1 border-b border-dashed border-slate-700">
-              <div className="flex justify-between font-semibold">
-                <span className="text-slate-300">Tempo de Uso:</span>
-                <span className="text-emerald-400 font-bold">
-                  R$ {((selectedTerminalReceipt.mode === 'prepaid' ? selectedTerminalReceipt.allocatedMinutes / 60 : selectedTerminalReceipt.usedSeconds / 3600) * selectedTerminalReceipt.hourlyRate).toFixed(2)}
-                </span>
-              </div>
-
-              {(selectedTerminalReceipt.orders || []).length > 0 && (
-                <div className="pt-1 space-y-1">
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                    Consumo & Serviços:
-                  </div>
-                  {selectedTerminalReceipt.orders.map((ord, i) => (
-                    <div key={i} className="flex justify-between text-[11px] text-slate-300">
-                      <span>{ord.quantity}x {ord.name}</span>
-                      <span>R$ {(ord.price * ord.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Total Geral */}
-            <div className="flex items-center justify-between py-2 text-sm font-bold border-b border-slate-700">
-              <span className="text-slate-200 uppercase">TOTAL A PAGAR:</span>
-              <span className="text-emerald-400 text-lg">
-                R$ {(
-                  ((selectedTerminalReceipt.mode === 'prepaid' ? selectedTerminalReceipt.allocatedMinutes / 60 : selectedTerminalReceipt.usedSeconds / 3600) * selectedTerminalReceipt.hourlyRate) +
-                  (selectedTerminalReceipt.orders || []).reduce((sum, o) => sum + o.price * o.quantity, 0)
-                ).toFixed(2)}
-              </span>
-            </div>
-
-            <p className="text-center text-[10px] text-slate-500 italic">
-              Obrigado pela preferência! Volte sempre ao Cyber Café.
-            </p>
-
-            {/* Ações do Recibo */}
-            <div className="pt-2 flex items-center gap-2 font-sans">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5"
-              >
-                <Receipt className="w-3.5 h-3.5" /> Imprimir Cupom
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedTerminalReceipt(null)}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow"
-              >
-                Concluir & Liberar
-              </button>
-            </div>
           </div>
         </div>
       )}

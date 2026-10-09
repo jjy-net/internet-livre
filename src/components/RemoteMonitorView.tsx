@@ -35,8 +35,6 @@ import {
   Monitor,
   MonitorPlay,
   MonitorOff,
-  Coffee,
-  Timer,
   Baby,
   SendHorizontal,
   MessageSquare,
@@ -216,20 +214,12 @@ export const RemoteMonitorView: React.FC = () => {
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const screenCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // --- GERENCIADOR DE LAN HOUSE & CYBER CAFÉ (NEXCAFÉ CLIENT LOCK & SESSION) ---
+  // --- CONTENÇÃO & BLOQUEIO DE SEGURANÇA / CONTROLE PARENTAL ---
   const [isTerminalLocked, setIsTerminalLocked] = useState(false);
-  const [terminalLockReason, setTerminalLockReason] = useState('Terminal Bloqueado pela Administração da Lan House.');
+  const [terminalLockReason, setTerminalLockReason] = useState('Dispositivo Bloqueado pela Administração.');
   const [adminUnlockPin, setAdminUnlockPin] = useState('');
   const [unlockError, setUnlockError] = useState<string | null>(null);
-  const [sessionCustomerName, setSessionCustomerName] = useState('');
-  const [sessionMode, setSessionMode] = useState<'prepaid' | 'postpaid'>('prepaid');
-  const [sessionAllocatedMinutes, setSessionAllocatedMinutes] = useState(60);
-  const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState(3600);
-  const [inSession, setInSession] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState(() => new Date().toLocaleTimeString('pt-BR'));
-  const [showSupportModal, setShowSupportModal] = useState(false);
-  const [supportMessageInput, setSupportMessageInput] = useState('');
-  const [supportMessageSent, setSupportMessageSent] = useState(false);
 
   // --- CONTROLE PARENTAL CLIENT-SIDE ---
   const [parentalPolicy, setParentalPolicy] = useState<{
@@ -568,25 +558,13 @@ export const RemoteMonitorView: React.FC = () => {
                 }
               } else if (data.action === 'lock') {
                 setIsTerminalLocked(true);
-                setTerminalLockReason(data.reason || 'Terminal Bloqueado pela Administração da Lan House.');
+                setTerminalLockReason(data.reason || 'Dispositivo Bloqueado pela Administração.');
                 playAlertSound();
-                triggerNotification('🔒 Terminal Bloqueado', 'O acesso a este computador foi bloqueado pelo administrador.');
+                triggerNotification('🔒 Dispositivo Bloqueado', 'O acesso a este computador foi bloqueado pelo administrador.');
               } else if (data.action === 'unlock') {
                 setIsTerminalLocked(false);
                 setUnlockError(null);
-                if (data.session) {
-                  setSessionCustomerName(data.session.customerName || '');
-                  setSessionMode(data.session.mode || 'prepaid');
-                  setSessionAllocatedMinutes(data.session.allocatedMinutes || 60);
-                  setSessionRemainingSeconds(data.session.remainingSeconds || (data.session.allocatedMinutes || 60) * 60);
-                  setInSession(true);
-                }
-                triggerNotification('🔓 Terminal Desbloqueado', 'Sessão liberada com sucesso.');
-              } else if (data.action === 'add-time') {
-                const addedSec = (data.minutes || 15) * 60;
-                setSessionRemainingSeconds((prev) => prev + addedSec);
-                setIsTerminalLocked(false);
-                triggerNotification('⏳ Tempo Adicionado', `+${data.minutes || 15} minutos adicionados à sua sessão.`);
+                triggerNotification('🔓 Dispositivo Desbloqueado', 'Acesso liberado pelo administrador.');
               } else if (data.action === 'set-parental') {
                 if (data.policy) {
                   setParentalPolicy(data.policy);
@@ -676,7 +654,7 @@ export const RemoteMonitorView: React.FC = () => {
     };
   }, [serverUrl, myPeerName, playAlertSound, triggerNotification]);
 
-  // 2.5 Ticker de Relógio Digital, Sessão da Lan House e Horário de Dormir (Bedtime)
+  // 2.5 Ticker de Relógio Digital e Horário de Dormir (Bedtime Parental)
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
@@ -688,7 +666,7 @@ export const RemoteMonitorView: React.FC = () => {
         const isBedtime = parentalPolicy.bedtimeHour === 0 ? (currentHour >= 0 && currentHour < 6) : (currentHour >= parentalPolicy.bedtimeHour || currentHour < 6);
         if (isBedtime && !isTerminalLocked) {
           setIsTerminalLocked(true);
-          setTerminalLockReason('Horário de Dormir Atingido (Bedtime) - Terminal Bloqueado por Controle Parental.');
+          setTerminalLockReason('Horário de Dormir Atingido (Bedtime) - Dispositivo Bloqueado por Controle Parental.');
           if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
               t: 'parental-alert',
@@ -696,41 +674,15 @@ export const RemoteMonitorView: React.FC = () => {
               fromClientId: myClientIdRef.current,
               fromName: myPeerName,
               reason: 'Horário de Dormir Atingido (Bedtime)',
-              actionTaken: 'Terminal bloqueado automaticamente',
+              actionTaken: 'Dispositivo bloqueado automaticamente',
             }));
           }
         }
       }
-
-      // Contagem regressiva da sessão pré-paga
-      if (inSession && !isTerminalLocked && sessionMode === 'prepaid') {
-        setSessionRemainingSeconds((prev) => {
-          if (prev <= 1) {
-            setIsTerminalLocked(true);
-            setTerminalLockReason('Tempo de sessão esgotado! Recarregue no caixa para continuar navegando.');
-            playAlertSound();
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              wsRef.current.send(JSON.stringify({
-                t: 'terminal-session',
-                room: 'monitor',
-                fromClientId: myClientIdRef.current,
-                status: 'time_out',
-                usedSeconds: sessionAllocatedMinutes * 60,
-              }));
-            }
-            return 0;
-          }
-          if (prev === 300) {
-            playAlertSound();
-            triggerNotification('⚠️ Atenção: 5 Minutos Restantes', 'Sua sessão na Lan House encerrará em 5 minutos. Recarregue no caixa.');
-          }
-          return prev - 1;
-        });
-      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [inSession, isTerminalLocked, sessionMode, sessionAllocatedMinutes, parentalPolicy, playAlertSound, triggerNotification]);
+  }, [isTerminalLocked, parentalPolicy]);
 
   // 2.6 Monitor de Digitação para Detecção de Palavras Proibidas (Parental Control)
   useEffect(() => {
@@ -1692,14 +1644,14 @@ export const RemoteMonitorView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ======================================================== */}
-      {/* TELA DE BLOQUEIO TOTAL NEXCAFÉ & CONTROLE PARENTAL       */}
+      {/* ======================================================== */}
+      {/* TELA DE BLOQUEIO DE SEGURANÇA & CONTROLE PARENTAL        */}
       {/* ======================================================== */}
       {isTerminalLocked && (
         <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center select-none text-slate-100 animate-in fade-in">
-          {/* Header NexCafé */}
           <div className="max-w-md w-full space-y-6">
-            <div className="flex items-center justify-center gap-2 text-amber-400 font-bold text-sm uppercase tracking-widest bg-amber-500/10 border border-amber-500/30 px-4 py-1.5 rounded-full mx-auto w-fit">
-              <Coffee className="w-4 h-4" /> NEXCAFÉ PRO • CYBER CAFÉ & LAN HOUSE
+            <div className="flex items-center justify-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-widest bg-rose-500/10 border border-rose-500/30 px-4 py-1.5 rounded-full mx-auto w-fit">
+              <Lock className="w-4 h-4" /> CONTENÇÃO DE ACESSO & SEGURANÇA
             </div>
 
             <div className="space-y-3">
@@ -1708,7 +1660,7 @@ export const RemoteMonitorView: React.FC = () => {
               </div>
 
               <h1 className="text-2xl font-black text-white tracking-tight">
-                {myPeerName} — BLOQUEADO
+                {myPeerName} — ACESSO RESTRITO
               </h1>
 
               <div className="font-mono text-3xl font-extrabold text-amber-400 py-1">
@@ -1720,67 +1672,27 @@ export const RemoteMonitorView: React.FC = () => {
                   {terminalLockReason}
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  Para utilizar este computador, dirija-se ao balcão de atendimento ou solicite a liberação pelo administrador.
+                  O acesso a este dispositivo foi temporariamente suspenso pela administração de segurança ou política parental.
                 </p>
               </div>
             </div>
 
-            {/* Ações da Tela de Bloqueio */}
-            <div className="space-y-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({
-                      t: 'chat',
-                      room: 'lan',
-                      id: 'call_' + Date.now(),
-                      text: `🔔 CLIENTE NO BALCÃO: Solicitando liberação ou recarga no terminal (${myPeerName})`,
-                      fromClientId: myClientIdRef.current,
-                      fromName: myPeerName,
-                      ts: Date.now(),
-                    }));
-                    showToast('Chamada enviada com sucesso para a Central do Administrador!', 'success');
-                  } else {
-                    showToast('Servidor desconectado. Por favor, chame o atendente no balcão.', 'error');
-                  }
-                }}
-                className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-amber-900/40 flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <Bell className="w-4 h-4" /> Chamar Atendente no Balcão
-              </button>
-
-              {/* Desbloqueio com Senha de Administrador */}
-              <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Desbloqueio do Administrador:</span>
-                  <span className="text-[10px] text-slate-500">PIN Master</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password"
-                    value={adminUnlockPin}
-                    onChange={(e) => {
-                      setAdminUnlockPin(e.target.value);
-                      setUnlockError(null);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        if (adminUnlockPin === DEFAULT_SYSTEM_PASSWORD || adminUnlockPin === '1234' || adminUnlockPin === 'admin') {
-                          setIsTerminalLocked(false);
-                          setAdminUnlockPin('');
-                          setUnlockError(null);
-                        } else {
-                          setUnlockError('Senha incorreta.');
-                        }
-                      }
-                    }}
-                    placeholder="Digite a senha do admin..."
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
+            {/* Desbloqueio com Senha de Administrador */}
+            <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>Desbloqueio do Administrador:</span>
+                <span className="text-[10px] text-slate-500">PIN Master</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  value={adminUnlockPin}
+                  onChange={(e) => {
+                    setAdminUnlockPin(e.target.value);
+                    setUnlockError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
                       if (adminUnlockPin === DEFAULT_SYSTEM_PASSWORD || adminUnlockPin === '1234' || adminUnlockPin === 'admin') {
                         setIsTerminalLocked(false);
                         setAdminUnlockPin('');
@@ -1788,130 +1700,30 @@ export const RemoteMonitorView: React.FC = () => {
                       } else {
                         setUnlockError('Senha incorreta.');
                       }
-                    }}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
-                  >
-                    Desbloquear
-                  </button>
-                </div>
-                {unlockError && (
-                  <p className="text-[10px] text-rose-400 font-semibold">{unlockError}</p>
-                )}
+                    }
+                  }}
+                  placeholder="Digite o PIN de administrador..."
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (adminUnlockPin === DEFAULT_SYSTEM_PASSWORD || adminUnlockPin === '1234' || adminUnlockPin === 'admin') {
+                      setIsTerminalLocked(false);
+                      setAdminUnlockPin('');
+                      setUnlockError(null);
+                    } else {
+                      setUnlockError('Senha incorreta.');
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+                >
+                  Desbloquear
+                </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* FLOATING HUD DO CLIENTE NEXCAFÉ (EM SESSÃO ATIVA)         */}
-      {/* ======================================================== */}
-      {inSession && !isTerminalLocked && (
-        <div className="fixed bottom-4 right-4 z-40 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 shadow-2xl flex items-center gap-3 text-xs animate-in slide-in-from-bottom-2">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-            <Coffee className="w-4 h-4" />
-          </div>
-
-          <div>
-            <div className="flex items-center gap-1.5 font-bold text-slate-200">
-              <span>{sessionCustomerName || myPeerName}</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
-                {sessionMode === 'prepaid' ? 'PRÉ-PAGO' : 'PÓS-PAGO'}
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-1">
-              <span>Tempo Restante:</span>
-              <span className={`font-mono font-bold ${
-                sessionRemainingSeconds <= 300 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'
-              }`}>
-                {Math.floor(sessionRemainingSeconds / 60).toString().padStart(2, '0')}:{(sessionRemainingSeconds % 60).toString().padStart(2, '0')}
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowSupportModal(true)}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors cursor-pointer"
-            title="Solicitar Atendimento ao Balcão"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* MODAL DE CHAT / SUPORTE COM O BALCÃO DA LAN HOUSE */}
-      {showSupportModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
-          onClick={() => setShowSupportModal(false)}
-        >
-          <div
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Coffee className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-sm text-slate-100">
-                  Falar com o Balcão / Caixa
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSupportModal(false)}
-                className="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <textarea
-                value={supportMessageInput}
-                onChange={(e) => setSupportMessageInput(e.target.value)}
-                placeholder="Ex: Gostaria de pedir um refrigerante, imprimir um arquivo ou pedir mais 30 min..."
-                rows={3}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
-              />
-              {supportMessageSent && (
-                <p className="text-[11px] text-emerald-400 font-semibold">
-                  ✓ Mensagem enviada para a Central do Administrador!
-                </p>
+              {unlockError && (
+                <p className="text-[10px] text-rose-400 font-semibold">{unlockError}</p>
               )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSupportModal(false)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
-              >
-                Fechar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!supportMessageInput.trim()) return;
-                  if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({
-                      t: 'chat',
-                      room: 'lan',
-                      id: 'msg_' + Date.now(),
-                      text: `[${myPeerName}] ${supportMessageInput.trim()}`,
-                      fromClientId: myClientIdRef.current,
-                      fromName: myPeerName,
-                      ts: Date.now(),
-                    }));
-                    setSupportMessageSent(true);
-                    setSupportMessageInput('');
-                    setTimeout(() => setSupportMessageSent(false), 3000);
-                  }
-                }}
-                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <SendHorizontal className="w-3.5 h-3.5" /> Enviar
-              </button>
             </div>
           </div>
         </div>

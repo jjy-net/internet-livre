@@ -473,3 +473,101 @@ void loop() {
   }
 }
 `;
+
+// ==========================================
+// 7. JJY SOVEREIGN MESH & MESHTASTIC REFINEMENT CONFIG
+// ==========================================
+
+export interface MeshtasticSovereignConfig {
+  regionId: string;
+  frequencyMhz: number;
+  modemPresetId: string;
+  txPowerDbm: number;
+  hopLimit: number;
+  channelName: string;
+  channelKeyPsk: string;
+  channelPskType: 'default_public' | 'custom_aes256';
+  syncWord: number;
+  nodeRole: 'CLIENT' | 'ROUTER' | 'REPEATER' | 'TRACKER' | 'SENSOR';
+  hardwareMode: LoraHardwareMode;
+  baudRate: number;
+  bridgeWithJjyReputacao: boolean;
+  bridgeWithJjyVizinhanca: boolean;
+  bridgeWithJjyFila: boolean;
+  bridgeWithJjyAuditoria: boolean;
+  emconSilenceMode: boolean;
+  mqttBridgeEnabled: boolean;
+  mqttServer: string;
+  bleConnected: boolean;
+  serialConnected: boolean;
+  lastSyncTimestamp: number;
+}
+
+export const DEFAULT_MESHTASTIC_SOVEREIGN_CONFIG: MeshtasticSovereignConfig = {
+  regionId: 'BR_915',
+  frequencyMhz: 915.0,
+  modemPresetId: 'LONG_FAST',
+  txPowerDbm: 20,
+  hopLimit: 3,
+  channelName: 'LongFast-JYY',
+  channelKeyPsk: 'AQ==',
+  channelPskType: 'default_public',
+  syncWord: 0x2B,
+  nodeRole: 'CLIENT',
+  hardwareMode: 'meshtastic_usb',
+  baudRate: 115200,
+  bridgeWithJjyReputacao: true,
+  bridgeWithJjyVizinhanca: true,
+  bridgeWithJjyFila: true,
+  bridgeWithJjyAuditoria: true,
+  emconSilenceMode: false,
+  mqttBridgeEnabled: false,
+  mqttServer: 'mqtt.meshtastic.org:1883',
+  bleConnected: false,
+  serialConnected: false,
+  lastSyncTimestamp: Date.now(),
+};
+
+export function loadMeshtasticSovereignConfig(): MeshtasticSovereignConfig {
+  if (typeof window === 'undefined') return DEFAULT_MESHTASTIC_SOVEREIGN_CONFIG;
+  try {
+    const raw = localStorage.getItem('jjy_meshtastic_mesh_config');
+    if (!raw) return DEFAULT_MESHTASTIC_SOVEREIGN_CONFIG;
+    return { ...DEFAULT_MESHTASTIC_SOVEREIGN_CONFIG, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_MESHTASTIC_SOVEREIGN_CONFIG;
+  }
+}
+
+export function saveMeshtasticSovereignConfig(cfg: MeshtasticSovereignConfig): void {
+  if (typeof window === 'undefined') return;
+  try {
+    cfg.lastSyncTimestamp = Date.now();
+    localStorage.setItem('jjy_meshtastic_mesh_config', JSON.stringify(cfg));
+    window.dispatchEvent(new CustomEvent('jjy_mesh_sync', { detail: cfg }));
+  } catch (e) {
+    console.warn('Erro ao salvar configuração do Meshtastic:', e);
+  }
+}
+
+export function generateRandomMeshtasticPsk(): string {
+  const bytes = new Uint8Array(32);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+export function convertSnrRssiToLqi(rssi: number, snr: number): number {
+  const normRssi = Math.max(0, Math.min(1, (rssi + 125) / 80));
+  const normSnr = Math.max(0, Math.min(1, (snr + 15) / 27));
+  const lqi = Math.round((normRssi * 0.5 + normSnr * 0.5) * 1000);
+  return Math.max(50, Math.min(1000, lqi));
+}
+

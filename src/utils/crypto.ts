@@ -70,11 +70,18 @@ export async function decryptAESGCM(ciphertextBase64: string, secretKey: string)
 export function generateRandomKey(length = 32, useSpecialChars = true): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' +
     (useSpecialChars ? '!@#$%^&*()-_=+[]{}' : '');
-  const array = new Uint32Array(length);
-  crypto.getRandomValues(array);
+  const charLen = chars.length;
+  // Rejeição para eliminar viés de módulo: descarta valores >= maior múltiplo de charLen
+  const maxValid = Math.floor(0x100000000 / charLen) * charLen;
   let res = '';
-  for (let i = 0; i < length; i++) {
-    res += chars[array[i] % chars.length];
+  while (res.length < length) {
+    const array = new Uint32Array(length - res.length);
+    crypto.getRandomValues(array);
+    for (let i = 0; i < array.length && res.length < length; i++) {
+      if (array[i] < maxValid) {
+        res += chars[array[i] % charLen];
+      }
+    }
   }
   return res;
 }
@@ -91,8 +98,10 @@ export interface AsymmetricKeyPair {
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
   return btoa(binary);
 }

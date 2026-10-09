@@ -8,3 +8,26 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4870
+      # Defina a senha de admin via variável de ambiente:
+      # - DATALINK_ADMIN_PASSWORD=SuaSenhaSeguraAqui
+    # SEGURANÇA: Limites de recursos para prevenir DoS
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+    # SEGURANÇA: Opções de segurança do container
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://localhost:4870/', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

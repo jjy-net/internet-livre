@@ -316,7 +316,7 @@ export async function runMobileOfflineInference(
       `• "Status da rede e estações"\n` +
       `• "Como funciona o modem por som e giroscópio"\n` +
       `• "Procedimentos de contenção de ataque"\n` +
-      `• "Como isolar uma máquina na Lan House"\n` +
+      `• "Como isolar uma estação na rede local"\n` +
       `• "Regras de controle parental e segurança"`;
   } else {
     reply = `🧠 **[Sentinel Mobile AI - Análise Concluída]:**\n\n` +

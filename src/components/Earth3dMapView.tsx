@@ -31,14 +31,27 @@ import {
   Play,
   Pause,
   ChevronRight,
+  ChevronDown,
+  Check,
+  Crosshair,
+  Target,
   Filter,
   ArrowRightLeft,
   Radar,
   Info,
+  Plus,
+  Minus,
+  Home,
+  Ruler,
+  Camera,
+  Clock,
 } from 'lucide-react';
 import {
   GlobeUserNode,
   GlobeCamera,
+  LocationPrecisionMode,
+  LOCATION_PRECISION_OPTIONS,
+  applyPrecisionToCoordinates,
   apply10kmFuzzyObfuscation,
   calculateHaversineDistance,
   INITIAL_GLOBE_PEERS,
@@ -56,6 +69,38 @@ import {
   PtPLinkAnalysis,
 } from '../utils/earth3dEngine';
 import { captureGpsLocation } from '../utils/geo';
+import {
+  LatLon,
+  TerminatorShader,
+  createTerminatorShader,
+  viewVector,
+  unproject,
+  projectClampedToLimb,
+  toMaidenhead,
+  maidenheadField,
+  initialBearing,
+  greatCircleDistanceKm,
+  destinationPoint,
+  sunElevationDeg,
+  dayPhaseLabel,
+  localSolarTime,
+  formatLatLon,
+  compassPoint,
+  RANGE_RINGS_KM,
+} from '../utils/earth3dAdvanced';
+
+interface CursorInfo {
+  point: LatLon;
+  grid: string;
+  solarTime: string;
+  sunElevation: number;
+  phase: string;
+}
+
+const MIN_GLOBE_SCALE = 0.6;
+const MAX_GLOBE_SCALE = 4.5;
+const clampScale = (v: number) => Math.max(MIN_GLOBE_SCALE, Math.min(MAX_GLOBE_SCALE, v));
+const clampTilt = (v: number) => Math.max(-1.45, Math.min(1.45, v));
 
 interface Star {
   x: number;
@@ -69,6 +114,24 @@ interface Star {
 export const Earth3dMapView: React.FC = () => {
   // Estado de visibilidade no mapa
   const [isVisibleOnMap, setIsVisibleOnMap] = useState<boolean>(false);
+
+  // Modo de precisão de localização do usuário (Padrão de segurança estrita: 10 km)
+  const [precisionMode, setPrecisionMode] = useState<LocationPrecisionMode>(() => {
+    try {
+      const saved = localStorage.getItem('jjy_globe_precision_mode');
+      if (saved === 'high_precision' || saved === 'neighborhood_1km' || saved === 'privacy_10km') {
+        return saved as LocationPrecisionMode;
+      }
+    } catch {}
+    return 'privacy_10km'; // Padrão seguro de 10 km
+  });
+  const [showPrecisionModal, setShowPrecisionModal] = useState<boolean>(false);
+  const [precisionToast, setPrecisionToast] = useState<{ message: string; type: 'success' | 'warn' } | null>(null);
+
+  // Apresentação Oficial em Vídeo (jjy-homega2.mp4)
+  const [showPresentationVideo, setShowPresentationVideo] = useState<boolean>(true);
+  const [isCinemaMode, setIsCinemaMode] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Perfil público do usuário
   const [userProfile, setUserProfile] = useState<{
@@ -84,9 +147,10 @@ export const Earth3dMapView: React.FC = () => {
     realLon: number;
     fuzzyLat: number;
     fuzzyLon: number;
+    precisionMode: LocationPrecisionMode;
   }>({
     callsign: 'OPERADOR-LOCAL',
-    fullName: 'Você (Nó Jjy)',
+    fullName: 'Você (Nó JJY)',
     bio: 'Disponível na rede para conversar e trocar pacotes via rádio e Wi-Fi.',
     status: 'online',
     transports: ['LoRa Meshtastic', 'Wi-Fi Radar', 'Celular 5G'],
@@ -97,6 +161,7 @@ export const Earth3dMapView: React.FC = () => {
     realLon: -46.6333,
     fuzzyLat: -23.5912,
     fuzzyLon: -46.6854,
+    precisionMode: 'privacy_10km',
   });
 
   const [peers, setPeers] = useState<GlobeUserNode[]>(INITIAL_GLOBE_PEERS);
@@ -122,6 +187,11 @@ export const Earth3dMapView: React.FC = () => {
     nightLights: true,
     graticule: true,
     privacyHalos: true,
+    terminator: true,
+    aurora: true,
+    cityLabels: true,
+    maidenhead: false,
+    rangeRings: false,
   });
   const [showLayerMenu, setShowLayerMenu] = useState(false);
 
@@ -160,6 +230,24 @@ export const Earth3dMapView: React.FC = () => {
   const animFrameIdRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
+  // ---- Recursos avançados: máquina do tempo solar, régua, HUD do cursor, busca ----
+  const [timeOffsetMin, setTimeOffsetMin] = useState<number>(0);
+  const [measureMode, setMeasureMode] = useState<boolean>(false);
+  const [measurePts, setMeasurePts] = useState<LatLon[]>([]);
+  const [cursorInfo, setCursorInfo] = useState<CursorInfo | null>(null);
+  const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
+  const [placeQuery, setPlaceQuery] = useState<string>('');
+  const inertiaRef = useRef({ vx: 0, vy: 0 });
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ dist: number; scale: number; mx: number; my: number } | null>(null);
+  const dragMovedRef = useRef(false);
+  const lastMoveAtRef = useRef(0);
+  const lastHoverAtRef = useRef(0);
+  const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
+  const terminatorRef = useRef<TerminatorShader | null>(null);
+  const timeOffsetRef = useRef(0);
+  timeOffsetRef.current = timeOffsetMin;
+
   // Geração de Estrelas Estáticas com Twinkle
   const stars = useMemo<Star[]>(() => {
     const list: Star[] = [];
@@ -181,34 +269,116 @@ export const Earth3dMapView: React.FC = () => {
 
   // Carregar preferências salvas do localStorage
   useEffect(() => {
+    let activeMode: LocationPrecisionMode = 'privacy_10km';
     try {
       const savedVisible = localStorage.getItem('jjy_globe_is_visible');
       if (savedVisible !== null) {
         setIsVisibleOnMap(savedVisible === 'true');
       }
 
+      const savedMode = localStorage.getItem('jjy_globe_precision_mode') as LocationPrecisionMode;
+      if (savedMode === 'high_precision' || savedMode === 'neighborhood_1km' || savedMode === 'privacy_10km') {
+        activeMode = savedMode;
+        setPrecisionMode(savedMode);
+      }
+
       const savedProfile = localStorage.getItem('jjy_globe_user_profile');
       if (savedProfile) {
-        setUserProfile(JSON.parse(savedProfile));
+        const parsed = JSON.parse(savedProfile);
+        const transformed = applyPrecisionToCoordinates(
+          parsed.realLat ?? -23.5505,
+          parsed.realLon ?? -46.6333,
+          activeMode,
+          'my_local_node'
+        );
+        setUserProfile({
+          ...parsed,
+          precisionMode: activeMode,
+          fuzzyLat: transformed.lat,
+          fuzzyLon: transformed.lon,
+        });
       }
     } catch {}
 
-    // Obter GPS e aplicar ofuscação de 10 km
+    // Obter GPS e aplicar a precisão configurada
     captureGpsLocation().then((loc) => {
       if (loc) {
-        const fuzz = apply10kmFuzzyObfuscation(loc.latitude, loc.longitude, 'my_local_node');
-        setUserProfile((prev) => ({
-          ...prev,
-          realLat: loc.latitude,
-          realLon: loc.longitude,
-          fuzzyLat: fuzz.fuzzyLat,
-          fuzzyLon: fuzz.fuzzyLon,
-          country: loc.country || prev.country,
-          flag: loc.flag || prev.flag,
-        }));
+        const transformed = applyPrecisionToCoordinates(loc.latitude, loc.longitude, activeMode, 'my_local_node');
+        setUserProfile((prev) => {
+          const updated = {
+            ...prev,
+            realLat: loc.latitude,
+            realLon: loc.longitude,
+            fuzzyLat: transformed.lat,
+            fuzzyLon: transformed.lon,
+            country: loc.country || prev.country,
+            flag: loc.flag || prev.flag,
+            precisionMode: activeMode,
+          };
+          try {
+            localStorage.setItem('jjy_globe_user_profile', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
       }
     });
   }, []);
+
+  // Fechar toast de precisão após 5 segundos
+  useEffect(() => {
+    if (precisionToast) {
+      const timer = setTimeout(() => {
+        setPrecisionToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [precisionToast]);
+
+  const handleSelectPrecision = (mode: LocationPrecisionMode) => {
+    setPrecisionMode(mode);
+    try {
+      localStorage.setItem('jjy_globe_precision_mode', mode);
+    } catch {}
+
+    const transformed = applyPrecisionToCoordinates(
+      userProfile.realLat,
+      userProfile.realLon,
+      mode,
+      'my_local_node'
+    );
+
+    setUserProfile((prev) => {
+      const updated = {
+        ...prev,
+        precisionMode: mode,
+        fuzzyLat: transformed.lat,
+        fuzzyLon: transformed.lon,
+      };
+      try {
+        localStorage.setItem('jjy_globe_user_profile', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (mode === 'high_precision') {
+      setPrecisionToast({
+        message: '🎯 Alta Precisão Ativada! Suas coordenadas reais exatas agora estão visíveis no mapa para localização por amigos e resgate em emergências.',
+        type: 'warn',
+      });
+    } else if (mode === 'neighborhood_1km') {
+      setPrecisionToast({
+        message: '🏘️ Modo Bairro (~1 km) ativado! Aproximação equilibrada para redes locais e vizinhança.',
+        type: 'success',
+      });
+    } else {
+      setPrecisionToast({
+        message: '🛡️ Padrão Seguro (10 km) ativado! Proteção física e anti-triangulação restauradas.',
+        type: 'success',
+      });
+    }
+
+    setShowPrecisionModal(false);
+  };
 
   const handleToggleVisibility = (newValue: boolean) => {
     setIsVisibleOnMap(newValue);
@@ -222,18 +392,24 @@ export const Earth3dMapView: React.FC = () => {
     e.preventDefault();
     localStorage.setItem('jjy_globe_user_profile', JSON.stringify(userProfile));
     setShowProfileEditor(false);
-    alert('Perfil público atualizado! Sua localização permanece protegida com 10 km de erro proposital.');
+    const msg = precisionMode === 'high_precision'
+      ? 'Perfil público atualizado! GPS de Alta Precisão (Modo Resgate/Amigos) está ativo.'
+      : precisionMode === 'neighborhood_1km'
+      ? 'Perfil público atualizado! Localização com aproximação de Bairro (~1 km).'
+      : 'Perfil público atualizado! Sua localização permanece protegida com 10 km de erro proposital.';
+    alert(msg);
   };
 
   // Focar suavemente a câmera 3D em uma coordenada geográfica
   const focusOnCoordinates = (lat: number, lon: number, zoomScale: number = 1.15) => {
     setIsAutoRotating(false);
-    const targetRotY = -((lon * Math.PI) / 180) + Math.PI / 2;
+    const targetRotY = (lon * Math.PI) / 180;
     const targetRotX = (lat * Math.PI) / 180;
 
-    targetCameraRef.current.rotX = Math.max(-1.3, Math.min(1.3, targetRotX));
+    inertiaRef.current = { vx: 0, vy: 0 };
+    targetCameraRef.current.rotX = clampTilt(targetRotX);
     targetCameraRef.current.rotY = targetRotY;
-    targetCameraRef.current.scale = zoomScale;
+    targetCameraRef.current.scale = clampScale(zoomScale);
   };
 
   // Presets de Câmera Rápida
@@ -364,6 +540,10 @@ export const Earth3dMapView: React.FC = () => {
 
     handleResize();
     window.addEventListener('resize', handleResize);
+    // Tela cheia e mudanças de layout alteram o tamanho sem disparar "resize" da janela
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
+    resizeObserver?.observe(canvas);
+    if (!terminatorRef.current) terminatorRef.current = createTerminatorShader(128);
 
     const render = () => {
       if (!isRunning) return;
@@ -388,6 +568,19 @@ export const Earth3dMapView: React.FC = () => {
         cameraRef.current.scale += (targetCameraRef.current.scale - cameraRef.current.scale) * 0.08;
       }
 
+      // Inércia: o globo continua girando um pouco depois de soltar o arrasto
+      if (!isDraggingRef.current) {
+        const inertia = inertiaRef.current;
+        if (Math.abs(inertia.vx) > 0.0003 || Math.abs(inertia.vy) > 0.0003) {
+          cameraRef.current.rotY += inertia.vx;
+          cameraRef.current.rotX = clampTilt(cameraRef.current.rotX + inertia.vy);
+          targetCameraRef.current.rotY = cameraRef.current.rotY;
+          targetCameraRef.current.rotX = cameraRef.current.rotX;
+          inertia.vx *= 0.9;
+          inertia.vy *= 0.9;
+        }
+      }
+
       // Auto rotação contínua
       if (isAutoRotating && !isDraggingRef.current) {
         const speedDelta = 0.0028 * rotationSpeed * rotationDirection;
@@ -403,7 +596,8 @@ export const Earth3dMapView: React.FC = () => {
       const rotY = cameraRef.current.rotY;
 
       // Ponto subsolar para simulação de dia/noite em tempo real
-      const subsolar = getSubsolarPoint(new Date());
+      const simDate = new Date(Date.now() + timeOffsetMin * 60000);
+      const subsolar = getSubsolarPoint(simDate);
 
       // ----------------------------------------------------------------------
       // 1. ESPAÇO SIDERAL PROFUNDO & NEBULOSA
@@ -617,17 +811,15 @@ export const Earth3dMapView: React.FC = () => {
         ctx.beginPath();
         let isStarted = false;
 
-        poly.points.forEach(([pLat, pLon]) => {
-          const pt = project3D(pLat, pLon);
-          if (pt.visible) {
-            if (!isStarted) {
-              ctx.moveTo(pt.x, pt.y);
-              isStarted = true;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          }
+        // Vértices na face oculta são encostados no limbo: o contorno não "rasga" no horizonte
+        let frontCount = 0;
+        poly.points.forEach(([pLat, pLon], vIdx) => {
+          const pt = projectClampedToLimb(pLat, pLon, cx, cy, baseRadius, rotX, rotY);
+          if (pt.front) frontCount++;
+          if (vIdx === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
         });
+        isStarted = frontCount > 0;
 
         if (isStarted) {
           ctx.closePath();
@@ -656,27 +848,18 @@ export const Earth3dMapView: React.FC = () => {
       // ----------------------------------------------------------------------
       // 6. TERMINADOR SOLAR (SOMBRA DA NOITE EM TEMPO REAL)
       // ----------------------------------------------------------------------
-      if (visualMode === 'solar') {
-        // Overlay de Escuridão Noturna realista
-        const sunPt = project3D(subsolar.lat, subsolar.lon);
-        // Anti-sol
-        const antiSunPt = project3D(-subsolar.lat, (subsolar.lon + 180) % 360);
-
-        const nightGrad = ctx.createRadialGradient(
-          antiSunPt.x,
-          antiSunPt.y,
-          baseRadius * 0.15,
-          antiSunPt.x,
-          antiSunPt.y,
-          baseRadius * 1.6
+      if (layers.terminator && terminatorRef.current) {
+        // Sombra real: cosseno do ângulo zenital por pixel + faixa quente do crepúsculo
+        const sunVec = viewVector(subsolar.lat, subsolar.lon, rotX, rotY);
+        terminatorRef.current.draw(
+          ctx,
+          cx,
+          cy,
+          baseRadius,
+          sunVec,
+          visualMode === 'solar' ? 0.86 : visualMode === 'tactical' ? 0.55 : 0.68,
+          visualMode === 'tactical' ? [1, 10, 5] : [2, 6, 18]
         );
-        nightGrad.addColorStop(0, 'rgba(1, 4, 12, 0.88)');
-        nightGrad.addColorStop(0.5, 'rgba(2, 6, 18, 0.72)');
-        nightGrad.addColorStop(0.85, 'rgba(4, 12, 32, 0.25)');
-        nightGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-        ctx.fillStyle = nightGrad;
-        ctx.fillRect(0, 0, width, height);
       }
 
       // ----------------------------------------------------------------------
@@ -686,12 +869,12 @@ export const Earth3dMapView: React.FC = () => {
         GLOBAL_MEGACITIES.forEach((city, idx) => {
           const illum = getSolarIllumination(city.lat, city.lon, subsolar);
           // Apenas visíveis quando estiver de noite ou modo cyberpunk
-          if (visualMode === 'solar' && illum > 0.4) return;
+          if ((visualMode === 'solar' || layers.terminator) && illum > 0.4) return;
 
           const pt = project3D(city.lat, city.lon);
           if (pt.visible) {
             const twinkle = 0.6 + 0.4 * Math.sin(elapsedSec * 3 + idx * 2);
-            const cityAlpha = (visualMode === 'solar' ? (1.0 - illum) : 0.7) * twinkle;
+            const cityAlpha = (visualMode === 'solar' || layers.terminator ? 1.0 - illum * 0.6 : 0.7) * twinkle;
 
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, 1.8 * city.brightness, 0, Math.PI * 2);
@@ -716,17 +899,198 @@ export const Earth3dMapView: React.FC = () => {
       }
 
       // ----------------------------------------------------------------------
+      // 7b. RECURSOS AVANÇADOS: SOL, AURORAS, MAIDENHEAD, CIDADES, ALCANCE, RÉGUA
+      // ----------------------------------------------------------------------
+      const accentRgb = visualMode === 'tactical' ? '74, 222, 128' : '56, 189, 248';
+
+      // Polilinha geodésica com quebra automática na face oculta
+      const strokeGeoLine = (pts: LatLon[], alt: number = 1.0) => {
+        ctx.beginPath();
+        let open = false;
+        pts.forEach((g) => {
+          const pt = project3D(g.lat, g.lon, alt);
+          if (pt.z > 0) {
+            if (open) ctx.lineTo(pt.x, pt.y);
+            else {
+              ctx.moveTo(pt.x, pt.y);
+              open = true;
+            }
+          } else {
+            open = false;
+          }
+        });
+        ctx.stroke();
+      };
+
+      // Grade Maidenhead (campos de 20° x 10° usados em rádio amador)
+      if (layers.maidenhead) {
+        ctx.strokeStyle = `rgba(${accentRgb}, 0.28)`;
+        ctx.lineWidth = 1;
+        for (let lon = -180; lon < 180; lon += 20) {
+          const line: LatLon[] = [];
+          for (let lat = -90; lat <= 90; lat += 5) line.push({ lat, lon });
+          strokeGeoLine(line);
+        }
+        for (let lat = -80; lat <= 80; lat += 10) {
+          const line: LatLon[] = [];
+          for (let lon = -180; lon <= 180; lon += 5) line.push({ lat, lon });
+          strokeGeoLine(line);
+        }
+        ctx.font = `bold ${cameraRef.current.scale > 1.6 ? 11 : 9}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let lon = -180; lon < 180; lon += 20) {
+          for (let lat = -90; lat < 90; lat += 10) {
+            const pt = project3D(lat + 5, lon + 10);
+            if (pt.z > 0.35) {
+              ctx.fillStyle = `rgba(${accentRgb}, ${Math.min(0.85, pt.z)})`;
+              ctx.fillText(maidenheadField(lat, lon), pt.x, pt.y);
+            }
+          }
+        }
+        ctx.textBaseline = 'alphabetic';
+      }
+
+      // Auroras polares: cortinas pulsantes, mais fortes no lado noturno
+      if (layers.aurora) {
+        [67, -67].forEach((ovalLat, hemi) => {
+          for (let lon = -180; lon < 180; lon += 5) {
+            const wobble = Math.sin((lon * Math.PI) / 60 + elapsedSec * 0.35 + hemi) * 3;
+            const a = project3D(ovalLat + wobble, lon);
+            const b = project3D(ovalLat + wobble + (hemi === 0 ? 5 : -5), lon, 1.035);
+            if (a.z <= 0.02) continue;
+            const night = 1 - getSolarIllumination(ovalLat, lon, subsolar);
+            const pulse = 0.5 + 0.5 * Math.sin(elapsedSec * 1.6 + lon * 0.21 + hemi * 2);
+            const alpha = (0.12 + 0.5 * night) * (0.35 + 0.65 * pulse);
+            const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+            grad.addColorStop(0, `rgba(74, 255, 170, ${alpha})`);
+            grad.addColorStop(1, visualMode === 'tactical' ? 'rgba(74, 222, 128, 0)' : 'rgba(192, 132, 252, 0)');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = Math.max(2, baseRadius * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        });
+      }
+
+      // Ponto subsolar (onde o Sol está a pino)
+      if (layers.terminator) {
+        const sunPt = project3D(subsolar.lat, subsolar.lon);
+        if (sunPt.z > 0) {
+          const halo = ctx.createRadialGradient(sunPt.x, sunPt.y, 1, sunPt.x, sunPt.y, 16);
+          halo.addColorStop(0, 'rgba(253, 224, 71, 0.95)');
+          halo.addColorStop(0.3, 'rgba(250, 204, 21, 0.45)');
+          halo.addColorStop(1, 'rgba(250, 204, 21, 0)');
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.arc(sunPt.x, sunPt.y, 16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.9)';
+          ctx.font = 'bold 8px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('SOL A PINO', sunPt.x, sunPt.y - 12);
+        }
+      }
+
+      // Nomes das metrópoles ao aproximar
+      if (layers.cityLabels && cameraRef.current.scale >= 1.45) {
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'left';
+        GLOBAL_MEGACITIES.forEach((city) => {
+          if (city.brightness < (cameraRef.current.scale >= 2.2 ? 0.4 : 0.8)) return;
+          const pt = project3D(city.lat, city.lon);
+          if (pt.z > 0.25) {
+            ctx.fillStyle = `rgba(226, 232, 240, ${Math.min(0.9, pt.z)})`;
+            ctx.fillText(city.name, pt.x + 5, pt.y + 3);
+          }
+        });
+      }
+
+      // Anéis de alcance ao redor da estação selecionada (ou da sua)
+      if (layers.rangeRings) {
+        const ringCenter: LatLon = selectedPeer
+          ? { lat: selectedPeer.fuzzyLat, lon: selectedPeer.fuzzyLon }
+          : { lat: userProfile.fuzzyLat, lon: userProfile.fuzzyLon };
+        RANGE_RINGS_KM.forEach((ring, ringIdx) => {
+          const pts: LatLon[] = [];
+          for (let bearing = 0; bearing <= 360; bearing += 5) pts.push(destinationPoint(ringCenter, bearing, ring.km));
+          ctx.strokeStyle = `rgba(250, 204, 21, ${0.75 - ringIdx * 0.18})`;
+          ctx.lineWidth = 1.3;
+          ctx.setLineDash([6, 5]);
+          strokeGeoLine(pts);
+          ctx.setLineDash([]);
+          const tag = destinationPoint(ringCenter, 45, ring.km);
+          const tagPt = project3D(tag.lat, tag.lon);
+          if (tagPt.z > 0.15) {
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.95)';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(ring.label, tagPt.x + 4, tagPt.y - 3);
+          }
+        });
+      }
+
+      // Régua geodésica (distância e rumo entre dois pontos clicados)
+      if (measurePts.length > 0) {
+        if (measurePts.length === 2) {
+          const [m1, m2] = measurePts;
+          const path = calculateGreatCirclePath(m1.lat, m1.lon, m2.lat, m2.lon, 48).map((st) => ({ lat: st.lat, lon: st.lon }));
+          ctx.strokeStyle = 'rgba(244, 114, 182, 0.95)';
+          ctx.lineWidth = 2.2;
+          strokeGeoLine(path, 1.004);
+          const mid = path[Math.floor(path.length / 2)];
+          const midPt = project3D(mid.lat, mid.lon);
+          if (midPt.z > 0) {
+            const text = `${Math.round(greatCircleDistanceKm(m1, m2)).toLocaleString('pt-BR')} km`;
+            ctx.font = 'bold 11px monospace';
+            const tw = ctx.measureText(text).width + 10;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.fillRect(midPt.x - tw / 2, midPt.y - 22, tw, 16);
+            ctx.fillStyle = '#f9a8d4';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, midPt.x, midPt.y - 10);
+          }
+        }
+        measurePts.forEach((m, mIdx) => {
+          const pt = project3D(m.lat, m.lon);
+          if (pt.z <= 0) return;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+          ctx.fillStyle = '#f472b6';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(mIdx === 0 ? 'A' : 'B', pt.x, pt.y - 9);
+        });
+      }
+
+      // ----------------------------------------------------------------------
       // 8. ARCOS DE COMUNICAÇÃO MESH 3D (SLERP CURVADOS NO ESPAÇO)
       // ----------------------------------------------------------------------
       const activePeers = [...peers];
       if (isVisibleOnMap) {
+        const fuzzRadiusKm =
+          precisionMode === 'high_precision'
+            ? 0.015
+            : precisionMode === 'neighborhood_1km'
+            ? 1.0
+            : 10.0;
+
         activePeers.push({
           id: 'me_local',
           callsign: userProfile.callsign,
           fullName: userProfile.fullName,
           fuzzyLat: userProfile.fuzzyLat,
           fuzzyLon: userProfile.fuzzyLon,
-          fuzzRadiusKm: 10,
+          fuzzRadiusKm,
+          isExactGps: precisionMode === 'high_precision',
+          precisionMode: precisionMode,
           country: userProfile.country,
           flag: userProfile.flag,
           city: userProfile.city,
@@ -736,7 +1100,12 @@ export const Earth3dMapView: React.FC = () => {
           isLocalUser: true,
           isVisibleOnMap: true,
           lastSeen: 'Agora',
-          avatarBg: 'from-amber-500 to-emerald-500',
+          avatarBg:
+            precisionMode === 'high_precision'
+              ? 'from-emerald-500 to-cyan-500'
+              : precisionMode === 'neighborhood_1km'
+              ? 'from-sky-500 to-indigo-500'
+              : 'from-amber-500 to-emerald-500',
           signalStrengthDbm: -45,
           rttMs: 1,
         });
@@ -955,7 +1324,7 @@ export const Earth3dMapView: React.FC = () => {
       }
 
       // ----------------------------------------------------------------------
-      // 10. NÓS DE OPERADORES & RAIO DE PRIVACIDADE DE 10 KM COM RADAR SONAR
+      // 10. NÓS DE OPERADORES & PRECISÃO (RADAR SONAR 10KM/1KM OU MIRA TÁTICA EXATA)
       // ----------------------------------------------------------------------
       if (layers.peers) {
         activePeers.forEach((node) => {
@@ -964,59 +1333,121 @@ export const Earth3dMapView: React.FC = () => {
 
           const isMe = node.isLocalUser;
           const isSelected = selectedPeer?.id === node.id;
-          const radius10kmPixels = Math.max(14, 22 * cameraRef.current.scale);
+          const isExact = node.isExactGps || (isMe && precisionMode === 'high_precision');
+          const is1km = node.precisionMode === 'neighborhood_1km' || (isMe && precisionMode === 'neighborhood_1km');
 
-          // Efeito Sonar Radar Expandindo (Differential Privacy Pulse)
-          if (layers.privacyHalos) {
-            const sonarT = ((elapsedSec * 0.8 + (isMe ? 0 : 0.5)) % 1.0);
-            const sonarRadius = radius10kmPixels * (0.8 + sonarT * 0.7);
-            const sonarAlpha = Math.max(0, 0.45 * (1.0 - sonarT));
+          const baseRadiusPixels = isExact
+            ? 4
+            : is1km
+            ? Math.max(7, 11 * cameraRef.current.scale)
+            : Math.max(14, 22 * cameraRef.current.scale);
+
+          if (isExact) {
+            // MODO DE ALTA PRECISÃO (GPS REAL - RESGATE / BUSCA & SALVAMENTO / AMIGOS)
+            // Pulso tático concêntrico esmeralda
+            const pulseT = ((elapsedSec * 1.5) % 1.0);
+            const pulseRadius = 5 + pulseT * 15;
+            const pulseAlpha = (1.0 - pulseT) * 0.85;
 
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, sonarRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = isMe
-              ? `rgba(234, 179, 8, ${sonarAlpha})`
-              : `rgba(6, 182, 212, ${sonarAlpha})`;
-            ctx.lineWidth = 1.2;
+            ctx.arc(pt.x, pt.y, pulseRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${pulseAlpha})`;
+            ctx.lineWidth = 1.6;
             ctx.stroke();
 
-            // Círculo base da zona de 10 km
+            // Retículo da Mira Tática (+)
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, radius10kmPixels, 0, Math.PI * 2);
-            ctx.fillStyle = isMe
-              ? 'rgba(234, 179, 8, 0.16)'
-              : isSelected
-              ? 'rgba(6, 182, 212, 0.28)'
-              : 'rgba(59, 130, 246, 0.12)';
+            ctx.moveTo(pt.x - 10, pt.y);
+            ctx.lineTo(pt.x - 4, pt.y);
+            ctx.moveTo(pt.x + 4, pt.y);
+            ctx.lineTo(pt.x + 10, pt.y);
+            ctx.moveTo(pt.x, pt.y - 10);
+            ctx.lineTo(pt.x, pt.y - 4);
+            ctx.moveTo(pt.x, pt.y + 4);
+            ctx.lineTo(pt.x, pt.y + 10);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Ponto central de fixação milimétrica
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#10b981';
             ctx.fill();
-            ctx.strokeStyle = isMe
-              ? 'rgba(234, 179, 8, 0.7)'
-              : isSelected
-              ? 'rgba(6, 182, 212, 0.9)'
-              : 'rgba(59, 130, 246, 0.4)';
-            ctx.lineWidth = isSelected ? 2 : 1;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
-          }
 
-          // Ponto Central do Nó
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, isMe ? 5 : 4, 0, Math.PI * 2);
-          ctx.fillStyle = isMe ? '#eab308' : isSelected ? '#06b6d4' : '#10b981';
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+            // Rótulo de Callsign e Tag de Resgate
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(node.callsign, pt.x, pt.y - 13);
 
-          // Rótulo do Callsign
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 9px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(node.callsign, pt.x, pt.y - radius10kmPixels - 4);
+            if (isMe) {
+              ctx.fillStyle = '#34d399';
+              ctx.font = 'bold 8px sans-serif';
+              ctx.fillText('VOCÊ (🎯 GPS EXATO • RESGATE)', pt.x, pt.y + 16);
+            }
+          } else {
+            // MODO DE PRIVACIDADE (10 KM PADRÃO OU 1 KM BAIRRO)
+            if (layers.privacyHalos) {
+              const sonarT = ((elapsedSec * 0.8 + (isMe ? 0 : 0.5)) % 1.0);
+              const sonarRadius = baseRadiusPixels * (0.8 + sonarT * 0.7);
+              const sonarAlpha = Math.max(0, 0.45 * (1.0 - sonarT));
 
-          if (isMe) {
-            ctx.fillStyle = '#fde047';
-            ctx.font = 'bold 8px sans-serif';
-            ctx.fillText('VOCÊ (±10km)', pt.x, pt.y + radius10kmPixels + 11);
+              ctx.beginPath();
+              ctx.arc(pt.x, pt.y, sonarRadius, 0, Math.PI * 2);
+              ctx.strokeStyle = isMe
+                ? is1km
+                  ? `rgba(56, 189, 248, ${sonarAlpha})`
+                  : `rgba(234, 179, 8, ${sonarAlpha})`
+                : `rgba(6, 182, 212, ${sonarAlpha})`;
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+
+              // Círculo base da zona protegida
+              ctx.beginPath();
+              ctx.arc(pt.x, pt.y, baseRadiusPixels, 0, Math.PI * 2);
+              ctx.fillStyle = isMe
+                ? is1km
+                  ? 'rgba(56, 189, 248, 0.16)'
+                  : 'rgba(234, 179, 8, 0.16)'
+                : isSelected
+                ? 'rgba(6, 182, 212, 0.28)'
+                : 'rgba(59, 130, 246, 0.12)';
+              ctx.fill();
+              ctx.strokeStyle = isMe
+                ? is1km
+                  ? 'rgba(56, 189, 248, 0.75)'
+                  : 'rgba(234, 179, 8, 0.7)'
+                : isSelected
+                ? 'rgba(6, 182, 212, 0.9)'
+                : 'rgba(59, 130, 246, 0.4)';
+              ctx.lineWidth = isSelected ? 2 : 1;
+              ctx.stroke();
+            }
+
+            // Ponto Central do Nó
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, isMe ? 5 : 4, 0, Math.PI * 2);
+            ctx.fillStyle = isMe ? (is1km ? '#38bdf8' : '#eab308') : isSelected ? '#06b6d4' : '#10b981';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Rótulo do Callsign
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(node.callsign, pt.x, pt.y - baseRadiusPixels - 4);
+
+            if (isMe) {
+              ctx.fillStyle = is1km ? '#7dd3fc' : '#fde047';
+              ctx.font = 'bold 8px sans-serif';
+              ctx.fillText(is1km ? 'VOCÊ (±1km Bairro)' : 'VOCÊ (±10km Seguro)', pt.x, pt.y + baseRadiusPixels + 11);
+            }
           }
         });
       }
@@ -1046,8 +1477,13 @@ export const Earth3dMapView: React.FC = () => {
       isRunning = false;
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       window.removeEventListener('resize', handleResize);
+      resizeObserver?.disconnect();
     };
   }, [
+    timeOffsetMin,
+    measurePts,
+    measureMode,
+    precisionMode,
     isAutoRotating,
     rotationSpeed,
     rotationDirection,
@@ -1065,44 +1501,8 @@ export const Earth3dMapView: React.FC = () => {
     isTracerouteRunning,
   ]);
 
-  // Manipulação de Mouse e Toque para Rotação e Cliques 3D
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isDraggingRef.current = true;
-    setIsAutoRotating(false);
-    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingRef.current) return;
-    const dx = e.clientX - lastMousePosRef.current.x;
-    const dy = e.clientY - lastMousePosRef.current.y;
-
-    cameraRef.current.rotY += dx * 0.006;
-    targetCameraRef.current.rotY = cameraRef.current.rotY;
-
-    cameraRef.current.rotX = Math.max(-1.3, Math.min(1.3, cameraRef.current.rotX + dy * 0.006));
-    targetCameraRef.current.rotX = cameraRef.current.rotX;
-
-    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    const dragDistance = Math.hypot(
-      e.clientX - mouseDownPosRef.current.x,
-      e.clientY - mouseDownPosRef.current.y
-    );
-
-    // Se foi um clique direto sem arrastar (< 5px)
-    if (dragDistance < 5) {
-      handleCanvasClick(e);
-    }
-
-    isDraggingRef.current = false;
-  };
-
   // Detecção de clique em Nós e Satélites no Canvas (Raycasting 2D)
-  const handleCanvasClick = (e: React.MouseEvent) => {
+  const handleCanvasClick = (e: { clientX: number; clientY: number }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -1136,6 +1536,13 @@ export const Earth3dMapView: React.FC = () => {
         visible: rotZ_val > (altFactor > 1.0 ? -0.25 : 0),
       };
     };
+
+    // 0. Régua ativa: cada clique marca um ponto (o terceiro recomeça)
+    if (measureMode) {
+      const picked = unproject(clickX, clickY, cx, cy, baseRadius, rotX, rotY);
+      if (picked) setMeasurePts((prev) => (prev.length >= 2 ? [picked] : [...prev, picked]));
+      return;
+    }
 
     // 1. Checar clique em Satélites
     if (layers.satellites) {
@@ -1190,13 +1597,269 @@ export const Earth3dMapView: React.FC = () => {
     }
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    const nextScale = Math.max(0.6, Math.min(2.8, cameraRef.current.scale * zoomFactor));
-    cameraRef.current.scale = nextScale;
-    targetCameraRef.current.scale = nextScale;
+  // Geometria atual do globo na tela (usada por toque, cursor e duplo clique)
+  const getGlobeGeometry = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      rect,
+      cx: rect.width / 2,
+      cy: rect.height / 2,
+      radius: Math.min(rect.width, rect.height) * 0.4 * cameraRef.current.scale,
+    };
   };
+
+  const pickLatLon = (clientX: number, clientY: number): LatLon | null => {
+    const g = getGlobeGeometry();
+    if (!g) return null;
+    return unproject(clientX - g.rect.left, clientY - g.rect.top, g.cx, g.cy, g.radius, cameraRef.current.rotX, cameraRef.current.rotY);
+  };
+
+  const updateCursorInfo = (clientX: number, clientY: number) => {
+    const point = pickLatLon(clientX, clientY);
+    if (!point) {
+      setCursorInfo(null);
+      return;
+    }
+    const simDate = new Date(Date.now() + timeOffsetRef.current * 60000);
+    const elevation = sunElevationDeg(point, getSubsolarPoint(simDate));
+    setCursorInfo({
+      point,
+      grid: toMaidenhead(point.lat, point.lon),
+      solarTime: localSolarTime(simDate, point.lon),
+      sunElevation: elevation,
+      phase: dayPhaseLabel(elevation),
+    });
+  };
+
+  const zoomBy = (factor: number) => {
+    const next = clampScale(targetCameraRef.current.scale * factor);
+    targetCameraRef.current.scale = next;
+  };
+
+  const resetView = () => {
+    inertiaRef.current = { vx: 0, vy: 0 };
+    targetCameraRef.current.rotX = 0.35;
+    targetCameraRef.current.scale = 1.0;
+    setIsAutoRotating(true);
+  };
+
+  const northUp = () => {
+    inertiaRef.current = { vx: 0, vy: 0 };
+    targetCameraRef.current.rotX = 0;
+  };
+
+  const saveSnapshot = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      const link = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+      link.download = `jjy-globo-${stamp}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch {
+      /* captura indisponível neste navegador */
+    }
+  };
+
+  // Ponte para os listeners nativos sempre enxergarem o estado mais recente
+  const inputApiRef = useRef({ click: handleCanvasClick, hover: updateCursorInfo, focus: focusOnCoordinates });
+  inputApiRef.current = { click: handleCanvasClick, hover: updateCursorInfo, focus: focusOnCoordinates };
+
+  // Entrada unificada: mouse, toque (1 dedo gira, 2 dedos = pinça/inclinar), roda e teclado
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const pointers = pointersRef.current;
+
+    const startPinch = () => {
+      const [a, b] = [...pointers.values()];
+      pinchRef.current = {
+        dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+        scale: cameraRef.current.scale,
+        mx: (a.x + b.x) / 2,
+        my: (a.y + b.y) / 2,
+      };
+    };
+
+    const rotateBy = (dx: number, dy: number) => {
+      const k = 0.006 / Math.max(1, cameraRef.current.scale);
+      cameraRef.current.rotY -= dx * k;
+      cameraRef.current.rotX = clampTilt(cameraRef.current.rotX + dy * k);
+      targetCameraRef.current.rotY = cameraRef.current.rotY;
+      targetCameraRef.current.rotX = cameraRef.current.rotX;
+      // Velocidade limitada: um gesto brusco não pode arremessar o globo
+      const cap = (v: number) => Math.max(-0.045, Math.min(0.045, v));
+      inertiaRef.current = { vx: cap(-dx * k), vy: cap(dy * k) };
+      lastMoveAtRef.current = performance.now();
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* sem captura: segue normalmente */
+      }
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      inertiaRef.current = { vx: 0, vy: 0 };
+      if (pointers.size === 1) {
+        isDraggingRef.current = true;
+        dragMovedRef.current = false;
+        lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+        mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+      } else if (pointers.size === 2) {
+        dragMovedRef.current = true;
+        startPinch();
+      }
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!pointers.has(e.pointerId)) {
+        const now = performance.now();
+        if (e.pointerType === 'mouse' && now - lastHoverAtRef.current > 90) {
+          lastHoverAtRef.current = now;
+          inputApiRef.current.hover(e.clientX, e.clientY);
+        }
+        return;
+      }
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointers.size >= 2 && pinchRef.current) {
+        const [a, b] = [...pointers.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const next = clampScale(pinchRef.current.scale * (dist / pinchRef.current.dist));
+        cameraRef.current.scale = next;
+        targetCameraRef.current.scale = next;
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        rotateBy(mx - pinchRef.current.mx, my - pinchRef.current.my);
+        inertiaRef.current = { vx: 0, vy: 0 };
+        pinchRef.current.mx = mx;
+        pinchRef.current.my = my;
+        return;
+      }
+
+      const dx = e.clientX - lastMousePosRef.current.x;
+      const dy = e.clientY - lastMousePosRef.current.y;
+      if (!dragMovedRef.current && Math.hypot(e.clientX - mouseDownPosRef.current.x, e.clientY - mouseDownPosRef.current.y) > 5) {
+        dragMovedRef.current = true;
+        setIsAutoRotating(false);
+      }
+      if (dragMovedRef.current) rotateBy(dx, dy);
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.delete(e.pointerId);
+      if (pointers.size >= 1) {
+        // Sobrou um dedo após a pinça: continua como arrasto simples, sem salto
+        const rest = [...pointers.values()][0];
+        lastMousePosRef.current = { x: rest.x, y: rest.y };
+        pinchRef.current = null;
+        inertiaRef.current = { vx: 0, vy: 0 };
+        return;
+      }
+      pinchRef.current = null;
+      isDraggingRef.current = false;
+      if (e.type === 'pointercancel') {
+        inertiaRef.current = { vx: 0, vy: 0 };
+        return;
+      }
+      // Parou o dedo antes de soltar: sem inércia
+      if (performance.now() - lastMoveAtRef.current > 80) inertiaRef.current = { vx: 0, vy: 0 };
+      if (!dragMovedRef.current) {
+        inertiaRef.current = { vx: 0, vy: 0 };
+        const now = performance.now();
+        const last = lastTapRef.current;
+        const isDouble = now - last.t < 320 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 24;
+        lastTapRef.current = { t: isDouble ? 0 : now, x: e.clientX, y: e.clientY };
+        if (isDouble) {
+          // Duplo clique / duplo toque: voa até o ponto e aproxima
+          const g = canvas.getBoundingClientRect();
+          const radius = Math.min(g.width, g.height) * 0.4 * cameraRef.current.scale;
+          const target = unproject(e.clientX - g.left, e.clientY - g.top, g.width / 2, g.height / 2, radius, cameraRef.current.rotX, cameraRef.current.rotY);
+          if (target) inputApiRef.current.focus(target.lat, target.lon, clampScale(Math.max(1.6, cameraRef.current.scale * 1.6)));
+        } else {
+          inputApiRef.current.click(e);
+          inputApiRef.current.hover(e.clientX, e.clientY);
+        }
+      }
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const next = clampScale(targetCameraRef.current.scale * Math.exp(-e.deltaY * 0.0015));
+      targetCameraRef.current.scale = next;
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      const step = 0.12 / Math.max(1, cameraRef.current.scale);
+      let handled = true;
+      if (e.key === 'ArrowLeft') targetCameraRef.current.rotY -= step;
+      else if (e.key === 'ArrowRight') targetCameraRef.current.rotY += step;
+      else if (e.key === 'ArrowUp') targetCameraRef.current.rotX = clampTilt(targetCameraRef.current.rotX + step);
+      else if (e.key === 'ArrowDown') targetCameraRef.current.rotX = clampTilt(targetCameraRef.current.rotX - step);
+      else if (e.key === '+' || e.key === '=') targetCameraRef.current.scale = clampScale(targetCameraRef.current.scale * 1.2);
+      else if (e.key === '-' || e.key === '_') targetCameraRef.current.scale = clampScale(targetCameraRef.current.scale / 1.2);
+      else if (e.key === '0') {
+        targetCameraRef.current.rotX = 0.35;
+        targetCameraRef.current.scale = 1.0;
+      } else if (e.key === ' ') setIsAutoRotating((v) => !v);
+      else handled = false;
+      if (handled) {
+        e.preventDefault();
+        inertiaRef.current = { vx: 0, vy: 0 };
+        if (e.key.startsWith('Arrow')) setIsAutoRotating(false);
+      }
+    };
+
+    const onLeave = () => setCursorInfo(null);
+
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointercancel', onUp);
+    canvas.addEventListener('pointerleave', onLeave);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('keydown', onKey);
+    return () => {
+      canvas.removeEventListener('pointerdown', onDown);
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerup', onUp);
+      canvas.removeEventListener('pointercancel', onUp);
+      canvas.removeEventListener('pointerleave', onLeave);
+      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('keydown', onKey);
+      pointers.clear();
+      isDraggingRef.current = false;
+    };
+  }, []);
+
+  // Lugares para a busca "Ir para": metrópoles + operadores
+  const placeMatches = useMemo(() => {
+    const q = placeQuery.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (q.length < 2) return [];
+    const plain = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const cities = GLOBAL_MEGACITIES.filter((c) => plain(c.name).includes(q)).map((c) => ({ key: `c-${c.name}`, label: c.name, sub: 'Cidade', lat: c.lat, lon: c.lon }));
+    const ops = peers
+      .filter((p) => plain(`${p.callsign} ${p.city} ${p.country}`).includes(q))
+      .map((p) => ({ key: `p-${p.id}`, label: `${p.flag} ${p.callsign}`, sub: p.city, lat: p.fuzzyLat, lon: p.fuzzyLon }));
+    return [...cities, ...ops].slice(0, 7);
+  }, [placeQuery, peers]);
+
+  const measureSummary =
+    measurePts.length === 2
+      ? {
+          km: greatCircleDistanceKm(measurePts[0], measurePts[1]),
+          bearing: initialBearing(measurePts[0], measurePts[1]),
+        }
+      : null;
+
+  const simulatedDate = new Date(Date.now() + timeOffsetMin * 60000);
 
   const filteredPeers = peers.filter((p) => {
     if (searchFilter.trim()) {
@@ -1266,17 +1929,44 @@ export const Earth3dMapView: React.FC = () => {
             </h2>
 
             <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
-              Quando você ativa a visibilidade, seu nó é projetado no mapa 3D com um <strong>raio de privacidade de 10 km</strong>.
-              Ninguém tem acesso ao seu endereço físico exato, mas outros operadores de rádio e Wi-Fi podem descobrir sua presença,
-              trocar ideias e iniciar conversas diretas P2P.
+              Por padrão, sua localização é protegida com <strong>raio de privacidade de 10 km</strong> para segurança residencial física e anti-triangulação.
+              Se preferir, você pode alterar para <strong>Alta Precisão (GPS Exato)</strong> para ser localizado por amigos ou em situações de desastres/resgate, ou usar o modo Bairro (1 km).
             </p>
           </div>
 
-          {/* Controle Deslizante de Visibilidade */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {/* Controles de Visibilidade e Seletor de Precisão */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto">
+            {/* Seletor Rápido de Precisão */}
+            <button
+              onClick={() => setShowPrecisionModal(true)}
+              className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between sm:justify-center gap-2 border shadow-lg ${
+                precisionMode === 'high_precision'
+                  ? 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/70 text-emerald-300 shadow-emerald-950/40'
+                  : precisionMode === 'neighborhood_1km'
+                  ? 'bg-sky-950/80 hover:bg-sky-900 border-sky-500/70 text-sky-300 shadow-sky-950/40'
+                  : 'bg-amber-950/70 hover:bg-amber-900/90 border-amber-500/60 text-amber-300 shadow-amber-950/40'
+              }`}
+              title="Clique para alternar a precisão de sua localização"
+            >
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 shrink-0" />
+                <div className="flex flex-col items-start text-left leading-tight">
+                  <span className="text-[9px] text-slate-400 uppercase font-mono tracking-wider">Precisão GPS</span>
+                  <span className="text-xs font-black">
+                    {precisionMode === 'high_precision'
+                      ? '🎯 GPS Exato (Resgate)'
+                      : precisionMode === 'neighborhood_1km'
+                      ? '🏘️ Bairro (1 km)'
+                      : '🛡️ Padrão Seguro (10 km)'}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-70" />
+            </button>
+
             <button
               onClick={() => handleToggleVisibility(!isVisibleOnMap)}
-              className={`w-full sm:w-auto px-5 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2.5 shadow-xl ${
+              className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-xl ${
                 isVisibleOnMap
                   ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-600/30 border border-emerald-400'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 shadow-slate-900/50'
@@ -1285,42 +1975,234 @@ export const Earth3dMapView: React.FC = () => {
               {isVisibleOnMap ? (
                 <>
                   <Eye className="w-4 h-4 text-emerald-200 animate-pulse" />
-                  <span>VOCÊ ESTÁ VISÍVEL NO MAPA</span>
+                  <span>VISÍVEL NO MAPA</span>
                 </>
               ) : (
                 <>
                   <EyeOff className="w-4 h-4 text-slate-400" />
-                  <span>MODO INVISÍVEL (CLIQUE PARA SER VISTO)</span>
+                  <span>MODO INVISÍVEL</span>
                 </>
               )}
             </button>
 
             <button
+              onClick={() => {
+                setShowPresentationVideo(true);
+                videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                videoRef.current?.play().catch(() => {});
+              }}
+              className="w-full sm:w-auto px-3.5 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-400/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-lg cursor-pointer"
+              title="Assistir ao vídeo oficial de apresentação JJY"
+            >
+              <Play className="w-3.5 h-3.5 text-indigo-300 fill-indigo-300" />
+              <span>Vídeo de Apresentação</span>
+            </button>
+
+            <button
               onClick={() => setShowProfileEditor(true)}
-              className="px-3.5 py-3 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+              className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
             >
               <Sliders className="w-4 h-4 text-indigo-400" />
-              <span>Editar Meu Perfil</span>
+              <span>Meu Perfil</span>
             </button>
           </div>
         </div>
 
-        {/* Status de Privacidade Ativa */}
+        {/* Status de Precisão e Segurança Ativa */}
         <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-          <div className="flex items-center gap-2 text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            <span>Sua Localização no Mapa:</span>
-            <span className="text-cyan-300 font-bold">
-              {userProfile.city} ({userProfile.fuzzyLat}, {userProfile.fuzzyLon}) ± 10 km
+          <div className="flex items-center gap-2 text-slate-300 flex-wrap">
+            <span className={`w-2.5 h-2.5 rounded-full ${
+              precisionMode === 'high_precision'
+                ? 'bg-emerald-400 animate-ping'
+                : precisionMode === 'neighborhood_1km'
+                ? 'bg-sky-400 animate-pulse'
+                : 'bg-amber-400 animate-ping'
+            }`} />
+            <span className="text-slate-400">Coordenadas Transmitidas:</span>
+            <span className="text-white font-bold">
+              {userProfile.city} ({userProfile.fuzzyLat}, {userProfile.fuzzyLon})
+            </span>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              precisionMode === 'high_precision'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : precisionMode === 'neighborhood_1km'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+            }`}>
+              {precisionMode === 'high_precision'
+                ? '🎯 GPS REAL (Zero Erro • Resgate / Amigos)'
+                : precisionMode === 'neighborhood_1km'
+                ? '🏘️ Erro de ~1 km (Bairro)'
+                : '🛡️ Erro de ±10 km (Privacidade Ativa)'}
             </span>
           </div>
 
-          <div className="text-emerald-400 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5" />
-            <span>Anti-Triangulação & Proteção de Domicílio Ativa</span>
-          </div>
+          <button
+            onClick={() => setShowPrecisionModal(true)}
+            className="hover:underline flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
+          >
+            {precisionMode === 'high_precision' ? (
+              <span className="text-emerald-400 flex items-center gap-1.5 font-bold">
+                <Crosshair className="w-3.5 h-3.5" />
+                <span>Modo Resgate/Localizável Ativo • Mudar</span>
+              </span>
+            ) : precisionMode === 'neighborhood_1km' ? (
+              <span className="text-sky-400 flex items-center gap-1.5 font-bold">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>Modo Bairro Ativo • Mudar</span>
+              </span>
+            ) : (
+              <span className="text-amber-400 flex items-center gap-1.5 font-bold">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Proteção Residencial Ativa • Mudar</span>
+              </span>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* ==================================================================== */}
+      {/* APRESENTAÇÃO OFICIAL EM VÍDEO DO PROJETO JJY                         */}
+      {/* ==================================================================== */}
+      {showPresentationVideo && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/35 p-5 shadow-2xl transition-all">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                  <Play className="w-3 h-3 text-indigo-400 fill-indigo-400" />
+                  VÍDEO DE APRESENTAÇÃO OFICIAL
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  100% Offline • MP4 Nativo
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                  Suite JJY Soberana
+                </span>
+              </div>
+              <h3 className="text-lg md:text-xl font-black text-white tracking-tight">
+                Conheça a Suite JJY — Comunicação Livre, Offline & Descentralizada
+              </h3>
+              <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+                Demonstração em vídeo sobre o funcionamento do projeto: transmissão por rádio, acústica, óptica, radar RF e comunicação soberana sem internet.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+              <button
+                onClick={() => setIsCinemaMode(true)}
+                className="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                title="Abrir no Modo Cinema em Tela Cheia"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-indigo-300" />
+                <span>Modo Cinema</span>
+              </button>
+
+              <button
+                onClick={() => setShowPresentationVideo(false)}
+                className="p-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer border border-slate-700"
+                title="Ocultar vídeo de apresentação"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Player de Vídeo com Moldura Estilizada */}
+          <div className="relative rounded-xl overflow-hidden bg-black/95 border border-indigo-500/30 shadow-2xl">
+            <video
+              ref={videoRef}
+              src="/jjy-homega2.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full max-h-[460px] object-contain mx-auto bg-black"
+            />
+          </div>
+
+          {/* Destaques Técnicos do Projeto */}
+          <div className="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="flex items-center gap-2.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0">
+                <Globe className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="leading-tight">
+                <span className="font-bold text-white block">Soberania Total</span>
+                <span className="text-[11px] text-slate-400">Zero dependência de operadoras ou nuvem</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="leading-tight">
+                <span className="font-bold text-white block">Zero Metadados</span>
+                <span className="text-[11px] text-slate-400">Filas SimpleX e Criptografia Web Crypto</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="leading-tight">
+                <span className="font-bold text-white block">Multi-Transporte</span>
+                <span className="text-[11px] text-slate-400">Rádio LoRa, Acústico, Óptico e Wi-Fi LAN</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botão de Reabrir Vídeo se Estiver Oculto */}
+      {!showPresentationVideo && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowPresentationVideo(true)}
+            className="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-md"
+            title="Exibir novamente o vídeo de apresentação"
+          >
+            <Play className="w-3.5 h-3.5 text-indigo-400 fill-indigo-400" />
+            <span>Exibir Vídeo de Apresentação</span>
+          </button>
+        </div>
+      )}
+
+      {/* Modal Modo Cinema (Tela Cheia) */}
+      {isCinemaMode && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setIsCinemaMode(false)}
+        >
+          <div
+            className="relative bg-slate-950 border border-indigo-500/40 rounded-2xl max-w-5xl w-full p-4 sm:p-6 shadow-2xl flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Play className="w-4 h-4 text-indigo-400 fill-indigo-400" />
+                <h3 className="font-bold text-base text-white">Vídeo Oficial de Apresentação — JJY Soberano</h3>
+              </div>
+              <button
+                onClick={() => setIsCinemaMode(false)}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+              <video
+                src="/jjy-homega2.mp4"
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain bg-black"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* PALCO CENTRAL DO GLOBO 3D + PAINEL MULTIFUNCIONAL                   */}
@@ -1388,7 +2270,7 @@ export const Earth3dMapView: React.FC = () => {
                 </button>
 
                 {showLayerMenu && (
-                  <div className="absolute top-10 right-0 w-52 bg-slate-900/95 border border-slate-700 backdrop-blur-md rounded-xl p-2.5 shadow-2xl z-30 space-y-1.5 text-xs">
+                  <div className="absolute top-10 right-0 w-60 max-h-[70vh] overflow-y-auto bg-slate-900/95 border border-slate-700 backdrop-blur-md rounded-xl p-2.5 shadow-2xl z-30 space-y-1.5 text-xs">
                     <div className="text-[10px] font-mono font-bold text-slate-400 border-b border-slate-800 pb-1">
                       CAMADAS VISUAIS
                     </div>
@@ -1399,6 +2281,11 @@ export const Earth3dMapView: React.FC = () => {
                       { key: 'nightLights', label: 'Luzes de Cidades' },
                       { key: 'graticule', label: 'Grade Geodésica' },
                       { key: 'privacyHalos', label: 'Halos de 10 km' },
+                      { key: 'terminator', label: 'Dia/Noite em tempo real' },
+                      { key: 'aurora', label: 'Auroras polares' },
+                      { key: 'cityLabels', label: 'Nomes de cidades (zoom)' },
+                      { key: 'maidenhead', label: 'Grade Maidenhead (rádio)' },
+                      { key: 'rangeRings', label: 'Anéis de alcance HF/VHF' },
                     ].map((item) => (
                       <label
                         key={item.key}
@@ -1458,15 +2345,164 @@ export const Earth3dMapView: React.FC = () => {
           {/* ================================================================ */}
           <canvas
             ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={() => {
-              isDraggingRef.current = false;
-            }}
-            onWheel={handleWheel}
-            className="w-full h-full cursor-grab active:cursor-grabbing select-none"
+            tabIndex={0}
+            role="application"
+            aria-label="Globo 3D interativo. Arraste para girar, role ou use + e - para zoom, setas para mover, duplo clique para aproximar, espaço para pausar a rotação."
+            style={{ touchAction: isFullscreen || measureMode ? 'none' : 'pan-y' }}
+            className={`w-full h-full select-none outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
+              measureMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+            }`}
           />
+
+          {/* ================================================================ */}
+          {/* CONTROLES AVANÇADOS: ZOOM, VISTA, RÉGUA, TEMPO SOLAR, CAPTURA     */}
+          {/* ================================================================ */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
+            {[
+              { key: 'in', title: 'Aproximar (+)', icon: <Plus className="w-4 h-4" />, run: () => zoomBy(1.35), on: false },
+              { key: 'out', title: 'Afastar (-)', icon: <Minus className="w-4 h-4" />, run: () => zoomBy(1 / 1.35), on: false },
+              { key: 'home', title: 'Vista inicial (0)', icon: <Home className="w-4 h-4" />, run: resetView, on: false },
+              { key: 'north', title: 'Alinhar ao Equador (Norte para cima)', icon: <Compass className="w-4 h-4" />, run: northUp, on: false },
+              {
+                key: 'ruler',
+                title: measureMode ? 'Sair da régua' : 'Régua: medir distância e rumo entre dois pontos',
+                icon: <Ruler className="w-4 h-4" />,
+                run: () => {
+                  setMeasureMode(!measureMode);
+                  if (measureMode) setMeasurePts([]);
+                  else setIsAutoRotating(false);
+                },
+                on: measureMode,
+              },
+              {
+                key: 'time',
+                title: 'Tempo solar e busca de lugares',
+                icon: <Clock className="w-4 h-4" />,
+                run: () => setShowToolsMenu(!showToolsMenu),
+                on: showToolsMenu || timeOffsetMin !== 0,
+              },
+              { key: 'shot', title: 'Salvar imagem PNG do globo', icon: <Camera className="w-4 h-4" />, run: saveSnapshot, on: false },
+            ].map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                onClick={b.run}
+                title={b.title}
+                aria-label={b.title}
+                aria-pressed={b.key === 'ruler' || b.key === 'time' ? b.on : undefined}
+                className={`w-9 h-9 flex items-center justify-center rounded-xl border backdrop-blur-md shadow-lg transition-all ${
+                  b.on
+                    ? 'bg-indigo-600/40 text-white border-indigo-400/70'
+                    : 'bg-slate-900/90 text-slate-300 border-slate-700 hover:text-white hover:border-slate-500'
+                }`}
+              >
+                {b.icon}
+              </button>
+            ))}
+          </div>
+
+          {/* Painel: tempo solar + ir para um lugar */}
+          {showToolsMenu && (
+            <div className="absolute right-14 top-1/2 -translate-y-1/2 z-30 w-64 max-w-[calc(100%-5rem)] bg-slate-900/95 border border-slate-700 backdrop-blur-md rounded-xl p-3 shadow-2xl space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-slate-400">TEMPO SOLAR</span>
+                <button type="button" onClick={() => setShowToolsMenu(false)} className="text-slate-400 hover:text-white" aria-label="Fechar painel">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between font-mono text-[11px]">
+                  <span className="text-slate-200">
+                    {simulatedDate.toISOString().slice(11, 16)} UTC
+                  </span>
+                  <span className={timeOffsetMin === 0 ? 'text-emerald-400' : 'text-amber-300'}>
+                    {timeOffsetMin === 0 ? 'ao vivo' : `${timeOffsetMin > 0 ? '+' : '−'}${Math.floor(Math.abs(timeOffsetMin) / 60)}h${String(Math.abs(timeOffsetMin) % 60).padStart(2, '0')}`}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={-720}
+                  max={720}
+                  step={10}
+                  value={timeOffsetMin}
+                  onChange={(e) => setTimeOffsetMin(Number(e.target.value))}
+                  className="w-full accent-cyan-400"
+                  aria-label="Adiantar ou atrasar a hora para simular o dia e a noite"
+                />
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                  <span>−12h</span>
+                  <button type="button" onClick={() => setTimeOffsetMin(0)} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white">
+                    Agora
+                  </button>
+                  <span>+12h</span>
+                </div>
+              </div>
+              <div className="border-t border-slate-800 pt-2.5 space-y-1.5">
+                <span className="text-[10px] font-mono font-bold text-slate-400">IR PARA</span>
+                <input
+                  type="text"
+                  value={placeQuery}
+                  onChange={(e) => setPlaceQuery(e.target.value)}
+                  placeholder="Cidade ou indicativo…"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500"
+                />
+                {placeMatches.map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => {
+                      focusOnCoordinates(m.lat, m.lon, 2.2);
+                      setShowToolsMenu(false);
+                      setPlaceQuery('');
+                    }}
+                    className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-800 text-left text-slate-200"
+                  >
+                    <span className="truncate">{m.label}</span>
+                    <span className="text-[10px] font-mono text-slate-500 shrink-0">{m.sub}</span>
+                  </button>
+                ))}
+                {placeQuery.trim().length >= 2 && placeMatches.length === 0 && (
+                  <p className="text-[11px] text-slate-500">Nenhum lugar encontrado.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Leitura da régua */}
+          {measureMode && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-16 z-20 max-w-[calc(100%-1.5rem)] bg-slate-900/95 border border-pink-500/50 backdrop-blur-md rounded-xl px-3 py-2 shadow-2xl text-[11px] font-mono text-slate-200 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Ruler className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+              {measureSummary ? (
+                <>
+                  <span className="text-pink-300 font-bold">{Math.round(measureSummary.km).toLocaleString('pt-BR')} km</span>
+                  <span>Rumo {measureSummary.bearing.toFixed(0)}° {compassPoint(measureSummary.bearing)}</span>
+                  <span className="text-slate-400">
+                    {toMaidenhead(measurePts[0].lat, measurePts[0].lon)} → {toMaidenhead(measurePts[1].lat, measurePts[1].lon)}
+                  </span>
+                  <span className="text-slate-400">Rádio: {(measureSummary.km / 299.792).toFixed(1)} ms</span>
+                </>
+              ) : (
+                <span>{measurePts.length === 0 ? 'Clique no ponto A do globo' : 'Agora clique no ponto B'}</span>
+              )}
+              {measurePts.length > 0 && (
+                <button type="button" onClick={() => setMeasurePts([])} className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white">
+                  Limpar
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* HUD do cursor: coordenadas, Maidenhead, hora solar e Sol */}
+          {cursorInfo && (
+            <div className="absolute left-3 bottom-20 sm:bottom-14 z-10 pointer-events-none bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-2.5 py-1.5 shadow-xl text-[10px] font-mono text-slate-300 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 max-w-[calc(100%-4.5rem)]">
+              <span className="text-slate-100">{formatLatLon(cursorInfo.point)}</span>
+              <span className="text-cyan-300">{cursorInfo.grid}</span>
+              <span>{cursorInfo.solarTime} solar</span>
+              <span className={cursorInfo.sunElevation > 0 ? 'text-amber-300' : 'text-indigo-300'}>
+                {cursorInfo.phase} · Sol {cursorInfo.sunElevation >= 0 ? '+' : '−'}{Math.abs(cursorInfo.sunElevation).toFixed(0)}°
+              </span>
+            </div>
+          )}
 
           {/* ================================================================ */}
           {/* BARRA INFERIOR DE LEGENDA E TELEMETRIA SOLAR                     */}
@@ -1475,8 +2511,16 @@ export const Earth3dMapView: React.FC = () => {
             {/* Legenda de Elementos */}
             <div className="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 flex flex-wrap items-center gap-3 shadow-xl">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                <span>Você</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${
+                  precisionMode === 'high_precision'
+                    ? 'bg-emerald-400'
+                    : precisionMode === 'neighborhood_1km'
+                    ? 'bg-sky-400'
+                    : 'bg-yellow-400'
+                }`} />
+                <span>
+                  Você {precisionMode === 'high_precision' ? '(GPS Exato)' : precisionMode === 'neighborhood_1km' ? '(±1km)' : '(±10km)'}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
@@ -1487,8 +2531,17 @@ export const Earth3dMapView: React.FC = () => {
                 <span>Satélites</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full border border-yellow-400/70 bg-yellow-400/20" />
-                <span>Raio de 10 km</span>
+                {precisionMode === 'high_precision' ? (
+                  <>
+                    <span className="w-3 h-3 flex items-center justify-center text-emerald-400 font-bold">⌖</span>
+                    <span className="text-emerald-300 font-semibold">Mira Tática Ativa</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-3 h-3 rounded-full border border-yellow-400/70 bg-yellow-400/20" />
+                    <span>Raio Protegido {precisionMode === 'neighborhood_1km' ? '1 km' : '10 km'}</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -2089,13 +3142,75 @@ export const Earth3dMapView: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-[11px] text-indigo-300 font-mono space-y-1">
-                <div className="font-bold flex items-center gap-1.5 text-indigo-200">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Garantia de Privacidade Física (10 km)
+              {/* Escolha de Precisão da Localização */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-300 font-semibold text-xs">
+                    Precisão de Localização no Globo:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPrecisionModal(true)}
+                    className="text-indigo-400 hover:underline text-[11px] font-mono"
+                  >
+                    Ver detalhes
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {LOCATION_PRECISION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleSelectPrecision(opt.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        precisionMode === opt.id
+                          ? opt.id === 'high_precision'
+                            ? 'bg-emerald-950/60 border-emerald-500 text-white shadow-md'
+                            : opt.id === 'neighborhood_1km'
+                            ? 'bg-sky-950/60 border-sky-500 text-white shadow-md'
+                            : 'bg-amber-950/60 border-amber-500 text-white shadow-md'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="text-base mb-1">{opt.icon}</div>
+                      <div className="font-bold text-[11px] truncate text-white">{opt.name}</div>
+                      <div className="text-[10px] font-mono opacity-80">{opt.radiusLabel}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-xl border text-[11px] font-mono space-y-1 ${
+                precisionMode === 'high_precision'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : precisionMode === 'neighborhood_1km'
+                  ? 'bg-sky-500/10 border-sky-500/30 text-sky-300'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              }`}>
+                <div className="font-bold flex items-center gap-1.5">
+                  {precisionMode === 'high_precision' ? (
+                    <>
+                      <Crosshair className="w-4 h-4 text-emerald-400" />
+                      <span>Modo Resgate & Amigos Ativo (GPS Real)</span>
+                    </>
+                  ) : precisionMode === 'neighborhood_1km' ? (
+                    <>
+                      <MapPin className="w-4 h-4 text-sky-400" />
+                      <span>Modo Bairro (~1 km de tolerância)</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4 text-amber-400" />
+                      <span>Padrão de Segurança Residencial (±10 km)</span>
+                    </>
+                  )}
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  Suas coordenadas mostradas no mapa serão deslocadas propositalmente em até 10 km da sua localização real para proteger sua casa ou ponto de operação.
+                  {precisionMode === 'high_precision'
+                    ? 'Suas coordenadas exatas são transmitidas para facilitar resgates ou localização por amigos.'
+                    : precisionMode === 'neighborhood_1km'
+                    ? 'Sua localização é exibida com margem de 1 km, indicando seu bairro sem expor sua residência.'
+                    : 'Suas coordenadas mostradas no mapa são deslocadas propositalmente em até 10 km para proteger sua privacidade física.'}
                 </p>
               </div>
 
@@ -2115,6 +3230,148 @@ export const Earth3dMapView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL DE SELEÇÃO DE PRECISÃO DA LOCALIZAÇÃO NO GLOBO 3D             */}
+      {/* ==================================================================== */}
+      {showPrecisionModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">
+                    Precisão da Sua Localização no Globo 3D
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Defina o grau de visibilidade da sua posição na rede mesh
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowPrecisionModal(false)}
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {LOCATION_PRECISION_OPTIONS.map((opt) => {
+                const isSelected = precisionMode === opt.id;
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={() => handleSelectPrecision(opt.id)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${
+                      isSelected
+                        ? opt.id === 'high_precision'
+                          ? 'bg-emerald-950/40 border-emerald-500 shadow-lg shadow-emerald-950/50'
+                          : opt.id === 'neighborhood_1km'
+                          ? 'bg-sky-950/40 border-sky-500 shadow-lg shadow-sky-950/50'
+                          : 'bg-amber-950/40 border-amber-500 shadow-lg shadow-amber-950/50'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl pt-0.5">{opt.icon}</div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-white">{opt.name}</span>
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                              opt.badgeColor === 'amber'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : opt.badgeColor === 'blue'
+                                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}>
+                              {opt.radiusLabel}
+                            </span>
+                            {opt.id === 'privacy_10km' && (
+                              <span className="text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
+                                Padrão Seguro
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                            {opt.description}
+                          </p>
+                          <div className="mt-2 text-[11px] font-mono flex items-center gap-1.5 text-slate-400">
+                            <span className="text-slate-500">Recomendado para:</span>
+                            <span className="text-slate-300 font-semibold">{opt.recommendedFor}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 pt-1">
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                          isSelected
+                            ? 'border-emerald-400 bg-emerald-500 text-slate-950'
+                            : 'border-slate-600 bg-slate-900'
+                        }`}>
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {opt.warning && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2 text-[11px] text-amber-300">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                        <span>{opt.warning}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span className="font-mono text-[11px]">
+                Configuração persistida localmente no seu dispositivo.
+              </span>
+              <button
+                onClick={() => setShowPrecisionModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold"
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* NOTIFICAÇÃO TOAST DE PRECISÃO ALTERADA                                */}
+      {/* ==================================================================== */}
+      {precisionToast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md animate-slideUp">
+          <div className={`p-4 rounded-2xl shadow-2xl backdrop-blur-md border flex items-start gap-3 ${
+            precisionToast.type === 'warn'
+              ? 'bg-amber-950/95 border-amber-500/60 text-amber-200 shadow-amber-900/40'
+              : 'bg-emerald-950/95 border-emerald-500/60 text-emerald-200 shadow-emerald-900/40'
+          }`}>
+            {precisionToast.type === 'warn' ? (
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 text-xs leading-relaxed font-sans">
+              {precisionToast.message}
+            </div>
+            <button
+              onClick={() => setPrecisionToast(null)}
+              className="text-slate-400 hover:text-white shrink-0 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

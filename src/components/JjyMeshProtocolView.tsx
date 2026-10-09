@@ -24,6 +24,21 @@ import {
   FileText,
   Search,
   Trash2,
+  Wifi,
+  ExternalLink,
+  Share2,
+  Key,
+  Terminal,
+  SlidersHorizontal,
+  Signal,
+  Battery,
+  MapPin,
+  Compass,
+  Check,
+  Copy,
+  Sparkles,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 import {
   AvaliadorReputacao,
@@ -57,11 +72,70 @@ import {
   TarefaAgendada,
   DisparoAgenda,
 } from '../utils/jjyAgenda';
+import {
+  LORA_REGIONS,
+  LORA_MODEM_PRESETS,
+  LORA_HARDWARE_PROFILES,
+  MeshtasticNode,
+  INITIAL_MESH_NODES,
+  calculateLoraTimeOnAir,
+  connectWebSerialPort,
+  sendWebSerialCommand,
+  SerialPortController,
+  MeshtasticSovereignConfig,
+  loadMeshtasticSovereignConfig,
+  saveMeshtasticSovereignConfig,
+  generateRandomMeshtasticPsk,
+  convertSnrRssiToLqi,
+} from '../utils/loraMeshEngine';
 
-type MeshSubTab = 'reputacao' | 'auditoria' | 'vizinhanca' | 'fila' | 'diagnostico' | 'agenda';
+type MeshSubTab = 'reputacao' | 'auditoria' | 'vizinhanca' | 'fila' | 'diagnostico' | 'agenda' | 'meshtastic';
 
 export const JjyMeshProtocolView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<MeshSubTab>('reputacao');
+  const [activeTab, setActiveTab] = useState<MeshSubTab>(() => {
+    try {
+      const stored = sessionStorage.getItem('jjy_mesh_subtab') || localStorage.getItem('jjy_mesh_subtab');
+      if (stored === 'meshtastic') return 'meshtastic';
+      if (stored && ['reputacao', 'auditoria', 'vizinhanca', 'fila', 'diagnostico', 'agenda', 'meshtastic'].includes(stored)) {
+        return stored as MeshSubTab;
+      }
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('meshtastic')) return 'meshtastic';
+      const search = new URLSearchParams(window.location.search);
+      if (search.get('subtab') === 'meshtastic' || search.get('tab') === 'meshtastic') return 'meshtastic';
+    } catch {}
+    return 'reputacao';
+  });
+
+  const handleSelectSubTab = (subtab: MeshSubTab) => {
+    setActiveTab(subtab);
+    try {
+      sessionStorage.setItem('jjy_mesh_subtab', subtab);
+      localStorage.setItem('jjy_mesh_subtab', subtab);
+    } catch {}
+  };
+
+  useEffect(() => {
+    const handleSubtabSync = (e?: any) => {
+      try {
+        const target = e?.detail || sessionStorage.getItem('jjy_mesh_subtab') || localStorage.getItem('jjy_mesh_subtab');
+        if (target && ['reputacao', 'auditoria', 'vizinhanca', 'fila', 'diagnostico', 'agenda', 'meshtastic'].includes(target)) {
+          setActiveTab(target as MeshSubTab);
+        } else if (window.location.hash.toLowerCase().includes('meshtastic')) {
+          setActiveTab('meshtastic');
+        }
+      } catch {}
+    };
+
+    window.addEventListener('jjy_mesh_subtab_change', handleSubtabSync);
+    window.addEventListener('hashchange', handleSubtabSync);
+    window.addEventListener('storage', handleSubtabSync);
+    return () => {
+      window.removeEventListener('jjy_mesh_subtab_change', handleSubtabSync);
+      window.removeEventListener('hashchange', handleSubtabSync);
+      window.removeEventListener('storage', handleSubtabSync);
+    };
+  }, []);
 
   // Instâncias dos subsistemas
   const avaliadorRef = useRef<AvaliadorReputacao>(new AvaliadorReputacao());
@@ -97,6 +171,139 @@ export const JjyMeshProtocolView: React.FC = () => {
   const [agendaTag, setAgendaTag] = useState('BEACON-TÁTICO');
   const [agendaIntervalo, setAgendaIntervalo] = useState(15);
   const [agendaTipo, setAgendaTipo] = useState<'UmaVez' | 'Periodica'>('Periodica');
+
+  // Estados para Refinamento do Meshtastic Sovereign Mesh
+  const [meshtasticConfig, setMeshtasticConfig] = useState<MeshtasticSovereignConfig>(loadMeshtasticSovereignConfig);
+  const [meshtasticNodes, setMeshtasticNodes] = useState<MeshtasticNode[]>(INITIAL_MESH_NODES);
+  const [serialCtrl, setSerialCtrl] = useState<SerialPortController | null>(null);
+  const [serialLogs, setSerialLogs] = useState<string[]>([
+    '[INIT] Subsistema RF Meshtastic inicializado.',
+    '[READY] Slot 915.000 MHz sincronizado com o JJY Chat.'
+  ]);
+  const [meshtasticTestMsg, setMeshtasticTestMsg] = useState('JJY Sovereign Mesh Beacon - Canal Seguro Ativo');
+  const [meshtasticSyncToast, setMeshtasticSyncToast] = useState('');
+  const [isSerialConnecting, setIsSerialConnecting] = useState(false);
+  const [selectedMeshtasticNodeId, setSelectedMeshtasticNodeId] = useState('^all');
+  const [copiedKeyToast, setCopiedKeyToast] = useState(false);
+
+  // Handlers do Meshtastic Sovereign Mesh
+  const handleUpdateMeshtasticConfig = (patch: Partial<MeshtasticSovereignConfig>) => {
+    const updated = { ...meshtasticConfig, ...patch };
+    setMeshtasticConfig(updated);
+    saveMeshtasticSovereignConfig(updated);
+    setMeshtasticSyncToast('Configuração RF salva e sincronizada com JJY Chat!');
+    setTimeout(() => setMeshtasticSyncToast(''), 3000);
+  };
+
+  const handleGenerateNewPsk = () => {
+    const newKey = generateRandomMeshtasticPsk();
+    handleUpdateMeshtasticConfig({
+      channelKeyPsk: newKey,
+      channelPskType: 'custom_aes256',
+    });
+  };
+
+  const handleBridgeMeshtasticToJjy = () => {
+    const viz = vizinhancaRef.current;
+    const rep = avaliadorRef.current;
+    const aud = auditoriaRef.current;
+
+    meshtasticNodes.forEach((n) => {
+      viz.adicionar(n.shortName, 'LoRa_RF');
+      const lqi = convertSnrRssiToLqi(n.rssi, n.snr);
+      viz.atualizarQualidade(n.shortName, lqi);
+      if (lqi >= 300) {
+        viz.promover(n.shortName);
+      }
+      rep.registrarCooperacao(n.shortName);
+      rep.registrarSucesso(n.shortName);
+      aud.info(
+        'Malha',
+        `Nó Meshtastic [${n.nodeId}] ${n.longName} (${n.role}) integrado com LQI ${lqi}/1000 via RF 915MHz`,
+        n.shortName
+      );
+    });
+
+    atualizarTodosOsEstados();
+    setMeshtasticSyncToast('Nós Meshtastic integrados à Vizinhança e Reputação do JJY!');
+    setTimeout(() => setMeshtasticSyncToast(''), 3500);
+  };
+
+  const handleConnectSerial = async () => {
+    if (serialCtrl?.isConnected) {
+      try {
+        await serialCtrl.port?.close();
+      } catch (e) {
+        console.warn('Erro ao fechar serial:', e);
+      }
+      setSerialCtrl(null);
+      handleUpdateMeshtasticConfig({ serialConnected: false });
+      setSerialLogs((prev) => [...prev, '[DISCONNECT] Porta USB desconectada.']);
+      return;
+    }
+
+    setIsSerialConnecting(true);
+    setSerialLogs((prev) => [...prev, `[SERIAL] Solicitando porta USB (${meshtasticConfig.baudRate} bps)...`]);
+
+    const ctrl = await connectWebSerialPort(
+      meshtasticConfig.baudRate,
+      (chunk) => {
+        setSerialLogs((prev) => [...prev.slice(-30), `[RX] ${chunk.trim()}`]);
+        auditoriaRef.current.info('Malha', `Pacote RF recebido via USB: ${chunk.trim().slice(0, 40)}`);
+        atualizarTodosOsEstados();
+      },
+      (err) => {
+        setSerialLogs((prev) => [...prev, `[ERROR] ${err}`]);
+      }
+    );
+
+    setIsSerialConnecting(false);
+    if (ctrl) {
+      setSerialCtrl(ctrl);
+      handleUpdateMeshtasticConfig({ serialConnected: true });
+      setSerialLogs((prev) => [...prev, '[CONNECTED] Hardware Meshtastic conectado com sucesso via USB.']);
+      auditoriaRef.current.info('Malha', 'Dispositivo Meshtastic USB conectado ao núcleo');
+      atualizarTodosOsEstados();
+    }
+  };
+
+  const handleSendMeshtasticPacket = async () => {
+    if (!meshtasticTestMsg.trim()) return;
+    const curModem = LORA_MODEM_PRESETS.find((p) => p.id === meshtasticConfig.modemPresetId) || LORA_MODEM_PRESETS[0];
+    const { toaMs } = calculateLoraTimeOnAir(meshtasticTestMsg.length, curModem.spreadingFactor, curModem.bandwidthKhz);
+
+    const logEntry = `[TX] Destino=${selectedMeshtasticNodeId} Ch=${meshtasticConfig.channelName} ToA=${toaMs}ms Payload="${meshtasticTestMsg}"`;
+    setSerialLogs((prev) => [...prev.slice(-30), logEntry]);
+
+    if (serialCtrl?.isConnected) {
+      await sendWebSerialCommand(serialCtrl, `${meshtasticTestMsg}\n`);
+    }
+
+    auditoriaRef.current.info(
+      'Malha',
+      `Transmissão RF Meshtastic: ToA ${toaMs}ms, SF${curModem.spreadingFactor}, HopLimit=${meshtasticConfig.hopLimit}`,
+      selectedMeshtasticNodeId === '^all' ? undefined : selectedMeshtasticNodeId
+    );
+
+    if (meshtasticConfig.bridgeWithJjyFila) {
+      filaRef.current.enfileirar(
+        selectedMeshtasticNodeId,
+        `[LoRa Mesh] ${meshtasticTestMsg}`,
+        'Alta',
+        180
+      );
+    }
+
+    atualizarTodosOsEstados();
+    setMeshtasticSyncToast(`Pacote RF transmitido (ToA: ${toaMs}ms)!`);
+    setTimeout(() => setMeshtasticSyncToast(''), 3000);
+  };
+
+  const handleOpenJjyChatMeshtastic = () => {
+    saveMeshtasticSovereignConfig(meshtasticConfig);
+    localStorage.setItem('jjy_chat_model', 'meshtastic');
+    window.open('/chat.html?model=meshtastic', '_blank');
+  };
 
   // Inicialização de dados demonstrativos realistas do JJY Mesh
   useEffect(() => {
@@ -143,6 +350,18 @@ export const JjyMeshProtocolView: React.FC = () => {
     agendaRef.current.agendarPeriodica('BEACON-HEARTBEAT', 20, 'Transmissão periódica de presença na malha');
 
     atualizarTodosOsEstados();
+
+    // Sincronização em tempo real de configurações vindas do Chat ou abas paralelas
+    const handleExternalSync = () => {
+      setMeshtasticConfig(loadMeshtasticSovereignConfig());
+    };
+    window.addEventListener('jjy_mesh_sync', handleExternalSync);
+    window.addEventListener('storage', handleExternalSync);
+
+    return () => {
+      window.removeEventListener('jjy_mesh_sync', handleExternalSync);
+      window.removeEventListener('storage', handleExternalSync);
+    };
   }, []);
 
   const atualizarTodosOsEstados = () => {
@@ -396,7 +615,7 @@ export const JjyMeshProtocolView: React.FC = () => {
         <div className="flex items-center gap-1.5 mt-5 border-t border-slate-800/80 pt-4 overflow-x-auto text-xs font-semibold">
           <button
             type="button"
-            onClick={() => setActiveTab('reputacao')}
+            onClick={() => handleSelectSubTab('reputacao')}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'reputacao'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -412,7 +631,7 @@ export const JjyMeshProtocolView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('auditoria')}
+            onClick={() => handleSelectSubTab('auditoria')}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'auditoria'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -428,7 +647,7 @@ export const JjyMeshProtocolView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('vizinhanca')}
+            onClick={() => handleSelectSubTab('vizinhanca')}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'vizinhanca'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -444,7 +663,7 @@ export const JjyMeshProtocolView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('fila')}
+            onClick={() => handleSelectSubTab('fila')}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'fila'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -460,7 +679,7 @@ export const JjyMeshProtocolView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('diagnostico')}
+            onClick={() => handleSelectSubTab('diagnostico')}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'diagnostico'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -478,7 +697,7 @@ export const JjyMeshProtocolView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('agenda')}
+            onClick={() => handleSelectSubTab('agenda')}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'agenda'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -489,6 +708,22 @@ export const JjyMeshProtocolView: React.FC = () => {
             <span>Agenda & EMCON</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-950/80 text-cyan-200 font-mono">
               {tarefasAgenda.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectSubTab('meshtastic')}
+            className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'meshtastic'
+                ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-400/50'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Radio className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold">Meshtastic & RF (Spec 42)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+              {meshtasticConfig.frequencyMhz.toFixed(1)} MHz
             </span>
           </button>
         </div>
@@ -885,12 +1120,17 @@ export const JjyMeshProtocolView: React.FC = () => {
           <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                  <Inbox className="w-4 h-4 text-cyan-400" />
-                  <span>Fila Store-and-Forward para Peers Offline (DTN)</span>
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <Inbox className="w-4 h-4 text-cyan-400" />
+                    <span>Fila Store-and-Forward para Peers Offline (DTN)</span>
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                    ASSINATURAS OTP BLINDADAS (ZERO METADADOS EXPOSTOS)
+                  </span>
+                </div>
                 <p className="text-xs text-slate-400">
-                  Mensagens armazenadas localmente para entrega imediata quando o destinatário reaparecer na malha
+                  Mensagens armazenadas localmente para entrega imediata quando o destinatário reaparecer na malha (Provas OTP e tokens cegos ao relay)
                 </p>
               </div>
             </div>
@@ -1178,6 +1418,671 @@ export const JjyMeshProtocolView: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 7. ABA DE REFINAMENTO MESHTASTIC & LORA RF (Spec 42: jjy-meshtastic)      */}
+      {/* ========================================================================= */}
+      {activeTab === 'meshtastic' && (
+        <div className="space-y-6">
+          {/* BANNER SUPERIOR DE SINCRONIZAÇÃO E CONTROLE */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-5 shadow-2xl backdrop-blur-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex items-center justify-between flex-wrap gap-4 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+                  <Radio className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-white tracking-tight">
+                      Protocolo JJY Meshtastic Sovereign Mesh
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                      SPEC 42: jjy-meshtastic
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Refinamento de Rádio LoRa RF, Criptografia AES-256 de Canal, Bridging com o JJY Core e Sincronização em Tempo Real com o JJY Chat
+                  </p>
+                </div>
+              </div>
+
+              {/* Botões de Ação do Topo */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleBridgeMeshtasticToJjy}
+                  className="px-3.5 py-2 rounded-xl bg-cyan-600/90 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer hover:shadow-cyan-500/20"
+                  title="Injetar nós Meshtastic na Gestão de Vizinhança e Reputação do JJY"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Integrar com Vizinhança JJY</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenJjyChatMeshtastic}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-900/40 cursor-pointer"
+                  title="Abrir JJY Chat configurado nativamente com este canal Meshtastic"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Abrir JJY Chat no Modo Meshtastic</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Faixa de Parâmetros Ativos */}
+            <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-emerald-500/40 text-emerald-300 font-bold">
+                  📻 {meshtasticConfig.frequencyMhz.toFixed(3)} MHz ({meshtasticConfig.regionId})
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-cyan-500/30 text-cyan-300">
+                  ⚡ Modem: {meshtasticConfig.modemPresetId}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+                  📡 Canal: #{meshtasticConfig.channelName}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-purple-500/30 text-purple-300">
+                  🔒 {meshtasticConfig.channelPskType === 'default_public' ? 'Chave Aberta (AQ==)' : 'Chave Militar AES-256'}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-amber-500/30 text-amber-300">
+                  🦘 Hop Limit: {meshtasticConfig.hopLimit}
+                </span>
+              </div>
+
+              {meshtasticSyncToast && (
+                <div className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-sans font-bold text-xs animate-bounce flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{meshtasticSyncToast}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* GRADE PRINCIPAL: 3 COLUNAS DE REFINAMENTO */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* 1. CAMADA FÍSICA RF & MODULAÇÃO LORA */}
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-emerald-400" />
+                  <span>1. Camada Física RF (Rádio LoRa)</span>
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
+                  PHY LAYER
+                </span>
+              </div>
+
+              {/* Região Regulamentar */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">
+                  Região & Frequência Regulamentar:
+                </label>
+                <select
+                  value={meshtasticConfig.regionId}
+                  onChange={(e) => {
+                    const r = LORA_REGIONS.find((reg) => reg.id === e.target.value);
+                    if (r) {
+                      handleUpdateMeshtasticConfig({
+                        regionId: r.id,
+                        frequencyMhz: r.defaultFreqMhz,
+                        txPowerDbm: Math.min(meshtasticConfig.txPowerDbm, r.maxPowerDbm),
+                      });
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-emerald-500 focus:outline-none"
+                >
+                  {LORA_REGIONS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.freqRangeMhz})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Frequência Customizada em MHz */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-slate-400 font-semibold">Frequência Central Exata (MHz):</label>
+                  <span className="text-xs font-mono font-bold text-emerald-400">
+                    {meshtasticConfig.frequencyMhz.toFixed(3)} MHz
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  step="0.025"
+                  min="400"
+                  max="930"
+                  value={meshtasticConfig.frequencyMhz}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ frequencyMhz: parseFloat(e.target.value) || 915.0 })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-slate-200 font-mono focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Preset de Modem LoRa */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Modulação LoRa (Modem Preset):</label>
+                <select
+                  value={meshtasticConfig.modemPresetId}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ modemPresetId: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-emerald-500 focus:outline-none"
+                >
+                  {LORA_MODEM_PRESETS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — SF{m.spreadingFactor} / BW {m.bandwidthKhz}kHz ({m.nominalBitrateBps} bps)
+                    </option>
+                  ))}
+                </select>
+                {(() => {
+                  const selPreset = LORA_MODEM_PRESETS.find((p) => p.id === meshtasticConfig.modemPresetId);
+                  return selPreset ? (
+                    <p className="text-[11px] text-slate-400 mt-1.5 italic bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+                      ℹ️ {selPreset.description}
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+
+              {/* Potência TX (dBm) */}
+              <div>
+                <div className="flex justify-between items-center mb-1 text-xs">
+                  <span className="text-slate-400 font-semibold">Potência de Transmissão (TX Power):</span>
+                  <span className="font-mono text-emerald-400 font-bold">{meshtasticConfig.txPowerDbm} dBm (~{Math.round(Math.pow(10, meshtasticConfig.txPowerDbm / 10))} mW)</span>
+                </div>
+                <input
+                  type="range"
+                  min="2"
+                  max="30"
+                  value={meshtasticConfig.txPowerDbm}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ txPowerDbm: parseInt(e.target.value, 10) })}
+                  className="w-full accent-emerald-500 cursor-pointer"
+                />
+              </div>
+
+              {/* SyncWord & Preamble */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400 block mb-1 font-semibold">SyncWord LoRa:</span>
+                  <input
+                    type="text"
+                    value={`0x${meshtasticConfig.syncWord.toString(16).toUpperCase()}`}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value.replace('0x', ''), 16);
+                      if (!isNaN(val)) handleUpdateMeshtasticConfig({ syncWord: val });
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-slate-200 font-mono text-xs"
+                    title="0x2B é o padrão Meshtastic comunitário aberto"
+                  />
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-1 font-semibold">Sensibilidade Est.:</span>
+                  <div className="p-1.5 bg-slate-950 rounded-lg border border-slate-800 text-cyan-300 font-mono text-xs">
+                    -137 dBm
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. TOPOLOGIA, ROTEAMENTO & IDENTIDADE DO NÓ */}
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-cyan-400" />
+                  <span>2. Roteamento Mesh & Identidade</span>
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
+                  NETWORK LAYER
+                </span>
+              </div>
+
+              {/* Papel do Nó */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Papel do Nó na Rede (Node Role):</label>
+                <select
+                  value={meshtasticConfig.nodeRole}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ nodeRole: e.target.value as any })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="CLIENT">CLIENT (Dispositivo Pessoal / Celular)</option>
+                  <option value="ROUTER">ROUTER (Repetidor com Prioridade Alta)</option>
+                  <option value="REPEATER">REPEATER (Repetidor Puro Solar)</option>
+                  <option value="TRACKER">TRACKER (Mochila / Beacon GPS)</option>
+                  <option value="SENSOR">SENSOR (Telemetria Ambiental / Baixo Consumo)</option>
+                </select>
+              </div>
+
+              {/* Hop Limit */}
+              <div>
+                <div className="flex justify-between items-center mb-1 text-xs">
+                  <span className="text-slate-400 font-semibold">Limite Máximo de Saltos (Hop Limit / TTL):</span>
+                  <span className="font-mono text-cyan-300 font-bold">{meshtasticConfig.hopLimit} Saltos</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="7"
+                  value={meshtasticConfig.hopLimit}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ hopLimit: parseInt(e.target.value, 10) })}
+                  className="w-full accent-cyan-500 cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                  <span>1 (Direto)</span>
+                  <span>3 (Padrão Meshtastic)</span>
+                  <span>7 (Máx Anti-Storm)</span>
+                </div>
+              </div>
+
+              {/* Perfil de Hardware Conectado */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Driver de Hardware USB / UART:</label>
+                <select
+                  value={meshtasticConfig.hardwareMode}
+                  onChange={(e) => {
+                    const prof = LORA_HARDWARE_PROFILES.find((p) => p.id === e.target.value);
+                    handleUpdateMeshtasticConfig({
+                      hardwareMode: e.target.value as any,
+                      baudRate: prof ? prof.defaultBaudRate : 115200,
+                    });
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
+                >
+                  {LORA_HARDWARE_PROFILES.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.defaultBaudRate} bps)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Baud Rate */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Velocidade da Porta Serial (Baud Rate):</label>
+                <select
+                  value={meshtasticConfig.baudRate}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ baudRate: parseInt(e.target.value, 10) })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="115200">115200 bps (Meshtastic ESP32 / nRF52 Padrão)</option>
+                  <option value="9600">9600 bps (EBYTE E22/E32 Transparente)</option>
+                  <option value="57600">57600 bps</option>
+                  <option value="38400">38400 bps</option>
+                </select>
+              </div>
+
+              {/* Modo EMCON Silencioso */}
+              <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-200 block">Modo Silencioso EMCON</span>
+                  <span className="text-[11px] text-slate-400">Suspende beacons e transmissões ativas de RF</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateMeshtasticConfig({ emconSilenceMode: !meshtasticConfig.emconSilenceMode })}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    meshtasticConfig.emconSilenceMode
+                      ? 'bg-rose-600 text-white shadow-rose-600/30'
+                      : 'bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  {meshtasticConfig.emconSilenceMode ? 'SILÊNCIO ATIVO' : 'NORMAL (TX OK)'}
+                </button>
+              </div>
+            </div>
+
+            {/* 3. CRIPTOGRAFIA DE CANAL & CHAVES SOBERANAS */}
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-purple-400" />
+                  <span>3. Criptografia & Chave PSK do Canal</span>
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
+                  AES-256 E2E
+                </span>
+              </div>
+
+              {/* Nome do Canal */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Nome do Canal Meshtastic:</label>
+                <input
+                  type="text"
+                  value={meshtasticConfig.channelName}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ channelName: e.target.value })}
+                  placeholder="ex: LongFast-JYY ou Tatico-Alfa"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Tipo de Chave PSK */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Tipo de Criptografia:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateMeshtasticConfig({ channelPskType: 'default_public', channelKeyPsk: 'AQ==' })}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      meshtasticConfig.channelPskType === 'default_public'
+                        ? 'bg-purple-600/20 border-purple-500 text-purple-200'
+                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    Pública Aberta (AQ==)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (meshtasticConfig.channelKeyPsk === 'AQ==') handleGenerateNewPsk();
+                      else handleUpdateMeshtasticConfig({ channelPskType: 'custom_aes256' });
+                    }}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      meshtasticConfig.channelPskType === 'custom_aes256'
+                        ? 'bg-purple-600/20 border-purple-500 text-purple-200'
+                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    Militar Privada (AES-256)
+                  </button>
+                </div>
+              </div>
+
+              {/* Chave Base64 */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-slate-400 font-semibold">Chave de Cifra (Base64 PSK):</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(meshtasticConfig.channelKeyPsk);
+                      setCopiedKeyToast(true);
+                      setTimeout(() => setCopiedKeyToast(false), 2000);
+                    }}
+                    className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer font-bold"
+                  >
+                    {copiedKeyToast ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedKeyToast ? 'Copiada!' : 'Copiar'}</span>
+                  </button>
+                </div>
+                <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-purple-300 break-all select-all">
+                  {meshtasticConfig.channelKeyPsk}
+                </div>
+              </div>
+
+              {/* Botão Gerar Nova Chave */}
+              <button
+                type="button"
+                onClick={handleGenerateNewPsk}
+                className="w-full py-2 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Gerar Nova Chave Efêmera AES-256 (32 Bytes)</span>
+              </button>
+
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <div className="flex justify-between">
+                  <span>Hash do Canal:</span>
+                  <span className="font-mono text-slate-300 font-bold">0x8F21B9 (LongFast)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Assinatura Digital de Nós:</span>
+                  <span className="text-emerald-400 font-bold">Ed25519 Ativa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PAINEL DE BRIDGING COM SUBSISTEMAS DO JJY SOVEREIGN MESH */}
+          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <Share2 className="w-4 h-4 text-cyan-400" />
+                  <span>Bridging: Integração com os Subsistemas do JJY Sovereign Mesh</span>
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Os nós LoRa Meshtastic alimentam o Avaliador de Reputação (Spec 36), a Vizinhança LQI (Spec 39) e a Fila DTN
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBridgeMeshtasticToJjy}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Integrar Nós na Malha JJY Agora</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tabela de Nós Meshtastic com LQI Calculado */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {meshtasticNodes.map((node) => {
+                const lqi = convertSnrRssiToLqi(node.rssi, node.snr);
+                return (
+                  <div
+                    key={node.nodeId}
+                    className="p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 transition-all space-y-2 shadow-md"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="font-bold text-xs text-white font-mono">{node.shortName}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                          {node.nodeId}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                        {node.role}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-slate-300 font-semibold">{node.longName}</div>
+                    <div className="text-[11px] text-slate-400">{node.hardwareModel}</div>
+
+                    {/* Barra de LQI Calculado para o JJY Mesh */}
+                    <div className="space-y-1 pt-1">
+                      <div className="flex justify-between text-[11px] font-mono">
+                        <span className="text-slate-400">LQI Calculado (JJY Spec 39):</span>
+                        <span className="text-cyan-300 font-bold">{lqi} / 1000</span>
+                      </div>
+                      <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                        <div className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full" style={{ width: `${(lqi / 1000) * 100}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1 text-[10px] font-mono text-slate-400 pt-1">
+                      <div>RSSI: <strong className="text-slate-200">{node.rssi} dBm</strong></div>
+                      <div>SNR: <strong className="text-slate-200">+{node.snr} dB</strong></div>
+                      <div>Saltos: <strong className="text-slate-200">{node.hopsAway}</strong></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Checkboxes de Integração */}
+            <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={meshtasticConfig.bridgeWithJjyReputacao}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ bridgeWithJjyReputacao: e.target.checked })}
+                  className="rounded accent-emerald-500"
+                />
+                <span>Alimentar Reputação (Spec 36)</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={meshtasticConfig.bridgeWithJjyVizinhanca}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ bridgeWithJjyVizinhanca: e.target.checked })}
+                  className="rounded accent-emerald-500"
+                />
+                <span>Alimentar Vizinhança LQI (Spec 39)</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={meshtasticConfig.bridgeWithJjyFila}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ bridgeWithJjyFila: e.target.checked })}
+                  className="rounded accent-emerald-500"
+                />
+                <span>Fila DTN Store-and-Forward</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={meshtasticConfig.bridgeWithJjyAuditoria}
+                  onChange={(e) => handleUpdateMeshtasticConfig({ bridgeWithJjyAuditoria: e.target.checked })}
+                  className="rounded accent-emerald-500"
+                />
+                <span>Trilha de Auditoria Criptográfica</span>
+              </label>
+            </div>
+          </div>
+
+          {/* PAINEL INFERIOR: HARDWARE WEBSERIAL & TESTADOR DE PACOTES RF */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* HARDWARE WEBSERIAL USB / BLE */}
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-emerald-400" />
+                  <span>Conexão Serial USB & Monitor RF</span>
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConnectSerial}
+                    disabled={isSerialConnecting}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer ${
+                      serialCtrl?.isConnected
+                        ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+                    }`}
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    <span>{serialCtrl?.isConnected ? 'Desconectar USB' : 'Conectar USB (WebSerial)'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Console de Logs Serial */}
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs space-y-1 h-48 overflow-y-auto">
+                {serialLogs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={`${
+                      log.startsWith('[TX]')
+                        ? 'text-cyan-400'
+                        : log.startsWith('[RX]')
+                        ? 'text-emerald-400 font-bold'
+                        : log.startsWith('[ERROR]')
+                        ? 'text-rose-400'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {log}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Placas suportadas: LilyGO T-Beam, Heltec LoRa32 v3, RAK WisBlock, EBYTE E22/E32.</span>
+                <button
+                  type="button"
+                  onClick={() => setSerialLogs(['[LOGS LIMPOS] Monitor reiniciado.'])}
+                  className="hover:text-slate-200 transition-colors"
+                >
+                  Limpar logs
+                </button>
+              </div>
+            </div>
+
+            {/* TESTADOR DE TIME-ON-AIR (ToA) & INJETOR DE PACOTES */}
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
+                  <span>Calculador de Time-on-Air (ToA) & Injetor</span>
+                </h4>
+                {(() => {
+                  const curModem = LORA_MODEM_PRESETS.find((p) => p.id === meshtasticConfig.modemPresetId) || LORA_MODEM_PRESETS[0];
+                  const { toaMs } = calculateLoraTimeOnAir(meshtasticTestMsg.length, curModem.spreadingFactor, curModem.bandwidthKhz);
+                  return (
+                    <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/80 px-2.5 py-0.5 rounded-full border border-cyan-500/40">
+                      ToA: {toaMs} ms
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Destino do Pacote */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Destinatário do Pacote RF:</label>
+                <select
+                  value={selectedMeshtasticNodeId}
+                  onChange={(e) => setSelectedMeshtasticNodeId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="^all">Broadcast para Toda a Rede (^all)</option>
+                  {meshtasticNodes.map((n) => (
+                    <option key={n.nodeId} value={n.nodeId}>
+                      {n.shortName} — {n.longName} ({n.nodeId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Payload de Teste */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-semibold">Mensagem / Payload RF:</label>
+                <input
+                  type="text"
+                  value={meshtasticTestMsg}
+                  onChange={(e) => setMeshtasticTestMsg(e.target.value)}
+                  placeholder="Digite mensagem para calcular ToA e injetar na malha..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Métricas RF Calculadas */}
+              <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                <div className="p-2 bg-slate-950 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 block text-[10px]">Payload:</span>
+                  <span className="text-slate-200 font-bold">{meshtasticTestMsg.length} bytes</span>
+                </div>
+                <div className="p-2 bg-slate-950 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 block text-[10px]">Taxa Bruta:</span>
+                  <span className="text-emerald-400 font-bold">
+                    {LORA_MODEM_PRESETS.find((p) => p.id === meshtasticConfig.modemPresetId)?.nominalBitrateBps || 1074} bps
+                  </span>
+                </div>
+                <div className="p-2 bg-slate-950 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 block text-[10px]">Alcance Est.:</span>
+                  <span className="text-cyan-300 font-bold">12 - 25 km</span>
+                </div>
+              </div>
+
+              {/* Botão de Envio de Teste */}
+              <button
+                type="button"
+                onClick={handleSendMeshtasticPacket}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>Transmitir Pacote de Teste na Malha RF</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
