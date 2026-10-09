@@ -1,7 +1,7 @@
 {
-  "name": "Gerador de QR Code Offline",
-  "short_name": "QR Code",
-  "description": "Gerador de QR Code que funciona 100% offline. Crie QR codes para textos, links, senhas e muito mais.",
+  "name": "Jyy - Suite Offline & P2P",
+  "short_name": "Jyy",
+  "description": "Comunicação P2P/LAN offline, Chat Seguro, QR Studio, Modem Acústico, Esteganografia e Central de Alertas.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",

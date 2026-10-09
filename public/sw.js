@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qr-code-generator-v1';
+const CACHE_NAME = 'jyy-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -19,6 +19,11 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Ignora requisições POST/PUT/DELETE e rotas dinâmicas de API ou WebSocket
+  if (event.request.method !== 'GET' || event.request.url.includes('/api/') || event.request.url.startsWith('ws')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -62,3 +67,53 @@ self.addEventListener('activate', (event) => {
     })
   );
 });
+
+// Suporte a Notificações em Segundo Plano & Push do Administrador
+self.addEventListener('push', (event) => {
+  let data = { title: '🚨 ALERTA DA ADMINISTRAÇÃO', body: 'Mensagem urgente da Central.' };
+  try {
+    if (event.data) data = event.data.json();
+  } catch {}
+  event.waitUntil(
+    self.registration.showNotification(data.title || '🚨 ALERTA DO ADMINISTRADOR', {
+      body: data.body || data.text || 'Atenção necessária',
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      vibrate: [400, 200, 400, 200, 400],
+      requireInteraction: true,
+      tag: 'admin-alert-' + Date.now(),
+      renotify: true,
+      data: data,
+    })
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag } = event.data;
+    event.waitUntil(
+      self.registration.showNotification(title || '🚨 ALERTA DO ADMINISTRADOR', {
+        body: body || '',
+        icon: '/icon.svg',
+        badge: '/icon.svg',
+        vibrate: [400, 200, 400, 200, 400],
+        requireInteraction: true,
+        tag: tag || 'admin-msg-' + Date.now(),
+        renotify: true,
+      })
+    );
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
+    })
+  );
+});
+

@@ -1,27 +1,27 @@
 @echo off
 chcp 65001 >nul
-title Gerador de QR Code - Instalação Automática
+title Jyy - Instala??o Autom?tica
 
 echo.
 echo ========================================
-echo   GERADOR DE QR CODE OFFLINE
-echo   Instalador Automático
+echo   JYY - SUITE OFFLINE & P2P
+echo   Instalador Autom?tico
 echo ========================================
 echo.
 
-:: Verificar se Node.js está instalado
+:: Verificar se Node.js est? instalado
 where node >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERRO] Node.js não encontrado!
+    echo [ERRO] Node.js n?o encontrado!
     echo.
     echo ========================================
-    echo   INSTALAÇÃO DO NODE.JS NECESSÁRIA
+    echo   INSTALA??O DO NODE.JS NECESS?RIA
     echo ========================================
     echo.
     echo Este aplicativo precisa do Node.js para funcionar.
     echo.
     echo Deseja abrir o site de download do Node.js?
-    choice /C YN /M "Pressione Y para Sim, N para Não"
+    choice /C YN /M "Pressione Y para Sim, N para N?o"
     if errorlevel 2 (
         echo.
         echo Por favor, instale o Node.js manualmente:
@@ -32,7 +32,7 @@ if %ERRORLEVEL% NEQ 0 (
     )
     start https://nodejs.org/
     echo.
-    echo Após instalar o Node.js, execute este script novamente.
+    echo Ap?s instalar o Node.js, execute este script novamente.
     pause
     exit /b 1
 )
@@ -41,10 +41,10 @@ echo [OK] Node.js encontrado
 node --version
 echo.
 
-:: Verificar se npm está instalado
+:: Verificar se npm est? instalado
 where npm >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERRO] npm não encontrado!
+    echo [ERRO] npm n?o encontrado!
     pause
     exit /b 1
 )
@@ -54,7 +54,7 @@ npm --version
 echo.
 
 echo ========================================
-echo   INICIANDO INSTALAÇÃO AUTOMÁTICA
+echo   INICIANDO INSTALA??O AUTOM?TICA
 echo ========================================
 echo.
 
@@ -68,69 +68,69 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
-:: Passo 2: Instalar dependências
-echo [2/5] Instalando dependências...
+:: Passo 2: Instalar depend?ncias
+echo [2/5] Instalando depend?ncias...
 echo Isso pode levar alguns minutos...
 echo.
 call npm install
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERRO] Falha ao instalar dependências
+    echo [ERRO] Falha ao instalar depend?ncias
     pause
     exit /b 1
 )
-echo [OK] Dependências instaladas
+echo [OK] Depend?ncias instaladas
 echo.
 
 :: Passo 3: Build do React
-echo [3/5] Compilando aplicação React...
+echo [3/5] Compilando aplica??o React...
 call npm run build
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERRO] Falha ao compilar aplicação
+    echo [ERRO] Falha ao compilar aplica??o
     pause
     exit /b 1
 )
-echo [OK] Aplicação compilada
+echo [OK] Aplica??o compilada
 echo.
 
-:: Passo 4: Gerar executável portable
-echo [4/5] Gerando executável portable...
+:: Passo 4: Gerar execut?vel portable
+echo [4/5] Gerando execut?vel portable...
 echo Isso pode levar 2-5 minutos...
 echo.
 call npx electron-builder --win portable
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERRO] Falha ao gerar executável
+    echo [ERRO] Falha ao gerar execut?vel
     pause
     exit /b 1
 )
 echo.
 
 :: Passo 5: Verificar e abrir pasta
-echo [5/5] Verificando executável gerado...
-if exist "release\Gerador QR Code Offline-Portable.exe" (
+echo [5/5] Verificando execut?vel gerado...
+if exist "release\Jyy-Portable.exe" (
     echo.
     echo ========================================
-    echo   ✅ SUCESSO!
+    echo   ? SUCESSO!
     echo ========================================
     echo.
-    echo Executável criado com sucesso!
+    echo Execut?vel criado com sucesso!
     echo.
-    echo 📁 Local: release\Gerador QR Code Offline-Portable.exe
+    echo ?? Local: release\Jyy-Portable.exe
     echo.
     echo ========================================
     echo   COMO USAR
     echo ========================================
     echo.
-    echo 1. O arquivo .exe está na pasta "release"
-    echo 2. Você pode copiar para qualquer lugar
+    echo 1. O arquivo .exe est? na pasta "release"
+    echo 2. Voc? pode copiar para qualquer lugar
     echo 3. Execute clicando duas vezes
-    echo 4. Não precisa instalar nada!
+    echo 4. N?o precisa instalar nada!
     echo.
-    echo Deseja abrir a pasta do executável agora?
-    choice /C YN /M "Pressione Y para Sim, N para Não"
+    echo Deseja abrir a pasta do execut?vel agora?
+    choice /C YN /M "Pressione Y para Sim, N para N?o"
     if errorlevel 2 goto :fim
     explorer "release"
 ) else (
-    echo [ERRO] Executável não encontrado na pasta release
+    echo [ERRO] Execut?vel n?o encontrado na pasta release
     echo.
     echo Verifique se houve algum erro durante o processo.
     pause
@@ -140,7 +140,7 @@ if exist "release\Gerador QR Code Offline-Portable.exe" (
 :fim
 echo.
 echo ========================================
-echo   Processo concluído!
+echo   Processo conclu?do!
 echo ========================================
 echo.
 echo Para executar o app novamente, use:

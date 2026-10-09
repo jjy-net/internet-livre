@@ -1,0 +1,10 @@
+services:
+  jyy-node:
+    build: .
+    container_name: jyy-node
+    restart: always
+    ports:
+      - "4870:4870"
+    environment:
+      - NODE_ENV=production
+      - PORT=4870

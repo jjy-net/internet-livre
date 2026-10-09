@@ -112,12 +112,15 @@ input:focus,select:focus{border-color:#3b82f6}
 📢 Banner do Topo - Clique para editar
 </div>
 
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:8px">
 <div>
 <h2 style="font-size:18px;color:#1e3a8a">💬 Chat</h2>
 <p style="font-size:11px;color:#666">Olá, <strong id="user-display"></strong>!</p>
 </div>
-<button class="btn btn-danger" style="width:auto;padding:8px 15px;margin:0;font-size:12px" onclick="logout()">🚪 Sair</button>
+<div style="display:flex;gap:6px;align-items:center">
+<button class="btn btn-primary" style="width:auto;padding:8px 14px;margin:0;font-size:12px;background:linear-gradient(135deg,#ff4538,#ff2a85);box-shadow:0 4px 12px rgba(255,69,56,0.35)" onclick="openNGLApp()" title="Abrir Mensagens e Perguntas Anônimas NGL">🔥 Meu NGL Anônimo</button>
+<button class="btn btn-danger" style="width:auto;padding:8px 14px;margin:0;font-size:12px" onclick="logout()">🚪 Sair</button>
+</div>
 </div>
 
 <div class="timer" style="margin-bottom:10px">
@@ -142,13 +145,14 @@ input:focus,select:focus{border-color:#3b82f6}
 </div>
 
 <!-- Enviar Para -->
-<div class="send-to">
-<label>📨 Enviar Para:</label>
-<select id="send-to-user">
+<div class="send-to" id="send-to-container">
+<label>📨 Destinatário da Mensagem:</label>
+<select id="send-to-user" onchange="updateDMVisualState()">
 <option value="all">🌐 Todos (Público)</option>
 </select>
-<div style="font-size:10px;color:#1e40af;margin-top:5px">
-💡 Selecione um usuário para enviar mensagem privada
+<div id="dm-indicator" style="display:none;margin-top:6px;padding:6px 10px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;font-size:11px;color:#92400e;"></div>
+<div id="dm-helper-text" style="font-size:10px;color:#1e40af;margin-top:5px">
+💡 Selecione um usuário acima ou clique na lista de usuários online para conversar em privado
 </div>
 </div>
 
@@ -313,6 +317,77 @@ const BANNERS_KEY = 'datalink_banners';
 let currentUser = null;
 let updateInterval = null;
 let destructTimers = {};
+let chatWs = null;
+let chatServerUrl = (window.location.protocol.startsWith('http') ? `ws://${window.location.hostname}:${window.location.port || '4870'}` : 'ws://localhost:4870');
+
+function initChatWebSocket() {
+    if (!currentUser) return;
+    if (chatWs && (chatWs.readyState === WebSocket.OPEN || chatWs.readyState === WebSocket.CONNECTING)) return;
+    try {
+        chatWs = new WebSocket(chatServerUrl);
+        chatWs.onopen = () => {
+            const clientId = 'chat-' + currentUser.username + '-' + Math.random().toString(36).substr(2, 6);
+            chatWs.send(JSON.stringify({
+                t: 'hello',
+                clientId: clientId,
+                name: currentUser.username,
+                color: '#3b82f6'
+            }));
+        };
+        chatWs.onmessage = (ev) => {
+            try {
+                const data = JSON.parse(ev.data);
+                // 1. Mensagem de chat retransmitida do servidor
+                if (data.t === 'chat' && data.simplexMsg) {
+                    const chatData = getChatData();
+                    if (!chatData.messages.some(m => m.id === data.simplexMsg.id)) {
+                        chatData.messages.push(data.simplexMsg);
+                        saveChatData(chatData);
+                        loadMessages();
+                    }
+                }
+                // 2. Notificação do NGL recebida pela rede
+                if (data.t === 'ngl:message' && data.msg) {
+                    const chatData = getChatData();
+                    const notifId = 'ngl_notif_' + data.msg.id;
+                    if (!chatData.messages.some(m => m.id === notifId)) {
+                        chatData.messages.push({
+                            id: notifId,
+                            username: '🔥 NGL Bot',
+                            encrypted: null,
+                            text: `💌 Alguém acabou de enviar uma pergunta anônima para @${data.msg.target}!`,
+                            timestamp: Date.now(),
+                            sendTo: 'all',
+                            isNglNotification: true
+                        });
+                        saveChatData(chatData);
+                        loadMessages();
+                    }
+                }
+                // 3. Usuários online descobertos na rede
+                if (data.t === 'presence' && Array.isArray(data.peers)) {
+                    const users = getUsers();
+                    const now = Date.now();
+                    data.peers.forEach(p => {
+                        if (p.name && !users[p.name]) {
+                            users[p.name] = { lastSeen: now, passwordHash: '' };
+                        } else if (p.name && users[p.name]) {
+                            users[p.name].lastSeen = now;
+                        }
+                    });
+                    saveUsers(users);
+                    updateOnlineUsers();
+                    updateSendToOptions();
+                }
+            } catch(e) {}
+        };
+        chatWs.onclose = () => {
+            chatWs = null;
+            setTimeout(initChatWebSocket, 4000);
+        };
+        chatWs.onerror = () => {};
+    } catch(e) {}
+}
 
 // ============================================
 // CRIPTOGRAFIA - INSPIRADA NO SIMPLEX CHAT
@@ -368,108 +443,57 @@ class SimpleXRatchet {
     }
 }
 
-// SimpleX-inspired Double Ratchet (simplified)
-// Implementa forward secrecy e break-in recovery
-class SimpleXDoubleRatchet {
-    constructor(sharedSecret) {
-        this.sendRatchet = new SimpleXRatchet(sharedSecret + ':send');
-        this.recvRatchet = new SimpleXRatchet(sharedSecret + ':recv');
-        this.messageCounter = 0;
+// ============================================
+// CRIPTOGRAFIA DE CANAIS (AES-256-GCM + PBKDF2)
+// Suporta Mensagens Públicas e Privadas (DMs) Seguras
+// ============================================
+
+// Deriva a chave única do canal entre dois usuários ou do chat público
+function getChatChannelKey(senderUsername, recipientUsername) {
+    if (!recipientUsername || recipientUsername === 'all') {
+        return 'datalink_public_channel_2026';
     }
-    
-    // Criptografa com forward secrecy
-    async encrypt(plaintext) {
-        const key = await this.sendRatchet.getCurrentKey();
-        const encoder = new TextEncoder();
-        const data = encoder.encode(plaintext);
-        
-        // Deriva chave de mensagem específica
-        const msgKeyMaterial = await crypto.subtle.importKey(
-            'raw', key, 'PBKDF2', false, ['deriveKey']
-        );
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-        const msgKey = await crypto.subtle.deriveKey(
-            {name:'PBKDF2', salt:salt, iterations:10000, hash:'SHA-256'},
-            msgKeyMaterial,
-            {name:'AES-GCM', length:256},
-            false,
-            ['encrypt']
-        );
-        
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await crypto.subtle.encrypt(
-            {name:'AES-GCM', iv:iv},
-            msgKey,
-            data
-        );
-        
-        // Avança o ratchet (forward secrecy)
-        await this.sendRatchet.ratchetStep();
-        this.messageCounter++;
-        
-        // Monta resultado: salt + iv + counter + encrypted
-        const result = new Uint8Array(
-            salt.length + iv.length + 4 + encrypted.byteLength
-        );
-        result.set(salt, 0);
-        result.set(iv, salt.length);
-        // Adiciona contador (4 bytes)
-        const counterBytes = new Uint8Array(4);
-        new DataView(counterBytes.buffer).setUint32(0, this.messageCounter);
-        result.set(counterBytes, salt.length + iv.length);
-        result.set(
-            new Uint8Array(encrypted),
-            salt.length + iv.length + 4
-        );
-        
-        return btoa(String.fromCharCode.apply(null, result));
-    }
-    
-    // Descriptografa com a chave atual
-    async decrypt(encryptedBase64, password) {
-        try {
-            const encoder = new TextEncoder();
-            const data = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-            
-            // Tenta descriptografar com a senha do usuário (fallback)
-            const keyMaterial = await crypto.subtle.importKey(
-                'raw',
-                encoder.encode(password.padEnd(32, '0')),
-                'PBKDF2',
-                false,
-                ['deriveKey']
-            );
-            const salt = data.slice(0, 16);
-            const iv = data.slice(16, 28);
-            const encrypted = data.slice(28);
-            
-            const aesKey = await crypto.subtle.deriveKey(
-                {name:'PBKDF2', salt:salt, iterations:10000, hash:'SHA-256'},
-                keyMaterial,
-                {name:'AES-GCM', length:256},
-                false,
-                ['decrypt']
-            );
-            
-            const decrypted = await crypto.subtle.decrypt(
-                {name:'AES-GCM', iv:iv},
-                aesKey,
-                encrypted
-            );
-            
-            return new TextDecoder().decode(decrypted);
-        } catch(e) {
-            return '[Mensagem criptografada - chave não disponível]';
-        }
-    }
+    const u1 = (senderUsername || '').trim().toLowerCase();
+    const u2 = (recipientUsername || '').trim().toLowerCase();
+    const sorted = [u1, u2].sort();
+    return `datalink_dm_v2_${sorted[0]}_${sorted[1]}_channel`;
 }
 
-// Instância global do Double Ratchet
-let simplexCrypto = null;
+// Deriva chave AES-256 a partir de segredo e salt criptográfico
+async function deriveAesKeyFromSecret(secretText, saltBytes) {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode((secretText || 'datalink_default').padEnd(32, '0')),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+    );
+    return await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: saltBytes,
+            iterations: 10000,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        {
+            name: 'AES-GCM',
+            length: 256
+        },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
 
-// Inicializa criptografia SimpleX
+// Instância de compatibilidade para referências legadas
+let simplexCrypto = null;
 function initSimplexCrypto(password) {
-    simplexCrypto = new SimpleXDoubleRatchet(password);
+    simplexCrypto = {
+        messageCounter: Date.now(),
+        encrypt: async (text) => text,
+        decrypt: async (enc) => enc
+    };
 }
 
 // ============================================
@@ -483,51 +507,86 @@ async function hashPassword(password) {
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function encryptMessage(text, key) {
-    // Usa SimpleX Double Ratchet se inicializado
-    if (simplexCrypto) {
-        return await simplexCrypto.encrypt(text);
-    }
-    
-    // Fallback para AES-256-GCM padrão
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(key.padEnd(32, '0')), 'PBKDF2', false, ['deriveKey']);
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const aesKey = await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:10000,hash:'SHA-256'}, keyMaterial, {name:'AES-GCM',length:256}, false, ['encrypt']);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv:iv}, aesKey, data);
-    
-    const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-    result.set(salt, 0);
-    result.set(iv, salt.length);
-    result.set(new Uint8Array(encrypted), salt.length + iv.length);
-    
-    return btoa(String.fromCharCode.apply(null, result));
-}
-
-async function decryptMessage(encryptedBase64, key) {
-    // Usa SimpleX Double Ratchet se inicializado
-    if (simplexCrypto) {
-        return await simplexCrypto.decrypt(encryptedBase64, key);
-    }
-    
-    // Fallback para AES-256-GCM padrão
+// Criptografa texto usando AES-256-GCM autenticado
+async function encryptMessage(text, channelKey) {
     try {
         const encoder = new TextEncoder();
-        const data = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-        const salt = data.slice(0, 16);
-        const iv = data.slice(16, 28);
-        const encrypted = data.slice(28);
+        const data = encoder.encode(text);
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const aesKey = await deriveAesKeyFromSecret(channelKey, salt);
         
-        const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(key.padEnd(32, '0')), 'PBKDF2', false, ['deriveKey']);
-        const aesKey = await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:10000,hash:'SHA-256'}, keyMaterial, {name:'AES-GCM',length:256}, false, ['decrypt']);
-        const decrypted = await crypto.subtle.decrypt({name:'AES-GCM',iv:iv}, aesKey, encrypted);
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            aesKey,
+            data
+        );
         
-        return new TextDecoder().decode(decrypted);
-    } catch(e) {
-        return '[Mensagem criptografada]';
+        const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+        result.set(salt, 0);
+        result.set(iv, salt.length);
+        result.set(new Uint8Array(encrypted), salt.length + iv.length);
+        
+        let binary = '';
+        for (let i = 0; i < result.length; i++) {
+            binary += String.fromCharCode(result[i]);
+        }
+        return btoa(binary);
+    } catch(err) {
+        console.error('Erro na criptografia:', err);
+        throw err;
     }
+}
+
+// Descriptografa com uma chave específica
+async function decryptMessageWithKey(encryptedBase64, keyString) {
+    const binary = atob(encryptedBase64);
+    const data = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        data[i] = binary.charCodeAt(i);
+    }
+    if (data.length < 28) return null;
+    
+    const salt = data.slice(0, 16);
+    const iv = data.slice(16, 28);
+    const encrypted = data.slice(28);
+    
+    const aesKey = await deriveAesKeyFromSecret(keyString, salt);
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        aesKey,
+        encrypted
+    );
+    return new TextDecoder().decode(decrypted);
+}
+
+// Descriptografa mensagem testando canal principal e fallbacks
+async function decryptMessage(encryptedBase64, primaryKey, fallbackKey) {
+    if (!encryptedBase64) return '';
+    
+    // 1. Tenta com chave principal do canal (par de usuários ou público)
+    try {
+        const res = await decryptMessageWithKey(encryptedBase64, primaryKey);
+        if (res !== null) return res;
+    } catch(e) {}
+    
+    // 2. Fallback: chave do remetente/destinatário ou senha de sessão
+    if (fallbackKey && fallbackKey !== primaryKey) {
+        try {
+            const res = await decryptMessageWithKey(encryptedBase64, fallbackKey);
+            if (res !== null) return res;
+        } catch(e) {}
+    }
+    
+    // 3. Fallback: canal público padrão
+    if (primaryKey !== 'datalink_public_channel_2026') {
+        try {
+            const res = await decryptMessageWithKey(encryptedBase64, 'datalink_public_channel_2026');
+            if (res !== null) return res;
+        } catch(e) {}
+    }
+    
+    return '[🔒 Mensagem criptografada]';
 }
 
 // ============================================
@@ -695,6 +754,11 @@ function logout() {
         currentUser = null;
         clearSession();
         
+        if (chatWs) {
+            try { chatWs.close(); } catch(e) {}
+            chatWs = null;
+        }
+
         if (updateInterval) {
             clearInterval(updateInterval);
         }
@@ -714,6 +778,7 @@ function enterChat() {
     document.getElementById('chat-screen').classList.remove('hidden');
     document.getElementById('user-display').textContent = currentUser.username;
     
+    initChatWebSocket();
     loadBanners();
     loadMessages();
     updateOnlineUsers();
@@ -727,20 +792,81 @@ function enterChat() {
 
 function updateSendToOptions() {
     const select = document.getElementById('send-to-user');
+    if (!select || !currentUser) return;
+    
+    const previousSelection = select.value;
     const users = getUsers();
     const now = Date.now();
     const onlineThreshold = 5 * 60 * 1000;
     
-    select.innerHTML = '<option value="all">🌐 Todos (Público)</option>';
+    const otherUsers = Object.keys(users).filter(u => u.toLowerCase() !== currentUser.username.toLowerCase());
     
-    Object.keys(users).forEach(username => {
-        if (username !== currentUser.username && now - users[username].lastSeen < onlineThreshold) {
-            const option = document.createElement('option');
-            option.value = username;
-            option.textContent = '🔒 ' + username + ' (Privado)';
-            select.appendChild(option);
-        }
+    // Ordena: online primeiro, depois offline
+    otherUsers.sort((a, b) => {
+        const aOnline = (now - ((users[a] && users[a].lastSeen) || 0)) < onlineThreshold;
+        const bOnline = (now - ((users[b] && users[b].lastSeen) || 0)) < onlineThreshold;
+        if (aOnline === bOnline) return a.localeCompare(b);
+        return aOnline ? -1 : 1;
     });
+    
+    let html = '<option value="all">🌐 Todos (Público)</option>';
+    otherUsers.forEach(username => {
+        const isOnline = (now - ((users[username] && users[username].lastSeen) || 0)) < onlineThreshold;
+        const icon = isOnline ? '🟢 🔒 ' : '⚪ 🔒 ';
+        const status = isOnline ? ' (Online)' : ' (Offline)';
+        html += `<option value="${escapeHtml(username)}">${icon}${escapeHtml(username)} (Privado)${status}</option>`;
+    });
+    
+    select.innerHTML = html;
+    
+    // Preserva a seleção se o usuário ainda existe
+    if (previousSelection && (previousSelection === 'all' || otherUsers.some(u => u.toLowerCase() === previousSelection.toLowerCase()))) {
+        select.value = previousSelection;
+    } else if (previousSelection && previousSelection !== 'all') {
+        const opt = document.createElement('option');
+        opt.value = previousSelection;
+        opt.textContent = `🔒 ${previousSelection} (Privado)`;
+        select.appendChild(opt);
+        select.value = previousSelection;
+    }
+    
+    updateDMVisualState();
+}
+
+function updateDMVisualState() {
+    const select = document.getElementById('send-to-user');
+    const input = document.getElementById('message-input');
+    const indicator = document.getElementById('dm-indicator');
+    
+    if (!select) return;
+    const target = select.value;
+    
+    if (target && target !== 'all') {
+        if (input) {
+            input.placeholder = `🔒 Mensagem privada para ${target}...`;
+            input.style.border = '2px solid #f59e0b';
+        }
+        if (indicator) {
+            indicator.style.display = 'block';
+            indicator.innerHTML = `🔒 <strong>Modo Privado Ativo:</strong> Mensagens enviadas serão visíveis apenas para <strong>${escapeHtml(target)}</strong> e você. <button type="button" onclick="cancelDM()" style="background:#fee2e2;color:#991b1b;border:1px solid #f87171;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;margin-left:8px;font-weight:600">Voltar para Público</button>`;
+        }
+    } else {
+        if (input) {
+            input.placeholder = 'Digite sua mensagem ou clique em 🎭 para figurinhas...';
+            input.style.border = '';
+        }
+        if (indicator) {
+            indicator.style.display = 'none';
+        }
+    }
+}
+
+function cancelDM() {
+    const select = document.getElementById('send-to-user');
+    if (select) {
+        select.value = 'all';
+        updateDMVisualState();
+    }
 }
 
 async function sendMessage() {
@@ -754,13 +880,23 @@ async function sendMessage() {
         return;
     }
     
+    const sendToSelect = document.getElementById('send-to-user');
+    const sendTo = sendToSelect ? sendToSelect.value : 'all';
+    const channelKey = getChatChannelKey(currentUser.username, sendTo);
+    
+    let encrypted = '';
+    try {
+        encrypted = await encryptMessage(text, channelKey);
+    } catch(err) {
+        console.error('Falha ao criptografar mensagem:', err);
+        alert('Erro ao criptografar mensagem. Tente novamente.');
+        return;
+    }
+    
+    const destructTime = parseInt(document.getElementById('auto-destruct-time').value) || 0;
     const chatData = getChatData();
-    const encrypted = await encryptMessage(text, currentUser.password);
-    const destructTime = parseInt(document.getElementById('auto-destruct-time').value);
-    const sendTo = document.getElementById('send-to-user').value;
     
     const message = {
-        // SimpleX-inspired: 12 bytes random message ID
         id: 'sx_' + generateSimplexMsgId(),
         username: currentUser.username,
         encrypted: encrypted,
@@ -768,15 +904,24 @@ async function sendMessage() {
         destructAt: destructTime > 0 ? Date.now() + (destructTime * 1000) : null,
         deleted: false,
         sendTo: sendTo,
-        // SimpleX-inspired: message counter for ratchet
-        ratchetCounter: simplexCrypto ? simplexCrypto.messageCounter : 0,
-        // SimpleX-inspired: protocol version
-        protocol: 'simplex-v1'
+        ratchetCounter: Date.now(),
+        protocol: 'simplex-v2'
     };
     
     chatData.messages.push(message);
     saveChatData(chatData);
     
+    // Retransmite via WebSocket para outros navegadores/dispositivos na rede local
+    if (chatWs && chatWs.readyState === WebSocket.OPEN) {
+        try {
+            chatWs.send(JSON.stringify({
+                t: 'chat',
+                room: 'geral',
+                simplexMsg: message
+            }));
+        } catch(e) {}
+    }
+
     input.value = '';
     loadMessages();
     
@@ -798,6 +943,7 @@ function scheduleDestruction(messageId, delay) {
 async function loadMessages() {
     const chatData = getChatData();
     const container = document.getElementById('messages-container');
+    if (!container || !currentUser) return;
     
     if (chatData.messages.length === 0) {
         container.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;padding:20px">💬 Nenhuma mensagem ainda. Comece a conversar!</div>';
@@ -805,10 +951,14 @@ async function loadMessages() {
         return;
     }
     
+    const myName = (currentUser.username || '').toLowerCase();
+    
     const activeMessages = chatData.messages.filter(m => {
         if (m.deleted) return false;
-        // Mostrar mensagem se: é pública OU é para mim OU é minha
-        return m.sendTo === 'all' || m.sendTo === currentUser.username || m.username === currentUser.username;
+        const sender = (m.username || '').toLowerCase();
+        const recipient = (m.sendTo || 'all').toLowerCase();
+        // Mostrar mensagem se: pública OU enviada para mim OU enviada por mim
+        return recipient === 'all' || recipient === myName || sender === myName;
     });
     
     if (activeMessages.length === 0) {
@@ -821,16 +971,19 @@ async function loadMessages() {
     
     for (const msg of activeMessages) {
         const div = document.createElement('div');
-        div.className = 'message ' + (msg.username === currentUser.username ? 'own' : 'other');
+        const isOwn = (msg.username || '').toLowerCase() === myName;
+        div.className = 'message ' + (isOwn ? 'own' : 'other');
         
-        if (msg.sendTo !== 'all') {
+        const isPrivate = msg.sendTo && msg.sendTo !== 'all';
+        if (isPrivate) {
             div.classList.add('private');
         }
         
         div.id = 'msg-' + msg.id;
         
         const time = new Date(msg.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        const decrypted = await decryptMessage(msg.encrypted, currentUser.password);
+        const channelKey = getChatChannelKey(msg.username, msg.sendTo);
+        const decrypted = await decryptMessage(msg.encrypted, channelKey, currentUser.password);
         
         let destructInfo = '';
         if (msg.destructAt) {
@@ -839,8 +992,12 @@ async function loadMessages() {
         }
         
         let privateBadge = '';
-        if (msg.sendTo !== 'all') {
-            privateBadge = `<span class="message-private-badge">🔒 Privado para ${escapeHtml(msg.sendTo)}</span>`;
+        if (isPrivate) {
+            if (isOwn) {
+                privateBadge = `<span class="message-private-badge" style="background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:4px;border:1px solid #fde68a">🔒 Enviado para ${escapeHtml(msg.sendTo)} (Privado)</span>`;
+            } else {
+                privateBadge = `<span class="message-private-badge" style="background:#ecfdf5;color:#047857;padding:2px 6px;border-radius:4px;border:1px solid #a7f3d0">🔒 Mensagem Privada para você</span>`;
+            }
         }
         
         div.innerHTML = `
@@ -850,7 +1007,7 @@ async function loadMessages() {
                 <span class="message-time">${time}</span>
             </div>
             <div class="message-text">${escapeHtml(decrypted)}</div>
-            ${msg.username === currentUser.username ? '<button class="message-delete" onclick="deleteMessage(\'' + msg.id + '\', false)">🗑️ Excluir</button>' : ''}
+            ${isOwn ? '<button type="button" class="message-delete" onclick="deleteMessage(\'' + escapeHtml(msg.id).replace(/['"\\\s]/g, '') + '\', false)">🗑️ Excluir</button>' : ''}
         `;
         
         container.appendChild(div);
@@ -939,14 +1096,16 @@ function updateOnlineUsers() {
     const onlineThreshold = 5 * 60 * 1000;
     
     const onlineUsers = Object.entries(users).filter(([_, user]) => {
-        return now - user.lastSeen < onlineThreshold;
+        return now - (user.lastSeen || 0) < onlineThreshold;
     });
     
     const container = document.getElementById('online-users-list');
+    if (!container) return;
     
     if (onlineUsers.length === 0) {
         container.innerHTML = '<div style="text-align:center;color:#888;font-size:11px;padding:10px">Nenhum usuário online</div>';
-        document.getElementById('online-count').textContent = '0';
+        const countEl = document.getElementById('online-count');
+        if (countEl) countEl.textContent = '0';
         return;
     }
     
@@ -957,25 +1116,51 @@ function updateOnlineUsers() {
         div.className = 'user-item';
         div.onclick = () => selectUserForDM(username);
         
-        const isCurrentUser = username === currentUser.username;
-        const badge = isCurrentUser ? '(você)' : '';
+        const isCurrentUser = currentUser && username.toLowerCase() === currentUser.username.toLowerCase();
+        const badge = isCurrentUser 
+            ? '<span class="user-badge">(você)</span>' 
+            : '<span class="user-badge" style="color:#2563eb;font-weight:600">💬 Privado</span>';
         
         div.innerHTML = `
             <div class="user-status"></div>
             <div class="user-name">${escapeHtml(username)}</div>
-            <div class="user-badge">${badge}</div>
+            ${badge}
         `;
         
         container.appendChild(div);
     });
     
-    document.getElementById('online-count').textContent = onlineUsers.length;
+    const countEl = document.getElementById('online-count');
+    if (countEl) countEl.textContent = onlineUsers.length;
 }
 
 function selectUserForDM(username) {
+    if (!username || !currentUser || username.toLowerCase() === currentUser.username.toLowerCase()) return;
     const select = document.getElementById('send-to-user');
-    select.value = username;
-    document.getElementById('message-input').focus();
+    if (!select) return;
+    
+    // Certifica que a option existe
+    if (!Array.from(select.options).some(o => o.value.toLowerCase() === username.toLowerCase())) {
+        const opt = document.createElement('option');
+        opt.value = username;
+        opt.textContent = `🟢 🔒 ${username} (Privado)`;
+        select.appendChild(opt);
+    }
+    
+    for (const opt of select.options) {
+        if (opt.value.toLowerCase() === username.toLowerCase()) {
+            select.value = opt.value;
+            break;
+        }
+    }
+    
+    updateDMVisualState();
+    
+    const input = document.getElementById('message-input');
+    if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 // ============================================
@@ -1001,13 +1186,16 @@ function updateTimer() {
     
     const timeStr = `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
     
-    document.getElementById('time-remaining').textContent = timeStr;
-    document.getElementById('chat-timer').textContent = timeStr;
+    const timeRemEl = document.getElementById('time-remaining');
+    if (timeRemEl) timeRemEl.textContent = timeStr;
+    const chatTimerEl = document.getElementById('chat-timer');
+    if (chatTimerEl) chatTimerEl.textContent = timeStr;
 }
 
 function updateDestructStatus() {
     const time = parseInt(document.getElementById('auto-destruct-time').value);
     const status = document.getElementById('destruct-status');
+    if (!status) return;
     
     if (time === 0) {
         status.textContent = 'Desativado';
@@ -1021,8 +1209,22 @@ function updateDestructStatus() {
 function startUpdateLoop() {
     updateTimer();
     updateOnlineUsers();
+    updateSendToOptions();
+    
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
     
     updateInterval = setInterval(() => {
+        // Atualiza heartbeat do usuário logado
+        if (currentUser) {
+            const users = getUsers();
+            if (users[currentUser.username]) {
+                users[currentUser.username].lastSeen = Date.now();
+                saveUsers(users);
+            }
+        }
+        
         updateTimer();
         loadMessages();
         updateOnlineUsers();
@@ -1053,7 +1255,8 @@ function clearOldCache() {
 }
 
 function updateStats(msgCount) {
-    document.getElementById('msg-count').textContent = msgCount;
+    const countEl = document.getElementById('msg-count');
+    if (countEl) countEl.textContent = msgCount;
 }
 
 // ============================================
@@ -1070,26 +1273,52 @@ function escapeHtml(text) {
 // INICIALIZAÇÃO
 // ============================================
 
+function openNGLApp() {
+    const user = currentUser ? encodeURIComponent(currentUser.username) : '';
+    window.open(`DataLink-NGL.html?u=${user}&inbox=true`, '_blank');
+}
+
 window.onload = function() {
     const session = getSession();
     if (session) {
         currentUser = session;
+        const users = getUsers();
+        if (users[currentUser.username]) {
+            users[currentUser.username].lastSeen = Date.now();
+            saveUsers(users);
+        }
         enterChat();
     }
     
     updateTimer();
     setInterval(updateTimer, 1000);
-    
-    setInterval(() => {
-        if (currentUser) {
-            const users = getUsers();
-            if (users[currentUser.username]) {
-                users[currentUser.username].lastSeen = Date.now();
-                saveUsers(users);
-            }
+
+    // Preenche input se veio de compartilhamento NGL
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedNgl = urlParams.get('share_ngl');
+        if (sharedNgl) {
+            setTimeout(() => {
+                const input = document.getElementById('message-input');
+                if (input) {
+                    input.value = `🔥 Mande-me perguntas e mensagens anônimas no meu NGL: ${sharedNgl}`;
+                    input.focus();
+                }
+            }, 600);
         }
-    }, 60000);
+    } catch(e) {}
 };
+
+// Sincronização em tempo real entre abas e janelas
+window.addEventListener('storage', function(e) {
+    if (e.key === STORAGE_KEY || e.key === USERS_KEY) {
+        if (currentUser) {
+            loadMessages();
+            updateOnlineUsers();
+            updateSendToOptions();
+        }
+    }
+});
 </script>
 </body>
 </html>

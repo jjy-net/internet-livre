@@ -9,10 +9,10 @@ echo   Modo Desenvolvimento
 echo ========================================
 echo.
 
-:: Verificar se Node.js está instalado
+:: Verificar se Node.js est? instalado
 where node >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERRO] Node.js não encontrado!
+    echo [ERRO] Node.js n?o encontrado!
     echo.
     echo Por favor, instale o Node.js primeiro:
     echo https://nodejs.org/
@@ -24,15 +24,15 @@ if %ERRORLEVEL% NEQ 0 (
 echo [OK] Node.js encontrado
 echo.
 
-:: Instalar dependências se necessário
+:: Instalar depend?ncias se necess?rio
 if not exist "node_modules" (
-    echo Instalando dependências...
+    echo Instalando depend?ncias...
     call npm install
     echo.
 )
 
 :: Iniciar o app em modo desenvolvimento
-echo Iniciando aplicação em modo desenvolvimento...
+echo Iniciando aplica??o em modo desenvolvimento...
 echo.
 echo Pressione Ctrl+C para parar
 echo.

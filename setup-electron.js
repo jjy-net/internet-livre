@@ -1,5 +1,8 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Ler o package.json atual
 const packageJsonPath = path.join(__dirname, 'package.json');
@@ -8,19 +11,21 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 // Adicionar/atualizar scripts
 packageJson.scripts = {
   ...packageJson.scripts,
-  "electron": "electron electron/main.js",
-  "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron electron/main.js\"",
+  "server": "node server/start.js",
+  "test": "node tests/server-test.mjs",
+  "electron": "electron electron/main.cjs",
+  "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron electron/main.cjs\"",
   "dist:win": "npm run build && electron-builder --win portable",
   "dist:mac": "npm run build && electron-builder --mac",
   "dist:linux": "npm run build && electron-builder --linux"
 };
 
 // Adicionar configuração do Electron
-packageJson.main = "electron/main.js";
+packageJson.main = "electron/main.cjs";
 packageJson.build = {
-  "appId": "com.qrcode.generator",
-  "productName": "Gerador QR Code Offline",
-  "copyright": "Copyright © 2024",
+  "appId": "com.jyy.app",
+  "productName": "Jyy",
+  "copyright": "Copyright © 2026 Jyy",
   "directories": {
     "output": "release",
     "buildResources": "build"

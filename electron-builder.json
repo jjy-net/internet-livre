@@ -1,7 +1,7 @@
 {
-  "appId": "com.qrcode.generator",
-  "productName": "Gerador QR Code Offline",
-  "copyright": "Copyright © 2024",
+  "appId": "com.jyy.app",
+  "productName": "Jyy",
+  "copyright": "Copyright © 2026 Jyy",
   "directories": {
     "output": "release",
     "buildResources": "build"

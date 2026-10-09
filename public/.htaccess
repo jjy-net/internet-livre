@@ -1,0 +1,41 @@
+# ==============================================================================
+# CONFIGURACAO APACHE / LITESPEED PARA HOSPEDAGEM COMPARTILHADA HOSTINGER
+# Jyy Suite v2.0 - Suporte SPA + HTTPS + WebSocket LiteSpeed
+# ==============================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 1. Forcar HTTPS no dominio (Hostinger SSL Gratis)
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # 2. Permitir acesso direto a arquivos fisicos existentes (CSS, JS, imagens, Jyy.html)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 3. Roteamento SPA: Qualquer outra rota cai no index.html do Jyy
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# Tipos MIME corretos
+<IfModule mod_mime.c>
+    AddType application/javascript js mjs
+    AddType text/css css
+    AddType image/svg+xml svg
+    AddType application/json json
+    AddType application/wasm wasm
+</IfModule>
+
+# Compactacao Gzip no servidor
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# Seguranca basica de cabecalhos
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
