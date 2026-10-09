@@ -137,10 +137,23 @@ export const DocumentationProjectView: React.FC<{
       {/* ==================================================================== */}
       {activeSection === 'overview' && (
         <div className="space-y-6">
+          <div className="bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/40 rounded-2xl p-6 md:p-8 space-y-3 shadow-xl">
+            <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/30 inline-flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+              MANIFESTO DE CONECTIVIDADE MULTI-DISPOSITIVO
+            </span>
+            <p className="text-base md:text-lg text-slate-100 font-medium leading-relaxed">
+              &ldquo;O sistema foi desenvolvido para funcionar em celulares, computadores e diversos outros dispositivos, 
+              transformando-se em uma plataforma de interligação que permite a comunicação livre entre pessoas e máquinas. 
+              A proposta é oferecer uma forma de conexão flexível, acessível e independente de uma conexão convencional com a internet, 
+              possibilitando a comunicação por meio de outras tecnologias e alternativas de conectividade previstas no projeto.&rdquo;
+            </p>
+          </div>
+
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8 space-y-4 shadow-xl">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-400" />
-              O que é o Jyy v2.0?
+              O que é a Internet Livre (Jyy v2.0)?
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed">
               O <strong>Jyy</strong> é uma suíte unificada de telecomunicação descentralizada concebida sob o paradigma

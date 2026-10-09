@@ -1,16 +1,16 @@
-# 🌐 Jyy v2.0 — Suite de Comunicação Soberana & Internet Livre
+# 🌐 Internet Livre (Jyy) — Plataforma de Conectividade Soberana & Comunicação Livre
 
 <div align="center">
 
-![Jyy Banner](https://img.shields.io/badge/Vers%C3%A3o-2.0.0-indigo?style=for-the-badge)
+![Versão](https://img.shields.io/badge/Vers%C3%A3o-2.0.0-indigo?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Rede-100%25%20Offline%20%26%20P2P-emerald?style=for-the-badge)
-![Licença](https://img.shields.io/badge/Licen%C3%A7a-Open%20Source-cyan?style=for-the-badge)
-![Plataforma](https://img.shields.io/badge/Suporte-Windows%20%7C%20Linux%20%7C%20Web%20%7C%20Docker-blue?style=for-the-badge)
-
-**A rede de transmissão e comunicação que ninguém pode derrubar, censurar ou desligar.**  
-*Conectividade livre por ondas de rádio (LoRa/HF), Wi-Fi CSI Radar, ultrassom subaquático, laser óptico, satélites LEO e malha P2P.*
+![Licença](https://img.shields.io/badge/Licen%C3%A7a-Open%20Source%20(MIT)-cyan?style=for-the-badge)
+![Multiplataforma](https://img.shields.io/badge/Compatibilidade-Celulares%20%7C%20PCs%20%7C%20Roteadores%20%7C%20SDR-blue?style=for-the-badge)
 
 </div>
+
+> ### 📢 Apresentação do Projeto
+> **O sistema foi desenvolvido para funcionar em celulares, computadores e diversos outros dispositivos, transformando-se em uma plataforma de interligação que permite a comunicação livre entre pessoas e máquinas. A proposta é oferecer uma forma de conexão flexível, acessível e independente de uma conexão convencional com a internet, possibilitando a comunicação por meio de outras tecnologias e alternativas de conectividade previstas no projeto.**
 
 ---
 
@@ -33,7 +33,9 @@
 
 ## 🌟 Visão Geral
 
-O **Jyy** é uma plataforma revolucionária de comunicação descentralizada desenvolvida para operar **100% offline**, sem qualquer dependência de provedores de internet comerciais, cabos submarinos ou servidores centrais.
+O sistema foi desenvolvido para funcionar em **celulares, computadores e diversos outros dispositivos**, transformando-se em uma plataforma de interligação que permite a **comunicação livre entre pessoas e máquinas**. 
+
+A proposta é oferecer uma forma de conexão flexível, acessível e **independente de uma conexão convencional com a internet**, possibilitando a comunicação por meio de outras tecnologias e alternativas de conectividade previstas no projeto.
 
 Cada computador, smartphone, roteador ou microcontrolador atuando na rede torna-se um **nó roteador soberano**, capaz de encaminhar pacotes de dados através de múltiplos meios físicos simultaneamente:
 - **Rádio Sub-GHz (LoRa Meshtastic 433/868/915 MHz)**
