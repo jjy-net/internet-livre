@@ -9,3 +9,12 @@ nsyte.exe
 *.exe.block*
 .DS_Store
 Thumbs.db
+
+# Documentacao e notas locais (nao rastrear no GitHub)
+*.md
+*.txt
+*.tx
+*hostinger*
+*vps*
+install-vps-hostinger.sh
+jyy-hostinger.zip
