@@ -15,6 +15,9 @@ Thumbs.db
 *.txt
 *.tx
 *hostinger*
+*HOSTINGER*
+*Hostinger*
 *vps*
+*VPS*
 install-vps-hostinger.sh
 jyy-hostinger.zip
