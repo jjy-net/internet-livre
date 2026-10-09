@@ -8,8 +8,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "start": "node server/start.js",
+    "preview": "vite preview",
     "server": "node server/start.js",
+    "typecheck": "tsc --noEmit",
     "test": "node tests/server-test.mjs",
     "electron": "electron electron/main.cjs",
     "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron electron/main.cjs\"",
