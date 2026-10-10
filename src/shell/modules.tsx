@@ -15,7 +15,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Globe, Unlock, BookOpen, MessageSquare, QrCode, Layers, Volume2, Lightbulb,
   Shield, Image as ImageIcon, Radio, Cpu, Share2, Satellite, RadioTower, Waves,
-  Smartphone, Wifi, Flame, Camera, Server, Activity,
+  Smartphone, Wifi, Flame, Camera, Server, Activity, Network,
 } from 'lucide-react';
 
 const Earth3dMapView = lazy(() => import('../components/Earth3dMapView').then((m) => ({ default: m.Earth3dMapView })));
@@ -40,6 +40,7 @@ const WifiRadarView = lazy(() => import('../components/WifiRadarView').then((m) 
 const DisasterInternetView = lazy(() => import('../components/DisasterInternetView').then((m) => ({ default: m.DisasterInternetView })));
 const RemoteMonitorView = lazy(() => import('../components/RemoteMonitorView').then((m) => ({ default: m.RemoteMonitorView })));
 const MeshMonitorView = lazy(() => import('../components/MeshMonitorView').then((m) => ({ default: m.MeshMonitorView })));
+const ReticulumNetworkView = lazy(() => import('../components/ReticulumNetworkView').then((m) => ({ default: m.ReticulumNetworkView })));
 
 export interface ModuleGroup {
   id: string;
@@ -90,6 +91,7 @@ export const MODULES: AppModule[] = [
   { id: 'underwater', label: 'Internet Subaquática', short: 'Subsea', icon: Waves, group: 'redes', keywords: 'sonar agua', render: () => <UnderwaterInternetView /> },
   { id: 'lora', label: 'LoRa & Meshtastic', short: 'LoRa', icon: Radio, group: 'redes', keywords: 'radio longo alcance', render: () => <LoraMeshView /> },
   { id: 'meshmonitor', label: 'MeshMonitor', short: 'Monitor', icon: Activity, group: 'redes', badge: 'Meshtastic', keywords: 'meshmonitor meshtastic monitoramento telemetria sniffer traceroute lora nós', render: (go) => <MeshMonitorView onNavigateToMesh={() => go('mesh')} onNavigateToLora={() => go('lora')} /> },
+  { id: 'reticulum', label: 'Reticulum Network', short: 'Reticulum', icon: Network, group: 'redes', badge: 'RNS', keywords: 'reticulum rns markqvist lxmf nomadnet rnode criptografia p2p', render: (go) => <ReticulumNetworkView onNavigateToMesh={() => go('mesh')} onNavigateToLora={() => go('lora')} onNavigateToMonitor={() => go('meshmonitor')} /> },
   { id: 'cellular', label: 'Celular 4G/5G & GL.iNet', short: '5G', icon: Smartphone, group: 'redes', keywords: 'modem gateway chip', render: () => <CellularGatewayView /> },
   { id: 'wifi', label: 'Wi-Fi Radar & Visão RF', short: 'Wi-Fi', icon: Wifi, group: 'redes', keywords: 'wireless scanner', render: () => <WifiRadarView /> },
 

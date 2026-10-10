@@ -37,6 +37,7 @@ import {
   Navigation,
   Globe,
   SlidersHorizontal,
+  Network,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -409,6 +410,14 @@ export const MeshMonitorView: React.FC<MeshMonitorViewProps> = ({
                 <span className="hidden sm:inline">LoRa Chat</span>
               </button>
             )}
+            <a
+              href="#reticulum"
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 text-xs font-semibold flex items-center gap-1 border border-indigo-500/40 transition-colors"
+              title="Abrir Reticulum Network Stack (RNS)"
+            >
+              <Network className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Reticulum</span>
+            </a>
           </div>
         </div>
       </header>
