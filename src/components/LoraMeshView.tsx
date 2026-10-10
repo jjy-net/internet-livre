@@ -272,7 +272,16 @@ export const LoraMeshView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <a
+              href="#meshmonitor"
+              className="px-4 py-2.5 rounded-2xl font-bold text-xs bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white shadow-lg flex items-center gap-2 transition-all cursor-pointer"
+              title="Abrir MeshMonitor: Central de Telemetria e Monitoramento Meshtastic"
+            >
+              <Activity className="w-4 h-4 text-cyan-200" />
+              <span>Abrir MeshMonitor</span>
+            </a>
+
             <button
               type="button"
               onClick={handleConnectSerial}

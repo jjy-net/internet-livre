@@ -2082,6 +2082,16 @@ export const JjyMeshProtocolView: React.FC = () => {
                 <Send className="w-4 h-4" />
                 <span>Transmitir Pacote de Teste na Malha RF</span>
               </button>
+
+              <div className="pt-1">
+                <a
+                  href="#meshmonitor"
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                >
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <span>Abrir MeshMonitor: Telemetria Completa, Traceroute & Sniffer</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>

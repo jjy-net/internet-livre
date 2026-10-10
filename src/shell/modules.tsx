@@ -15,7 +15,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Globe, Unlock, BookOpen, MessageSquare, QrCode, Layers, Volume2, Lightbulb,
   Shield, Image as ImageIcon, Radio, Cpu, Share2, Satellite, RadioTower, Waves,
-  Smartphone, Wifi, Flame, Camera, Server,
+  Smartphone, Wifi, Flame, Camera, Server, Activity,
 } from 'lucide-react';
 
 const Earth3dMapView = lazy(() => import('../components/Earth3dMapView').then((m) => ({ default: m.Earth3dMapView })));
@@ -39,6 +39,7 @@ const CellularGatewayView = lazy(() => import('../components/CellularGatewayView
 const WifiRadarView = lazy(() => import('../components/WifiRadarView').then((m) => ({ default: m.WifiRadarView })));
 const DisasterInternetView = lazy(() => import('../components/DisasterInternetView').then((m) => ({ default: m.DisasterInternetView })));
 const RemoteMonitorView = lazy(() => import('../components/RemoteMonitorView').then((m) => ({ default: m.RemoteMonitorView })));
+const MeshMonitorView = lazy(() => import('../components/MeshMonitorView').then((m) => ({ default: m.MeshMonitorView })));
 
 export interface ModuleGroup {
   id: string;
@@ -88,6 +89,7 @@ export const MODULES: AppModule[] = [
   { id: 'radio', label: 'Rádio UHF/VHF & HF', short: 'Rádio', icon: RadioTower, group: 'redes', badge: 'RF', keywords: 'tatico frequencia', render: () => <TacticalRadioView /> },
   { id: 'underwater', label: 'Internet Subaquática', short: 'Subsea', icon: Waves, group: 'redes', keywords: 'sonar agua', render: () => <UnderwaterInternetView /> },
   { id: 'lora', label: 'LoRa & Meshtastic', short: 'LoRa', icon: Radio, group: 'redes', keywords: 'radio longo alcance', render: () => <LoraMeshView /> },
+  { id: 'meshmonitor', label: 'MeshMonitor', short: 'Monitor', icon: Activity, group: 'redes', badge: 'Meshtastic', keywords: 'meshmonitor meshtastic monitoramento telemetria sniffer traceroute lora nós', render: (go) => <MeshMonitorView onNavigateToMesh={() => go('mesh')} onNavigateToLora={() => go('lora')} /> },
   { id: 'cellular', label: 'Celular 4G/5G & GL.iNet', short: '5G', icon: Smartphone, group: 'redes', keywords: 'modem gateway chip', render: () => <CellularGatewayView /> },
   { id: 'wifi', label: 'Wi-Fi Radar & Visão RF', short: 'Wi-Fi', icon: Wifi, group: 'redes', keywords: 'wireless scanner', render: () => <WifiRadarView /> },
 
@@ -96,7 +98,7 @@ export const MODULES: AppModule[] = [
 ];
 
 export const DEFAULT_MODULE = 'globe';
-export const DEFAULT_FAVORITES = ['globe', 'chat', 'qr', 'mesh'];
+export const DEFAULT_FAVORITES = ['globe', 'chat', 'qr', 'mesh', 'meshmonitor'];
 
 export const findModule = (id: string): AppModule | undefined => MODULES.find((m) => m.id === id);
 export const isModuleId = (id: string): boolean => MODULES.some((m) => m.id === id);
