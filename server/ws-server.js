@@ -56,11 +56,19 @@ export const DEFAULT_PORT = 4870;
 export const DEFAULT_HTTPS_PORT = 4873;
 export const DISCOVERY_PORT = 48777;
 
-// SEGURANÇA: Senha de administrador via variável de ambiente ou gerada automaticamente
-function generateSecurePassword() {
-  return 'DL-' + crypto.randomBytes(12).toString('base64url');
+// SEGURANÇA: Senha de administrador — env var, ou persistida em arquivo, ou gerada na primeira execução
+function loadOrGeneratePassword() {
+  if (process.env.DATALINK_ADMIN_PASSWORD) return process.env.DATALINK_ADMIN_PASSWORD;
+  const pwPath = path.join(__dirname, '.admin-password');
+  try {
+    const saved = fs.readFileSync(pwPath, 'utf8').trim();
+    if (saved) return saved;
+  } catch {}
+  const pw = 'DL-' + crypto.randomBytes(12).toString('base64url');
+  try { fs.writeFileSync(pwPath, pw, 'utf8'); } catch {}
+  return pw;
 }
-export const DEFAULT_ADMIN_PASSWORD = process.env.DATALINK_ADMIN_PASSWORD || generateSecurePassword();
+export const DEFAULT_ADMIN_PASSWORD = loadOrGeneratePassword();
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
