@@ -598,7 +598,10 @@ export function createDataLinkServer(options = {}) {
     const hostHeader = (req.headers['host'] || '').split(':')[0] || 'localhost';
     const isLocal = hostHeader === 'localhost' || hostHeader === '127.0.0.1';
     const rpId = isLocal ? 'localhost' : hostHeader;
-    const origin = req.headers['origin'] || `http://${hostHeader}:${actualPort}`;
+    const proto = req.socket?.encrypted ? 'https' : 'http';
+    const port = (req.headers['host'] || '').split(':')[1] || String(actualPort);
+    const defaultPort = (proto === 'https' && port === '443') || (proto === 'http' && port === '80');
+    const origin = defaultPort ? `${proto}://${rpId}` : `${proto}://${rpId}:${port}`;
     return { rpId, origin };
   }
   const failedLogins = new Map();      // ip -> { count, lastAttempt }
@@ -2270,13 +2273,13 @@ export function createDataLinkServer(options = {}) {
                 }
                 activeWebAuthnChallenges.delete(clientData.challenge);
 
-                const { rpId, origin } = getEffectiveRp(req);
+                const { origin: regOrigin } = getEffectiveRp(req);
                 const verified = verifyRegistrationCredential({
                   attestationObject: credential.response.attestationObject,
                   clientDataJSON: credential.response.clientDataJSON,
                   expectedChallenge: challengeRecord.challenge,
-                  expectedOrigin: origin,
-                  expectedRpId: rpId,
+                  expectedOrigin: regOrigin,
+                  expectedRpId: challengeRecord.rpId,
                 });
 
                 webauthnState.credentials = webauthnState.credentials.filter(c => c.id !== verified.credentialId);
@@ -2314,6 +2317,11 @@ export function createDataLinkServer(options = {}) {
           }
 
           if (pathname === '/api/admin/webauthn/login-options' && req.method === 'POST') {
+            if (!webauthnState.enabled || webauthnState.credentials.length === 0) {
+              res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Nenhuma chave FIDO registrada' }));
+              return;
+            }
             const { rpId } = getEffectiveRp(req);
             const challenge = generateRandomChallenge(32);
             activeWebAuthnChallenges.set(challenge, {
@@ -2375,17 +2383,23 @@ export function createDataLinkServer(options = {}) {
                   return;
                 }
 
-                const { rpId, origin } = getEffectiveRp(req);
+                const { origin: loginOrigin } = getEffectiveRp(req);
                 const verification = verifyAuthenticationAssertion({
                   authenticatorData: assertion.response.authenticatorData,
                   clientDataJSON: assertion.response.clientDataJSON,
                   signature: assertion.response.signature,
                   storedCredential: storedCred,
                   expectedChallenge: challengeRecord.challenge,
-                  expectedOrigin: origin,
-                  expectedRpId: rpId,
+                  expectedOrigin: loginOrigin,
+                  expectedRpId: challengeRecord.rpId,
                 });
 
+                if (storedCred.signCount > 0 && verification.signCount <= storedCred.signCount) {
+                  logEvent('security_fido_clone', `Possível clone de chave FIDO detectado para "${storedCred.name}" de ${clientIp} (signCount ${verification.signCount} <= ${storedCred.signCount})`);
+                  res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Possível clone de autenticador detectado. Contagem de assinaturas inválida.' }));
+                  return;
+                }
                 storedCred.signCount = verification.signCount;
                 storedCred.lastUsedAt = Date.now();
                 saveWebauthnState();

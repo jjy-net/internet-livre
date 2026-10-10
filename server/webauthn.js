@@ -272,7 +272,10 @@ export function validateClientData(clientDataInput, expectedType, expectedChalle
   }
 
   // Verificação de origem — exige correspondência exata (protocolo + host + porta)
-  if (expectedOrigin && clientData.origin) {
+  if (expectedOrigin) {
+    if (!clientData.origin) {
+      throw new Error('Campo origin ausente no clientDataJSON');
+    }
     const clientOrigin = String(clientData.origin).replace(/\/+$/, '');
     const expected = String(expectedOrigin).replace(/\/+$/, '');
     if (clientOrigin !== expected) {
@@ -400,10 +403,19 @@ export function verifyAuthenticationAssertion({
 
   // 4. Instancia a chave pública armazenada
   const publicKey = crypto.createPublicKey({ key: storedCredential.jwk, format: 'jwk' });
-  const verifyAlgorithm = storedCredential.alg === -8 ? null : 'SHA256';
 
   // 5. Validação da assinatura criptográfica
-  const isValid = crypto.verify(verifyAlgorithm, signedData, publicKey, sigBuf);
+  let isValid;
+  if (storedCredential.alg === -7) {
+    // ES256 (ECDSA P-256): WebAuthn retorna assinatura raw (r||s), Node.js espera DER
+    isValid = crypto.verify('SHA256', signedData, { key: publicKey, dsaEncoding: 'ieee-p1363' }, sigBuf);
+  } else if (storedCredential.alg === -8) {
+    // EdDSA (Ed25519): hash é feito internamente
+    isValid = crypto.verify(null, signedData, publicKey, sigBuf);
+  } else {
+    // RS256 e outros: DER é o formato padrão
+    isValid = crypto.verify('SHA256', signedData, publicKey, sigBuf);
+  }
   if (!isValid) {
     throw new Error('Assinatura criptográfica da chave FIDO U2F / WebAuthn inválida ou rejeitada');
   }
