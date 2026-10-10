@@ -113,8 +113,7 @@ try {
   console.log('');
   console.log('  🛡️  Segurança & Blue Team Defensivo:');
   const pw = server.getAdminPassword();
-  const maskedPw = pw.length > 6 ? pw.slice(0, 4) + '*'.repeat(pw.length - 6) + pw.slice(-2) : '****';
-  console.log(`     Senha de Administrador: ${maskedPw}  (defina DATALINK_ADMIN_PASSWORD para personalizar)`);
+  console.log(`     Senha de Administrador: ${pw}  (defina DATALINK_ADMIN_PASSWORD para personalizar)`);
   console.log('     Proteções Ativas: Rate Limiting, Fail2Ban, Anti-DDoS, Tarpit, Blacklist, HTTPS LAN');
   console.log(`  ${line}`);
   console.log('  Pressione Ctrl+C para encerrar.\n');

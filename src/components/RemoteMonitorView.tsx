@@ -67,14 +67,16 @@ interface SharedRemoteFile {
   timestamp: number;
 }
 
-const DEFAULT_SYSTEM_PASSWORD = 'DL-Admin#9xK7$SecShield!2026';
+const DEFAULT_SYSTEM_PASSWORD = 'admin';
 
 export const RemoteMonitorView: React.FC = () => {
   // Estado de Servidor e WebSocket
   const [serverUrl, setServerUrl] = useState(() => {
     const loc = window.location;
     if (loc.protocol.startsWith('http')) {
-      return `${loc.protocol.replace('http', 'ws')}//${loc.hostname}:${loc.port || '4870'}`;
+      const isViteDev = loc.port === '3000' || loc.port === '5173';
+      const targetPort = isViteDev ? '4870' : (loc.port || '4870');
+      return `${loc.protocol.replace('http', 'ws')}//${loc.hostname}:${targetPort}`;
     }
     return 'ws://localhost:4870';
   });

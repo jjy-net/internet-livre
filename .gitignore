@@ -9,6 +9,8 @@ nsyte.exe
 *.exe.block*
 .DS_Store
 Thumbs.db
+server/.webauthn-state.json
+server/.totp-state.json
 
 # Documentação, conversas, transcrições e saídas de IA (manter apenas no PC)
 *.md

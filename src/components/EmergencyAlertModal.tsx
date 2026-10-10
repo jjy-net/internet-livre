@@ -94,7 +94,9 @@ export const EmergencyAlertModal: React.FC<EmergencyAlertModalProps> = ({
     const loc = window.location;
     if (loc.protocol.startsWith('http')) {
       const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.hostname}:${loc.port || '4870'}`;
+      const isViteDev = loc.port === '3000' || loc.port === '5173';
+      const targetPort = isViteDev ? '4870' : (loc.port || '4870');
+      return `${proto}//${loc.hostname}:${targetPort}`;
     }
     return 'ws://localhost:4870';
   })();

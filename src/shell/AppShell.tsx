@@ -485,7 +485,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           <div className="jx-top-actions">
             <span className="jx-chip" data-state={online ? 'ok' : 'warn'} title={online ? 'Tudo roda localmente, com ou sem internet' : 'Sem rede: o app segue funcionando com os dados locais'}>
               {online ? <span className="jx-pulse" aria-hidden="true" /> : <WifiOff className="jx-ico-sm" aria-hidden="true" />}
-              <span className="jx-hide-xs">{online ? '100% Offline' : 'Sem rede · ativo'}</span>
+              <span className="jx-hide-xs">{online ? '100% Local' : 'Sem rede · ativo'}</span>
             </span>
 
             <button type="button" className="jx-chip jx-chip-btn" onClick={onShield} title="Blindagem de Identidade: MAC & Anti-Fingerprint ativos" aria-label="Blindagem de identidade">

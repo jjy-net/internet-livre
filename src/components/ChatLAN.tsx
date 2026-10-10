@@ -54,7 +54,9 @@ export const ChatLAN: React.FC = () => {
     const loc = window.location;
     if (loc.protocol.startsWith('http')) {
       const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.hostname}:${loc.port || '4870'}`;
+      const isViteDev = loc.port === '3000' || loc.port === '5173';
+      const targetPort = isViteDev ? '4870' : (loc.port || '4870');
+      return `${proto}//${loc.hostname}:${targetPort}`;
     }
     return 'ws://localhost:4870';
   });
@@ -156,15 +158,19 @@ export const ChatLAN: React.FC = () => {
         try {
           const data = JSON.parse(ev.data);
           if (data.t === 'welcome') {
-            setPeers(data.peers || []);
+            setPeers((data.peers || []).filter(Boolean));
           } else if (data.t === 'peer:join') {
-            setPeers((prev) => [...prev.filter((p) => p.clientId !== data.peer.clientId), data.peer]);
+            if (data.peer && data.peer.clientId) {
+              setPeers((prev) => [...(prev || []).filter((p) => Boolean(p && p.clientId && p.clientId !== data.peer.clientId)), data.peer]);
+            }
           } else if (data.t === 'peer:leave') {
-            setPeers((prev) => prev.filter((p) => p.peerId !== data.peerId && p.clientId !== data.clientId));
+            setPeers((prev) => (prev || []).filter((p) => Boolean(p && p.peerId !== data.peerId && p.clientId !== data.clientId)));
           } else if (data.t === 'peer:update') {
-            setPeers((prev) => prev.map((p) => (p.peerId === data.peer.peerId ? { ...p, ...data.peer } : p)));
+            if (data.peer) {
+              setPeers((prev) => (prev || []).map((p) => (p && p.peerId === data.peer.peerId ? { ...p, ...data.peer } : p)));
+            }
           } else if (data.t === 'presence') {
-            setPeers(data.peers || []);
+            setPeers((data.peers || []).filter(Boolean));
           } else if (data.t === 'chat') {
             // Filtrar DMs que não são para mim nem públicas
             if (data.targetClientId && data.targetClientId !== clientId && data.fromClientId !== clientId) {

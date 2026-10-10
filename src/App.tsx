@@ -206,6 +206,9 @@ export const App: React.FC = () => {
         >
           <div
             className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Guia de instalação"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -216,8 +219,9 @@ export const App: React.FC = () => {
                 type="button"
                 onClick={() => setShowInstallGuide(false)}
                 className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+                aria-label="Fechar guia de instalação"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -285,13 +289,13 @@ export const App: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Sua estação está navegando com identidade ofuscada. Rastreadores, operadores de rede maliciosos e scripts de fingerprinting recebem dados sintéticos efêmeros.
+              Sua navegação está protegida com identidade mascarada. Sites e rastreadores recebem dados falsos temporários, impedindo que identifiquem seu dispositivo.
             </p>
 
             <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-[11px] text-slate-400">
                 <span>Endereço MAC Efêmero:</span>
-                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-800">
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">
                   LAA Ativo
                 </span>
               </div>
@@ -312,21 +316,21 @@ export const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
-                <span className="text-slate-500 block text-[10px] font-bold">CANVAS POISONING</span>
-                <span className="text-emerald-400 font-semibold">Ativo (Ruído LSB)</span>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80" title="Impede que sites identifiquem seu navegador através de desenhos invisíveis">
+                <span className="text-slate-500 block text-[10px] font-bold">IMPRESSÃO VISUAL</span>
+                <span className="text-emerald-400 font-semibold">Protegido ✓</span>
               </div>
-              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
-                <span className="text-slate-500 block text-[10px] font-bold">GPU WEBGL</span>
-                <span className="text-emerald-400 font-semibold">Camuflada (Intel UHD)</span>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80" title="Mascara as informações da placa de vídeo para evitar identificação">
+                <span className="text-slate-500 block text-[10px] font-bold">PLACA DE VÍDEO</span>
+                <span className="text-emerald-400 font-semibold">Camuflada ✓</span>
               </div>
-              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
-                <span className="text-slate-500 block text-[10px] font-bold">AUDIOCONTEXT</span>
-                <span className="text-emerald-400 font-semibold">Jitter DSP Ativo</span>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80" title="Adiciona ruído ao processamento de áudio para impedir rastreamento">
+                <span className="text-slate-500 block text-[10px] font-bold">ÁUDIO DO SISTEMA</span>
+                <span className="text-emerald-400 font-semibold">Protegido ✓</span>
               </div>
-              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
-                <span className="text-slate-500 block text-[10px] font-bold">WEBRTC LAN SHIELD</span>
-                <span className="text-emerald-400 font-semibold">Host IP Bloqueado</span>
+              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80" title="Bloqueia o vazamento do seu endereço IP local via WebRTC">
+                <span className="text-slate-500 block text-[10px] font-bold">VAZAMENTO DE IP</span>
+                <span className="text-emerald-400 font-semibold">Bloqueado ✓</span>
               </div>
             </div>
 
@@ -368,7 +372,7 @@ export const App: React.FC = () => {
       />
 
       <footer className="jx-footer">
-        <p>🔒 100% Offline • Criptografia nativa Web Crypto • Seus dados nunca saem do seu computador ou rede local.</p>
+        <p>🔒 100% Local • Criptografia nativa • Seus dados nunca saem do seu dispositivo ou rede local.</p>
         <a
           href="/admin.html"
           onClick={(e) => {
@@ -376,9 +380,10 @@ export const App: React.FC = () => {
             switchTab('admin');
           }}
           title="Portal Restrito do Administrador (Requer Senha Mestra)"
+          aria-label="Acesso administrativo restrito"
         >
           <Lock className="w-3 h-3" />
-          <span>Acesso Administrativo (Restrito)</span>
+          <span>Admin</span>
         </a>
       </footer>
     </AppShell>

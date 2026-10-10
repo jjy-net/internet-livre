@@ -57,10 +57,14 @@ export function useShellPrefs() {
 
   const toggleFavorite = useCallback(
     (id: string) =>
-      setPrefs((p) => ({
-        ...p,
-        favorites: p.favorites.includes(id) ? p.favorites.filter((f) => f !== id) : [...p.favorites, id],
-      })),
+      setPrefs((p) => {
+        if (p.favorites.includes(id)) {
+          return { ...p, favorites: p.favorites.filter((f) => f !== id) };
+        }
+        // Limita a 5 favoritos (a barra inferior mostra no máximo 4 + botão Menu)
+        if (p.favorites.length >= 5) return p;
+        return { ...p, favorites: [...p.favorites, id] };
+      }),
     []
   );
 

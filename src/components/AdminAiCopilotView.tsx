@@ -464,7 +464,7 @@ export const AdminAiCopilotView: React.FC<AdminAiCopilotViewProps> = ({
       isLockdown: Boolean(securityData?.isLockdown),
       quarantinedCount: securityData?.quarantinedClients?.length || 0,
       quarantinedList: securityData?.quarantinedClients || [],
-      connectedStations: connectedStations.map((s) => ({
+      connectedStations: (connectedStations || []).filter((s) => Boolean(s && s.clientId)).map((s) => ({
         clientId: s.clientId,
         name: s.name,
         ip: s.remoteAddress,

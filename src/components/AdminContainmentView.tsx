@@ -267,11 +267,12 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
 
   // Sincronizar estações no motor de reputação JJY
   useEffect(() => {
-    connectedStations.forEach((station) => {
+    (connectedStations || []).forEach((station) => {
+      if (!station || !station.clientId) return;
       const rep = reputacaoEngineRef.current.consultar(station.clientId);
       if (!rep) {
         reputacaoEngineRef.current.registrarSucesso(station.clientId);
-        auditoriaEngineRef.current.info('Malha', `Nó inicializado: ${station.name} (${station.clientId})`, station.clientId);
+        auditoriaEngineRef.current.info('Malha', `Nó inicializado: ${station.name || 'Estação'} (${station.clientId})`, station.clientId);
       }
     });
   }, [connectedStations]);
@@ -389,9 +390,10 @@ export const AdminContainmentView: React.FC<AdminContainmentViewProps> = ({
 
   // Lista de estações filtrada
   const filteredStations = useMemo(() => {
-    return connectedStations.filter((station) => {
+    return (connectedStations || []).filter((station) => {
+      if (!station || !station.clientId) return false;
       const matchesSearch =
-        station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (station.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         station.clientId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (station.remoteAddress && station.remoteAddress.includes(searchQuery)) ||
         (station.platform && station.platform.toLowerCase().includes(searchQuery.toLowerCase()));

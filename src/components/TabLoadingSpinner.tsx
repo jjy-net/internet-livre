@@ -5,7 +5,7 @@ interface TabLoadingSpinnerProps {
   label?: string;
 }
 
-export const TabLoadingSpinner: React.FC<TabLoadingSpinnerProps> = ({ label = 'Carregando Módulo Tático...' }) => {
+export const TabLoadingSpinner: React.FC<TabLoadingSpinnerProps> = ({ label = 'Carregando...' }) => {
   return (
     <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in duration-200">
       <div className="relative">
@@ -20,7 +20,7 @@ export const TabLoadingSpinner: React.FC<TabLoadingSpinnerProps> = ({ label = 'C
 
       <div className="text-center space-y-1">
         <h4 className="text-sm font-bold text-slate-200 tracking-wide">{label}</h4>
-        <p className="text-[11px] text-slate-500 font-mono">Inicializando subsistema offline & buffers de rede</p>
+        <p className="text-[11px] text-slate-500 font-mono">Preparando recursos locais</p>
       </div>
 
       <div className="w-48 h-1 bg-slate-900 rounded-full overflow-hidden border border-slate-800">

@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 {this.props.fallbackTitle || 'Módulo Temporariamente Indisponível'}
               </h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Este subsistema encontrou uma exceção não tratada (ex: contexto de aceleração gráfica ou dispositivo offline), mas o restante do Jjy continua seguro e operacional.
+                Algo inesperado aconteceu nesta seção, mas o restante do app continua funcionando normalmente. Tente recarregar o módulo abaixo.
               </p>
             </div>
 

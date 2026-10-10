@@ -81,6 +81,16 @@ export default defineConfig({
     hmr: {
       port: 3000,
     },
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:4870",
+        changeOrigin: true,
+      },
+      "/ws": {
+        target: "ws://127.0.0.1:4870",
+        ws: true,
+      },
+    },
     watch: {
       ignored: ["**/release/**", "**/recordings/**", "**/*.exe", "**/*.mp4", "**/*.webm"],
     },

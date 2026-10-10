@@ -13,7 +13,7 @@
 import React, { lazy } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Globe, Unlock, BookOpen, MessageSquare, QrCode, Layers, Volume2, Lightbulb,
+  Globe, Unlock, BookOpen, Brain, QrCode, Layers, Volume2, Lightbulb,
   Shield, Image as ImageIcon, Radio, Cpu, Share2, Satellite, RadioTower, Waves,
   Smartphone, Wifi, Flame, Camera, Server, Activity, Network,
 } from 'lucide-react';
@@ -21,7 +21,7 @@ import {
 const Earth3dMapView = lazy(() => import('../components/Earth3dMapView').then((m) => ({ default: m.Earth3dMapView })));
 const FreeInternetManifestoView = lazy(() => import('../components/FreeInternetManifestoView').then((m) => ({ default: m.FreeInternetManifestoView })));
 const DocumentationProjectView = lazy(() => import('../components/DocumentationProjectView').then((m) => ({ default: m.DocumentationProjectView })));
-const ChatLAN = lazy(() => import('../components/ChatLAN').then((m) => ({ default: m.ChatLAN })));
+const AiRedesView = lazy(() => import('../components/AiRedesView').then((m) => ({ default: m.AiRedesView })));
 const QRStudio = lazy(() => import('../components/QRStudio').then((m) => ({ default: m.QRStudio })));
 const FileTransfer = lazy(() => import('../components/FileTransfer').then((m) => ({ default: m.FileTransfer })));
 const AudioModemView = lazy(() => import('../components/AudioModemView').then((m) => ({ default: m.AudioModemView })));
@@ -74,7 +74,7 @@ export const MODULES: AppModule[] = [
   { id: 'free_internet', label: 'Nossa Internet Livre', short: 'Livre', icon: Unlock, group: 'inicio', keywords: 'manifesto soberana', render: (go) => <FreeInternetManifestoView onNavigateToGlobe={() => go('globe')} onNavigateToProtocols={() => go('protocols')} /> },
   { id: 'docs', label: 'Documentação', short: 'Docs', icon: BookOpen, group: 'inicio', keywords: 'ajuda manual projeto guia', render: (go) => <DocumentationProjectView onNavigateToGlobe={() => go('globe')} onNavigateToFreeInternet={() => go('free_internet')} onNavigateToProtocols={() => go('protocols')} onNavigateToWifi={() => go('wifi')} /> },
 
-  { id: 'chat', label: 'Chat LAN', short: 'Chat', icon: MessageSquare, group: 'comunicacao', badge: 'P2P', keywords: 'mensagem conversa rede local', render: () => <ChatLAN /> },
+  { id: 'ai-redes', label: 'IA de Redes', short: 'IA', icon: Brain, group: 'comunicacao', badge: 'LLM', keywords: 'ia inteligencia artificial llm modelo local ollama chat openai lm studio', render: () => <AiRedesView /> },
   { id: 'qr', label: 'QR Studio', short: 'QR', icon: QrCode, group: 'comunicacao', keywords: 'qrcode gerar ler camera', render: () => <QRStudio /> },
   { id: 'files', label: 'Arquivos em Chunks', short: 'Arquivos', icon: Layers, group: 'comunicacao', keywords: 'transferir enviar arquivo', render: () => <FileTransfer /> },
   { id: 'sound', label: 'Modem de Som', short: 'Som', icon: Volume2, group: 'comunicacao', keywords: 'audio acustico', render: () => <AudioModemView /> },

@@ -20,22 +20,45 @@ import { fileURLToPath } from 'node:url';
 import { execSync, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { startBeacon } from './discovery.js';
+import {
+  generateRandomChallenge,
+  verifyRegistrationCredential,
+  verifyAuthenticationAssertion,
+} from './webauthn.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Carregar variáveis de ambiente de .env se existir na raiz do projeto
+try {
+  const envPath = path.resolve(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!(key in process.env)) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch {}
 
 export const VERSION = '2.0.0';
 export const DEFAULT_PORT = 4870;
 export const DEFAULT_HTTPS_PORT = 4873;
 export const DISCOVERY_PORT = 48777;
-// SEGURANÇA: Senha gerada aleatoriamente se nenhuma for definida via DATALINK_ADMIN_PASSWORD
-export const DEFAULT_ADMIN_PASSWORD = (() => {
-  if (process.env.DATALINK_ADMIN_PASSWORD) return process.env.DATALINK_ADMIN_PASSWORD;
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
-  const bytes = crypto.randomBytes(24);
-  let pw = 'DL-';
-  for (let i = 0; i < 24; i++) pw += chars[bytes[i] % chars.length];
-  return pw;
-})();
+
+// SEGURANÇA: Senha de administrador via variável de ambiente (obrigatória em produção)
+const FALLBACK_ADMIN_PASSWORD = 'admin';
+export const DEFAULT_ADMIN_PASSWORD = process.env.DATALINK_ADMIN_PASSWORD || FALLBACK_ADMIN_PASSWORD;
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
@@ -552,6 +575,32 @@ export function createDataLinkServer(options = {}) {
   function saveTotpState() {
     try { fs.writeFileSync(totpStatePath, JSON.stringify(totpState), 'utf8'); } catch { /* ignorar */ }
   }
+
+  // FIDO U2F / WebAuthn (Autenticação por Hardware e Biometria Offline) — estado persistido em arquivo local
+  const webauthnStatePath = path.join(__dirname, '.webauthn-state.json');
+  let webauthnState = { enabled: false, credentials: [] };
+  try {
+    if (fs.existsSync(webauthnStatePath)) {
+      const raw = JSON.parse(fs.readFileSync(webauthnStatePath, 'utf8'));
+      if (raw && typeof raw === 'object' && Array.isArray(raw.credentials)) {
+        webauthnState = { enabled: Boolean(raw.enabled), credentials: raw.credentials };
+      }
+    }
+  } catch { /* estado inicial se arquivo corrompido */ }
+  function saveWebauthnState() {
+    try { fs.writeFileSync(webauthnStatePath, JSON.stringify(webauthnState, null, 2), 'utf8'); } catch { /* ignorar */ }
+  }
+
+  // Desafios ativos de WebAuthn: challenge -> { challenge, type: 'register'|'login', rpId, createdAt, clientIp }
+  const activeWebAuthnChallenges = new Map();
+
+  function getEffectiveRp(req) {
+    const hostHeader = (req.headers['host'] || '').split(':')[0] || 'localhost';
+    const isLocal = hostHeader === 'localhost' || hostHeader === '127.0.0.1';
+    const rpId = isLocal ? 'localhost' : hostHeader;
+    const origin = req.headers['origin'] || `http://${hostHeader}:${actualPort}`;
+    return { rpId, origin };
+  }
   const failedLogins = new Map();      // ip -> { count, lastAttempt }
   const rateLimits = new Map();        // ip -> { count, windowStart, violations }
   const securityStats = {
@@ -565,10 +614,11 @@ export function createDataLinkServer(options = {}) {
 
   // Configurações dinâmicas de acesso do servidor (Configuráveis via Área Administrativa)
   const serverConfig = {
-    enableUserLimit: false,     // Acionar restrição por número de usuários
-    maxUsersLimit: 30,          // Limite máximo de usuários conectados
-    autoIpBanEnabled: false,    // Desativado por padrão: Administrador não deve ter restrição de IP
+    enableUserLimit: false,
+    maxUsersLimit: 30,
+    autoIpBanEnabled: false,
     rateLimitEnabled: true,
+    trustProxy: !!process.env.DATALINK_TRUST_PROXY,
   };
 
   // Contenção Zero-Trust & Defesa Tática (SOC)
@@ -596,7 +646,14 @@ export function createDataLinkServer(options = {}) {
   }
 
   function getClientIp(req) {
-    return normalizeIp(req.headers['x-forwarded-for'] || req.socket?.remoteAddress);
+    const remoteAddr = req.socket?.remoteAddress;
+    if (serverConfig.trustProxy && isLoopbackOrLocal(normalizeIp(remoteAddr))) {
+      const forwarded = req.headers['x-forwarded-for'];
+      if (forwarded) {
+        return normalizeIp(forwarded.split(',')[0].trim());
+      }
+    }
+    return normalizeIp(remoteAddr);
   }
 
   function isIpBanned(ip, req = null) {
@@ -664,7 +721,8 @@ export function createDataLinkServer(options = {}) {
   function verifyAdminPassword(candidate) {
     if (typeof candidate !== 'string' || !candidate) return false;
     try {
-      const hashCandidate = crypto.createHash('sha256').update(candidate).digest();
+      const cleanCandidate = candidate.trim();
+      const hashCandidate = crypto.createHash('sha256').update(cleanCandidate).digest();
       const hashExpected = crypto.createHash('sha256').update(adminPassword).digest();
       return crypto.timingSafeEqual(hashCandidate, hashExpected);
     } catch {
@@ -686,8 +744,6 @@ export function createDataLinkServer(options = {}) {
 
   function validateAdminToken(token) {
     if (!token || typeof token !== 'string') return false;
-    // Permite uso da senha de administrador com verificação timing-safe
-    if (verifyAdminPassword(token)) return true;
     const session = adminSessions.get(token);
     if (session) {
       if (Date.now() > session.expiresAt) {
@@ -1184,12 +1240,8 @@ export function createDataLinkServer(options = {}) {
         peers.delete(existing.peerId);
         existing.conn.close(4000, 'Sessão substituída');
       }
-      // Limite dinâmico por número de usuários configurável na área administrativa
-      const isPeerAdmin = Boolean(
-        peer.isAdmin ||
-        (msg.adminToken && validateAdminToken(msg.adminToken))
-      );
-      if (isPeerAdmin) {
+      // Admin só via login com 2FA — hello não promove a admin
+      if (msg.adminToken && validateAdminToken(msg.adminToken)) {
         peer.isAdmin = true;
       }
 
@@ -1706,6 +1758,7 @@ export function createDataLinkServer(options = {}) {
                     }
                   }
                   failedLogins.delete(clientIp);
+                  unbanIp(clientIp);
                   const token = createAdminSession(clientIp);
                   logEvent('admin_login', `Login de administrador concedido para ${clientIp}${totpState.enabled ? ' (com 2FA)' : ''}`);
                   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1721,7 +1774,7 @@ export function createDataLinkServer(options = {}) {
                 failedLogins.set(clientIp, failRecord);
                 logEvent('security_auth_fail', `Falha de autenticação admin de ${clientIp} (${failRecord.count}/5)`);
 
-                if (failRecord.count >= 5) {
+                if (!isLocal && failRecord.count >= 5) {
                   banIp(clientIp, 'Fail2Ban: 5 tentativas inválidas de senha de administrador', 30, true);
                   res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
                   res.end(JSON.stringify({
@@ -1736,7 +1789,7 @@ export function createDataLinkServer(options = {}) {
                 res.end(JSON.stringify({
                   ok: false,
                   error: 'Senha de administrador incorreta.',
-                  attemptsRemaining: Math.max(0, 5 - failRecord.count),
+                  attemptsRemaining: isLocal ? 99 : Math.max(0, 5 - failRecord.count),
                 }));
               } catch {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -2112,6 +2165,289 @@ export function createDataLinkServer(options = {}) {
               enabled: !!totpState.enabled,
               setupPending: isAuth ? !!totpState.setupPending : false
             }));
+            return;
+          }
+
+          /* ------------------------------------------------------------------ */
+          /* WebAuthn / FIDO U2F — Endpoints REST Offline                        */
+          /* ------------------------------------------------------------------ */
+          if (pathname === '/api/admin/webauthn/status' && req.method === 'GET') {
+            const isAuth = checkAdminAuth(req);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              ok: true,
+              enabled: Boolean(webauthnState.enabled && webauthnState.credentials.length > 0),
+              count: webauthnState.credentials.length,
+              credentials: isAuth ? webauthnState.credentials.map(c => ({
+                id: c.id,
+                name: c.name,
+                alg: c.alg,
+                signCount: c.signCount,
+                createdAt: c.createdAt,
+                lastUsedAt: c.lastUsedAt,
+              })) : []
+            }));
+            return;
+          }
+
+          if (pathname === '/api/admin/webauthn/register-options' && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
+              return;
+            }
+            const { rpId } = getEffectiveRp(req);
+            const challenge = generateRandomChallenge(32);
+            activeWebAuthnChallenges.set(challenge, {
+              challenge,
+              type: 'register',
+              rpId,
+              createdAt: Date.now(),
+              clientIp,
+            });
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              ok: true,
+              options: {
+                challenge,
+                rp: {
+                  name: 'JJY Sovereign Network',
+                  id: rpId,
+                },
+                user: {
+                  id: 'YWRtaW4', // base64url 'admin'
+                  name: 'admin',
+                  displayName: 'Administrador JJY',
+                },
+                pubKeyCredParams: [
+                  { alg: -7, type: 'public-key' },   // ES256 (P-256)
+                  { alg: -257, type: 'public-key' }, // RS256 (RSA)
+                  { alg: -8, type: 'public-key' },   // Ed25519
+                ],
+                timeout: 60000,
+                attestation: 'none',
+                authenticatorSelection: {
+                  userVerification: 'preferred',
+                  residentKey: 'preferred',
+                },
+                excludeCredentials: webauthnState.credentials.map(c => ({
+                  id: c.id,
+                  type: 'public-key',
+                })),
+              },
+            }));
+            return;
+          }
+
+          if (pathname === '/api/admin/webauthn/register-verify' && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
+              return;
+            }
+            let body = '';
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const { credential, name } = data;
+                if (!credential || !credential.response) {
+                  res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Dados da credencial ausentes' }));
+                  return;
+                }
+
+                const clientDataBuf = Buffer.from(credential.response.clientDataJSON, 'base64url');
+                const clientData = JSON.parse(clientDataBuf.toString('utf8'));
+                const challengeRecord = activeWebAuthnChallenges.get(clientData.challenge);
+
+                if (!challengeRecord || challengeRecord.type !== 'register') {
+                  res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Desafio WebAuthn inválido ou expirado' }));
+                  return;
+                }
+                activeWebAuthnChallenges.delete(clientData.challenge);
+
+                const { rpId, origin } = getEffectiveRp(req);
+                const verified = verifyRegistrationCredential({
+                  attestationObject: credential.response.attestationObject,
+                  clientDataJSON: credential.response.clientDataJSON,
+                  expectedChallenge: challengeRecord.challenge,
+                  expectedOrigin: origin,
+                  expectedRpId: rpId,
+                });
+
+                webauthnState.credentials = webauthnState.credentials.filter(c => c.id !== verified.credentialId);
+                const newCred = {
+                  id: verified.credentialId,
+                  name: String(name || `Chave FIDO #${webauthnState.credentials.length + 1}`).trim(),
+                  jwk: verified.jwk,
+                  alg: verified.alg,
+                  signCount: verified.signCount,
+                  transports: credential.response.transports || ['usb', 'nfc', 'ble', 'internal'],
+                  createdAt: Date.now(),
+                  lastUsedAt: null,
+                };
+                webauthnState.credentials.push(newCred);
+                webauthnState.enabled = true;
+                saveWebauthnState();
+
+                logEvent('admin_webauthn_reg', `Nova chave FIDO U2F/WebAuthn registrada por ${clientIp}: "${newCred.name}"`);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                  ok: true,
+                  message: `Chave de segurança "${newCred.name}" cadastrada com sucesso!`,
+                  credential: {
+                    id: newCred.id,
+                    name: newCred.name,
+                    createdAt: newCred.createdAt,
+                  },
+                }));
+              } catch (err) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: err.message || 'Erro ao validar registro de chave FIDO' }));
+              }
+            });
+            return;
+          }
+
+          if (pathname === '/api/admin/webauthn/login-options' && req.method === 'POST') {
+            const { rpId } = getEffectiveRp(req);
+            const challenge = generateRandomChallenge(32);
+            activeWebAuthnChallenges.set(challenge, {
+              challenge,
+              type: 'login',
+              rpId,
+              createdAt: Date.now(),
+              clientIp,
+            });
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              ok: true,
+              options: {
+                challenge,
+                rpId,
+                timeout: 60000,
+                userVerification: 'preferred',
+                allowCredentials: webauthnState.credentials.map(c => ({
+                  id: c.id,
+                  type: 'public-key',
+                  transports: c.transports || ['usb', 'nfc', 'ble', 'internal'],
+                })),
+              },
+            }));
+            return;
+          }
+
+          if (pathname === '/api/admin/webauthn/login-verify' && req.method === 'POST') {
+            let body = '';
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const { assertion } = data;
+                if (!assertion || !assertion.response) {
+                  res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Dados de autenticação FIDO ausentes' }));
+                  return;
+                }
+
+                const clientDataBuf = Buffer.from(assertion.response.clientDataJSON, 'base64url');
+                const clientData = JSON.parse(clientDataBuf.toString('utf8'));
+                const challengeRecord = activeWebAuthnChallenges.get(clientData.challenge);
+
+                if (!challengeRecord || challengeRecord.type !== 'login') {
+                  res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Desafio WebAuthn inválido ou expirado' }));
+                  return;
+                }
+                activeWebAuthnChallenges.delete(clientData.challenge);
+
+                const credId = assertion.id;
+                const storedCred = webauthnState.credentials.find(c => c.id === credId);
+                if (!storedCred) {
+                  res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'Chave de segurança não cadastrada neste servidor' }));
+                  return;
+                }
+
+                const { rpId, origin } = getEffectiveRp(req);
+                const verification = verifyAuthenticationAssertion({
+                  authenticatorData: assertion.response.authenticatorData,
+                  clientDataJSON: assertion.response.clientDataJSON,
+                  signature: assertion.response.signature,
+                  storedCredential: storedCred,
+                  expectedChallenge: challengeRecord.challenge,
+                  expectedOrigin: origin,
+                  expectedRpId: rpId,
+                });
+
+                storedCred.signCount = verification.signCount;
+                storedCred.lastUsedAt = Date.now();
+                saveWebauthnState();
+
+                failedLogins.delete(clientIp);
+                unbanIp(clientIp);
+                const token = createAdminSession(clientIp);
+                logEvent('admin_fido_login', `Login FIDO U2F/WebAuthn autorizado para ${clientIp} usando chave "${storedCred.name}"`);
+
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                  ok: true,
+                  token,
+                  expiresIn: 43200,
+                  keyName: storedCred.name,
+                }));
+              } catch (err) {
+                securityStats.failedLogins++;
+                logEvent('security_fido_fail', `Falha de autenticação FIDO de ${clientIp}: ${err.message}`);
+                res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: err.message || 'Falha na validação da chave FIDO' }));
+              }
+            });
+            return;
+          }
+
+          if (pathname === '/api/admin/webauthn/remove' && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação de administrador necessária' }));
+              return;
+            }
+            let body = '';
+            let bodyLen = 0;
+            req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const { id } = data;
+                if (!id) {
+                  res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                  res.end(JSON.stringify({ ok: false, error: 'ID da credencial obrigatório' }));
+                  return;
+                }
+                const beforeCount = webauthnState.credentials.length;
+                webauthnState.credentials = webauthnState.credentials.filter(c => c.id !== id);
+                if (webauthnState.credentials.length === 0) {
+                  webauthnState.enabled = false;
+                }
+                saveWebauthnState();
+                logEvent('admin_webauthn_del', `Chave FIDO removida por ${clientIp} (ID: ${id})`);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                  ok: true,
+                  count: webauthnState.credentials.length,
+                  removed: beforeCount !== webauthnState.credentials.length,
+                }));
+              } catch {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: 'JSON inválido' }));
+              }
+            });
             return;
           }
 
@@ -2658,8 +2994,13 @@ export function createDataLinkServer(options = {}) {
           livenessTimer.unref?.();
 
           presenceTimer = setInterval(() => {
-            const list = [...peers.values()].filter((p) => p.hello).map(peerInfo);
-            broadcastSend({ t: 'presence', peers: list });
+            const list = [...peers.values()].filter((p) => p.hello).map((p) => peerInfo(p, false)).filter(Boolean);
+            const adminList = [...peers.values()].filter((p) => p.hello).map((p) => peerInfo(p, true)).filter(Boolean);
+            for (const p of peers.values()) {
+              if (p.hello) {
+                p.conn.sendText({ t: 'presence', peers: p.isAdmin ? adminList : list });
+              }
+            }
           }, LIVENESS_INTERVAL);
           presenceTimer.unref?.();
 
@@ -2680,6 +3021,10 @@ export function createDataLinkServer(options = {}) {
             // Limpar alertas de emergência expirados
             for (const [target, alert] of pendingEmergencyAlerts.entries()) {
               if (now > alert.expiresAt) pendingEmergencyAlerts.delete(target);
+            }
+            // Limpar desafios WebAuthn expirados (> 2 minutos)
+            for (const [ch, data] of activeWebAuthnChallenges.entries()) {
+              if (now - data.createdAt > 120000) activeWebAuthnChallenges.delete(ch);
             }
           }, 60000);
           cleanupTimer.unref?.();
@@ -2775,6 +3120,17 @@ export function createDataLinkServer(options = {}) {
 
     validateAdminToken(token) {
       return validateAdminToken(token);
+    },
+
+    getWebAuthnStatus() {
+      return {
+        enabled: Boolean(webauthnState.enabled && webauthnState.credentials.length > 0),
+        count: webauthnState.credentials.length,
+      };
+    },
+
+    getWebAuthnCredentials() {
+      return webauthnState.credentials;
     },
 
     events,

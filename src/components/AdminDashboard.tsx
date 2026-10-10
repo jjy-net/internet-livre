@@ -71,6 +71,9 @@ import {
   Navigation,
   Bot,
   QrCode,
+  Usb,
+  Fingerprint,
+  KeyRound,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { GeoLocationData, getGoogleMapsUrl, getOpenStreetMapUrl } from '../utils/geo';
@@ -146,6 +149,8 @@ interface TelemetryData {
   }[];
 }
 
+export type TelemetryPeer = TelemetryData['peers'][number];
+
 interface BannedIpRecord {
   ip: string;
   reason: string;
@@ -170,7 +175,7 @@ interface SecurityData {
 }
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#ef4444'];
-const DEFAULT_SYSTEM_PASSWORD = 'DL-Admin#9xK7$SecShield!2026';
+const DEFAULT_SYSTEM_PASSWORD = 'admin';
 
 function generateRandomSecurePassword(length = 24): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -353,6 +358,54 @@ export const DEFAULT_PARENTAL_KEYWORDS = [
   'blaze', 'tigrinho', 'gore', 'violencia', 'drogas', 'torrent', 'warez', 'hack'
 ];
 
+export interface WebAuthnKeyInfo {
+  id: string;
+  name: string;
+  alg: number;
+  signCount: number;
+  createdAt: number;
+  lastUsedAt: number | null;
+}
+
+function base64UrlToBuffer(base64url: string): ArrayBuffer {
+  const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+  const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray.buffer;
+}
+
+function bufferToBase64Url(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function isWebAuthnSupported(): boolean {
+  return typeof window !== 'undefined' &&
+    typeof window.PublicKeyCredential !== 'undefined' &&
+    typeof navigator !== 'undefined' &&
+    typeof navigator.credentials !== 'undefined' &&
+    typeof navigator.credentials.create === 'function' &&
+    typeof navigator.credentials.get === 'function';
+}
+
+function getWebAuthnAlgName(alg: number): string {
+  if (alg === -7) return 'ES256 (ECDSA P-256)';
+  if (alg === -257) return 'RS256 (RSA 2048/4096)';
+  if (alg === -8) return 'Ed25519 (Edwards)';
+  if (alg === -37) return 'PS256 (RSA-PSS)';
+  if (alg === -35) return 'ES384 (P-384)';
+  if (alg === -36) return 'ES512 (P-521)';
+  return `COSE ${alg}`;
+}
+
 export interface AdminDashboardProps {
   onExit?: () => void;
 }
@@ -361,7 +414,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   const [serverUrl, setServerUrl] = useState(() => {
     const loc = window.location;
     if (loc.protocol.startsWith('http')) {
-      return `${loc.protocol}//${loc.hostname}:${loc.port || '4870'}`;
+      const isViteDev = loc.port === '3000' || loc.port === '5173';
+      const targetPort = isViteDev ? '4870' : (loc.port || '4870');
+      return `${loc.protocol}//${loc.hostname}:${targetPort}`;
     }
     return 'http://localhost:4870';
   });
@@ -389,6 +444,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   const [totpMessage, setTotpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [totpDisablePassword, setTotpDisablePassword] = useState('');
   const [showTotpSection, setShowTotpSection] = useState(false);
+
+  // FIDO U2F / WebAuthn Hardware Keys — Autenticação Offline por Hardware
+  const [webauthnSupported, setWebauthnSupported] = useState(false);
+  const [webauthnEnabled, setWebauthnEnabled] = useState(false);
+  const [webauthnKeyCount, setWebauthnKeyCount] = useState(0);
+  const [webauthnKeys, setWebauthnKeys] = useState<WebAuthnKeyInfo[]>([]);
+  const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const [webauthnMessage, setWebauthnMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [showAddKeyModal, setShowAddKeyModal] = useState(false);
 
   // Tabs do Painel de Admin (Central Unificada: CFTV, Controle Parental, Telemetria, Defesa, Contenção Zero-Trust, Copilot IA e Nsite Nostr)
   const [activeTab, setActiveTab] = useState<'surveillance' | 'parental' | 'telemetry' | 'defense' | 'containment' | 'ai_copilot' | 'nsite'>('surveillance');
@@ -525,6 +590,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     setReceivedFiles([]);
     setSecurityAlerts([]);
     setPasswordInput('');
+    setWebauthnKeys([]);
     window.dispatchEvent(new CustomEvent('jjy_admin_auth_changed', { detail: { token: '' } }));
     if (onExit) onExit();
   }, [serverUrl, token, onExit]);
@@ -689,6 +755,223 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     }
   };
 
+  // FIDO U2F / WebAuthn — Buscar Status e Chaves
+  const fetchWebAuthnStatus = useCallback(async () => {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${serverUrl}/api/admin/webauthn/status`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        setWebauthnEnabled(Boolean(json.enabled));
+        setWebauthnKeyCount(json.count || 0);
+        if (Array.isArray(json.credentials)) {
+          setWebauthnKeys(json.credentials);
+        }
+      }
+    } catch {
+      /* silencioso */
+    }
+  }, [serverUrl, token]);
+
+  // FIDO U2F / WebAuthn — Login sem senha via Hardware (YubiKey / Biometria)
+  const handleWebAuthnLogin = async () => {
+    if (!isWebAuthnSupported()) {
+      setLoginError('Seu navegador não oferece suporte à API WebAuthn / FIDO2.');
+      return;
+    }
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const optRes = await fetch(`${serverUrl}/api/admin/webauthn/login-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!optRes.ok) {
+        const errJson = await optRes.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Falha ao solicitar desafio da chave FIDO');
+      }
+      const { options } = await optRes.json();
+
+      const getOptions: CredentialRequestOptions = {
+        publicKey: {
+          challenge: base64UrlToBuffer(options.challenge),
+          rpId: options.rpId,
+          timeout: options.timeout || 60000,
+          userVerification: options.userVerification || 'preferred',
+          allowCredentials: (options.allowCredentials || []).map((c: any) => ({
+            id: base64UrlToBuffer(c.id),
+            type: 'public-key' as const,
+            transports: c.transports,
+          })),
+        },
+      };
+
+      const credential = (await navigator.credentials.get(getOptions)) as PublicKeyCredential | null;
+      if (!credential) {
+        throw new Error('Nenhuma chave de segurança respondeu');
+      }
+
+      const authResponse = credential.response as AuthenticatorAssertionResponse;
+      const assertionPayload = {
+        id: credential.id,
+        rawId: bufferToBase64Url(credential.rawId),
+        type: credential.type,
+        response: {
+          clientDataJSON: bufferToBase64Url(authResponse.clientDataJSON),
+          authenticatorData: bufferToBase64Url(authResponse.authenticatorData),
+          signature: bufferToBase64Url(authResponse.signature),
+          userHandle: authResponse.userHandle ? bufferToBase64Url(authResponse.userHandle) : null,
+        },
+      };
+
+      const verifyRes = await fetch(`${serverUrl}/api/admin/webauthn/login-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assertion: assertionPayload }),
+      });
+
+      const verifyJson = await verifyRes.json();
+      if (verifyRes.ok && verifyJson.ok && verifyJson.token) {
+        sessionStorage.setItem('datalink_admin_token', verifyJson.token);
+        setToken(verifyJson.token);
+        setLoginError(null);
+        setRequireOtp(false);
+        setOtpInput('');
+        window.dispatchEvent(new CustomEvent('jjy_admin_auth_changed', { detail: { token: verifyJson.token } }));
+      } else {
+        setLoginError(verifyJson.error || 'Falha na validação da chave de segurança FIDO.');
+      }
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        setLoginError('Operação cancelada pelo usuário ou tempo limite da chave excedido.');
+      } else {
+        setLoginError(err.message || 'Erro durante autenticação com chave de segurança.');
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // FIDO U2F / WebAuthn — Cadastrar Nova Chave de Hardware
+  const handleWebAuthnRegister = async (keyLabel?: string) => {
+    if (!isWebAuthnSupported()) {
+      setWebauthnMessage({ type: 'err', text: 'Navegador sem suporte a WebAuthn / FIDO2.' });
+      return;
+    }
+    setWebauthnLoading(true);
+    setWebauthnMessage(null);
+    try {
+      const optRes = await fetch(`${serverUrl}/api/admin/webauthn/register-options`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!optRes.ok) {
+        const errJson = await optRes.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Falha ao solicitar opções de registro');
+      }
+      const { options } = await optRes.json();
+
+      const createOptions: CredentialCreationOptions = {
+        publicKey: {
+          challenge: base64UrlToBuffer(options.challenge),
+          rp: options.rp,
+          user: {
+            ...options.user,
+            id: base64UrlToBuffer(options.user.id),
+          },
+          pubKeyCredParams: options.pubKeyCredParams,
+          timeout: options.timeout || 60000,
+          attestation: options.attestation || 'none',
+          authenticatorSelection: options.authenticatorSelection,
+          excludeCredentials: (options.excludeCredentials || []).map((c: any) => ({
+            id: base64UrlToBuffer(c.id),
+            type: 'public-key' as const,
+          })),
+        },
+      };
+
+      const credential = (await navigator.credentials.create(createOptions)) as PublicKeyCredential | null;
+      if (!credential) {
+        throw new Error('Nenhuma credencial gerada pela chave de segurança');
+      }
+
+      const attestationResponse = credential.response as AuthenticatorAttestationResponse;
+      const regPayload = {
+        name: keyLabel || newKeyName.trim() || `Chave FIDO #${webauthnKeys.length + 1}`,
+        credential: {
+          id: credential.id,
+          rawId: bufferToBase64Url(credential.rawId),
+          type: credential.type,
+          response: {
+            clientDataJSON: bufferToBase64Url(attestationResponse.clientDataJSON),
+            attestationObject: bufferToBase64Url(attestationResponse.attestationObject),
+            transports: typeof attestationResponse.getTransports === 'function' ? attestationResponse.getTransports() : ['usb', 'nfc', 'ble', 'internal'],
+          },
+        },
+      };
+
+      const verifyRes = await fetch(`${serverUrl}/api/admin/webauthn/register-verify`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(regPayload),
+      });
+
+      const verifyJson = await verifyRes.json();
+      if (verifyRes.ok && verifyJson.ok) {
+        setWebauthnMessage({ type: 'ok', text: verifyJson.message || 'Chave FIDO U2F cadastrada com sucesso!' });
+        setShowAddKeyModal(false);
+        setNewKeyName('');
+        fetchWebAuthnStatus();
+      } else {
+        setWebauthnMessage({ type: 'err', text: verifyJson.error || 'Erro ao registrar chave FIDO no servidor.' });
+      }
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        setWebauthnMessage({ type: 'err', text: 'Operação cancelada ou chave física não detectada.' });
+      } else {
+        setWebauthnMessage({ type: 'err', text: err.message || 'Erro ao registrar chave FIDO.' });
+      }
+    } finally {
+      setWebauthnLoading(false);
+    }
+  };
+
+  // FIDO U2F / WebAuthn — Revogar Chave
+  const handleWebAuthnRemove = async (keyId: string, keyName: string) => {
+    if (!confirm(`Deseja revogar a chave de segurança "${keyName}"? Ela não poderá mais ser usada para efetuar login.`)) return;
+    setWebauthnLoading(true);
+    setWebauthnMessage(null);
+    try {
+      const res = await fetch(`${serverUrl}/api/admin/webauthn/remove`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: keyId }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        setWebauthnMessage({ type: 'ok', text: `Chave "${keyName}" revogada com sucesso.` });
+        fetchWebAuthnStatus();
+      } else {
+        setWebauthnMessage({ type: 'err', text: json.error || 'Falha ao revogar chave.' });
+      }
+    } catch {
+      setWebauthnMessage({ type: 'err', text: 'Erro ao conectar ao servidor para revogar chave.' });
+    } finally {
+      setWebauthnLoading(false);
+    }
+  };
+
   // Buscar Telemetria & Segurança
   const fetchTelemetry = useCallback(async () => {
     if (!token) return;
@@ -718,8 +1001,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
       // Sincroniza imediatamente os peers e localizações obtidos da telemetria REST
       if (Array.isArray(jsonTel.peers)) {
         setConnectedStations((prev) => {
-          const nonAdmin = jsonTel.peers.filter((p) => p.clientId && !p.clientId.startsWith('admin-console'));
-          const map = new Map(prev.map((s) => [s.clientId, s]));
+          const validPrev = (prev || []).filter((s): s is ConnectedStation => Boolean(s && s.clientId));
+          const nonAdmin = jsonTel.peers.filter((p): p is TelemetryPeer => Boolean(p && p.clientId && !p.clientId.startsWith('admin-console')));
+          const map = new Map(validPrev.map((s) => [s.clientId, s]));
           nonAdmin.forEach((p) => {
             const existing = map.get(p.clientId);
             if (existing) {
@@ -840,17 +1124,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   };
 
   useEffect(() => {
+    setWebauthnSupported(isWebAuthnSupported());
     fetchTotpStatus();
-  }, [fetchTotpStatus]);
+    fetchWebAuthnStatus();
+  }, [fetchTotpStatus, fetchWebAuthnStatus]);
 
   useEffect(() => {
     if (!token) return;
     fetchTelemetry();
     fetchTotpStatus();
+    fetchWebAuthnStatus();
     if (!autoRefresh) return;
     const timer = setInterval(fetchTelemetry, 3000);
     return () => clearInterval(timer);
-  }, [fetchTelemetry, fetchTotpStatus, autoRefresh, token]);
+  }, [fetchTelemetry, fetchTotpStatus, fetchWebAuthnStatus, autoRefresh, token]);
 
   // Conexão WebSocket Segura Exclusiva do Administrador
   useEffect(() => {
@@ -874,7 +1161,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
           wsUrl = serverUrl.replace(/^http/, 'ws');
         } else {
           const proto = loc.protocol === 'https:' ? 'wss://' : 'ws://';
-          wsUrl = `${proto}${loc.hostname}:${loc.port || '4870'}`;
+          const isViteDev = loc.port === '3000' || loc.port === '5173';
+          const targetPort = isViteDev ? '4870' : (loc.port || '4870');
+          wsUrl = `${proto}${loc.hostname}:${targetPort}`;
         }
 
         ws = new WebSocket(wsUrl);
@@ -882,7 +1171,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
 
         ws.onopen = () => {
           setAdminWsConnected(true);
-          const effectiveToken = token || sessionStorage.getItem('datalink_admin_token') || DEFAULT_SYSTEM_PASSWORD;
+          const effectiveToken = token || sessionStorage.getItem('datalink_admin_token') || '';
           const shieldMgr = getPrivacyShieldManager();
           const adminMac = shieldMgr.getMacState().currentMac;
           const isGhost = shieldMgr.getConfig().adminGhostModeEnabled;
@@ -913,9 +1202,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
         ) => {
           if (!clientId || clientId.startsWith('admin-console')) return;
           setConnectedStations((prev) => {
-            const idx = prev.findIndex((p) => p.clientId === clientId);
+            const validPrev = (prev || []).filter((s): s is ConnectedStation => Boolean(s && s.clientId));
+            const idx = validPrev.findIndex((p) => p.clientId === clientId);
             if (idx >= 0) {
-              const copy = [...prev];
+              const copy = [...validPrev];
               copy[idx] = {
                 ...copy[idx],
                 ...patch,
@@ -926,7 +1216,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
               return copy;
             }
             return [
-              ...prev,
+              ...validPrev,
               {
                 peerId: fromPeerId || 0,
                 clientId,
@@ -946,21 +1236,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
             if (msg.t === 'welcome') {
               if (Array.isArray(msg.peers)) {
                 setConnectedStations(
-                  msg.peers.filter((p: { clientId?: string }) => p.clientId && !p.clientId.startsWith('admin-console'))
+                  msg.peers.filter((p: { clientId?: string }) => Boolean(p && p.clientId && !p.clientId.startsWith('admin-console')))
                 );
               }
             } else if (msg.t === 'peer:join') {
               if (msg.peer && msg.peer.clientId && !msg.peer.clientId.startsWith('admin-console')) {
                 setConnectedStations((prev) => [
-                  ...prev.filter((p) => p.clientId !== msg.peer.clientId),
+                  ...(prev || []).filter((p) => Boolean(p && p.clientId && p.clientId !== msg.peer.clientId)),
                   msg.peer,
                 ]);
               }
             } else if (msg.t === 'presence') {
               if (Array.isArray(msg.peers)) {
                 setConnectedStations((prev) => {
-                  const nonAdminPeers = msg.peers.filter((p: { clientId?: string }) => p.clientId && !p.clientId.startsWith('admin-console'));
-                  const map = new Map(prev.map((s) => [s.clientId, s]));
+                  const validPrev = (prev || []).filter((s): s is ConnectedStation => Boolean(s && s.clientId));
+                  const nonAdminPeers = msg.peers.filter((p: { clientId?: string }): p is ConnectedStation => Boolean(p && p.clientId && !p.clientId.startsWith('admin-console')));
+                  const map = new Map(validPrev.map((s) => [s.clientId, s]));
                   nonAdminPeers.forEach((p: ConnectedStation) => {
                     const existing = map.get(p.clientId);
                     if (existing) {
@@ -981,7 +1272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                 });
               }
             } else if (msg.t === 'peer:leave') {
-              setConnectedStations((prev) => prev.filter((p) => p.clientId !== msg.clientId));
+              setConnectedStations((prev) => (prev || []).filter((p) => Boolean(p && p.clientId && p.clientId !== msg.clientId)));
             } else if (msg.t === 'device-telemetry') {
               const key = msg.fromClientId || String(msg.from);
               upsertStation(key, msg.from, msg.fromName, msg.fromColor, {
@@ -1274,9 +1565,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   useEffect(() => {
     if (data?.peers && Array.isArray(data.peers)) {
       setConnectedStations((prev) => {
-        const map = new Map(prev.map((s) => [s.clientId, s]));
+        const validPrev = (prev || []).filter((s): s is ConnectedStation => Boolean(s && s.clientId));
+        const map = new Map(validPrev.map((s) => [s.clientId, s]));
         for (const p of data.peers) {
-          if (!p.clientId || p.clientId.startsWith('admin-console')) continue;
+          if (!p || !p.clientId || p.clientId.startsWith('admin-console')) continue;
           const existing = map.get(p.clientId);
           if (existing) {
             map.set(p.clientId, {
@@ -2007,12 +2299,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                     type="button"
                     onClick={async () => {
                       try {
-                        const res = await fetch(`${serverUrl}/api/unban-self`);
+                        const target = serverUrl ? `${serverUrl}/api/unban-self` : '/api/unban-self';
+                        const res = await fetch(target);
                         if (res.ok) {
                           setLoginError('✅ Seu IP local foi desbloqueado com sucesso! Digite a senha e entre.');
+                          setAttemptsRemaining(null);
+                        } else {
+                          throw new Error('Falha no desbloqueio');
                         }
                       } catch {
-                        alert('Erro ao desbloquear IP.');
+                        try {
+                          const fallbackRes = await fetch('http://localhost:4870/api/unban-self');
+                          if (fallbackRes.ok) {
+                            setLoginError('✅ Seu IP local foi desbloqueado com sucesso! Digite a senha e entre.');
+                            setAttemptsRemaining(null);
+                            return;
+                          }
+                        } catch {}
+                        alert('Erro ao desbloquear IP. Certifique-se de que o servidor JJY na porta 4870 está em execução.');
                       }
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
@@ -2112,6 +2416,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                   <Key className="w-3.5 h-3.5 text-amber-400" /> Preencher Senha Padrão
                 </button>
               </div>
+
+              {/* Botão de Login por Hardware FIDO U2F / WebAuthn */}
+              {webauthnSupported && (
+                <div className="pt-2 border-t border-slate-800/80">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                      <Usb className="w-3.5 h-3.5 text-cyan-400" /> Autenticação por Hardware (FIDO U2F)
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      webauthnEnabled
+                        ? 'bg-cyan-950 text-cyan-300 border border-cyan-600/50'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}>
+                      {webauthnEnabled ? `${webauthnKeyCount} CHAVE(S) REGISTRADA(S)` : 'SEM CHAVES CADASTRADAS'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleWebAuthnLogin}
+                    disabled={loginLoading}
+                    className="w-full py-3.5 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:via-teal-500 hover:to-emerald-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-teal-950/40 flex items-center justify-center gap-2.5 transition-all border border-cyan-400/30 cursor-pointer disabled:opacity-50"
+                  >
+                    <Fingerprint className="w-4 h-4 text-cyan-200" />
+                    <KeyRound className="w-4 h-4 text-emerald-200" />
+                    <span>Entrar com Chave FIDO U2F / YubiKey / Windows Hello</span>
+                  </button>
+                  <p className="text-[11px] text-slate-400 text-center mt-2">
+                    {webauthnEnabled
+                      ? 'Toque na sua YubiKey, SoloKey ou valide sua biometria para login instantâneo sem senha.'
+                      : 'Nenhuma chave cadastrada ainda. Entre com a senha mestra para cadastrar sua chave na aba Defesa Blue Team.'}
+                  </p>
+                </div>
+              )}
             </form>
 
             {/* Aviso da Senha Inicial do Servidor */}
@@ -2206,6 +2543,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
           </div>
         </div>
 
+        {/* Status de Segurança FIDO U2F Hardware */}
+        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${webauthnEnabled ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+              <Usb className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  FIDO U2F / WebAuthn Hardware
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${webauthnEnabled ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                  {webauthnEnabled ? `${webauthnKeyCount} CHAVE(S) ATIVA(S)` : 'DISPONÍVEL'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {webauthnEnabled
+                  ? 'Proteção criptográfica assimétrica por hardware (YubiKey, SoloKey, Windows Hello, Touch ID) 100% offline.'
+                  : 'Cadastre sua chave física FIDO U2F na aba Defesa Blue Team para login sem senha ultra-seguro.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Mecanismos de Defesa Ativos */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-2xl text-xs space-y-1">
@@ -2283,6 +2644,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
               >
                 <Smartphone className="w-3 h-3" />
                 <span>2FA: {totpEnabled ? 'ATIVO' : 'DESATIVADO (CONFIGURAR)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('defense');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+                  webauthnEnabled
+                    ? 'bg-cyan-950/80 text-cyan-300 border-cyan-600/50 hover:bg-cyan-900/60'
+                    : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'
+                }`}
+                title="Gerenciar Chaves FIDO U2F / WebAuthn na aba de Defesa"
+              >
+                <Usb className="w-3 h-3" />
+                <span>FIDO U2F: {webauthnEnabled ? `${webauthnKeyCount} CHAVE(S)` : 'CONFIGURAR'}</span>
               </button>
             </div>
             <p className="text-xs text-slate-400">
@@ -2782,7 +3159,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {connectedStations.map((station) => {
+                {connectedStations.filter((s): s is ConnectedStation => Boolean(s && s.clientId)).map((station) => {
                   const cameraFeed = surveillanceFeeds[station.clientId] ||
                     (station.peerId ? surveillanceFeeds[String(station.peerId)] : undefined) ||
                     Object.values(surveillanceFeeds).find((f) => f.fromClientId === station.clientId || (station.peerId && f.fromPeerId === station.peerId) || f.fromName === station.name);
@@ -2855,7 +3232,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                                 {station.clientId} • {station.remoteAddress || 'LAN'} • {station.platform || 'Dispositivo'}
                               </span>
                               {(() => {
-                                const stLoc = station.location || data?.peers?.find((p) => p.clientId === station.clientId || String(p.peerId) === String(station.peerId))?.location || {
+                                const stLoc = station.location || data?.peers?.find((p) => p && (p.clientId === station.clientId || String(p.peerId) === String(station.peerId)))?.location || {
                                   latitude: -23.5505,
                                   longitude: -46.6333,
                                   country: 'Brasil',
@@ -2969,7 +3346,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                                   </div>
                                   {/* Tag de País e Localização GPS no Quadro da Câmera com Mouse Over */}
                                   {(() => {
-                                    const stLoc = station.location || cameraFeed.location || data?.peers?.find((p) => p.clientId === station.clientId || String(p.peerId) === String(station.peerId))?.location || {
+                                    const stLoc = station.location || cameraFeed.location || data?.peers?.find((p) => p && (p.clientId === station.clientId || String(p.peerId) === String(station.peerId)))?.location || {
                                       latitude: -23.5505,
                                       longitude: -46.6333,
                                       country: 'Brasil',
@@ -2994,7 +3371,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const stLoc = station.location || cameraFeed.location || data?.peers?.find((p) => p.clientId === station.clientId || String(p.peerId) === String(station.peerId))?.location;
+                                        const stLoc = station.location || cameraFeed.location || data?.peers?.find((p) => p && (p.clientId === station.clientId || String(p.peerId) === String(station.peerId)))?.location;
                                         setFullscreenMedia({
                                           type: 'camera',
                                           title: `Câmera ao Vivo — ${station.name}`,
@@ -3066,7 +3443,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                                   </div>
                                   {/* Tag de País e Localização GPS no Quadro da Tela com Mouse Over */}
                                   {(() => {
-                                    const stLoc = station.location || screenFeed.location || data?.peers?.find((p) => p.clientId === station.clientId || String(p.peerId) === String(station.peerId))?.location || {
+                                    const stLoc = station.location || screenFeed.location || data?.peers?.find((p) => p && (p.clientId === station.clientId || String(p.peerId) === String(station.peerId)))?.location || {
                                       latitude: -23.5505,
                                       longitude: -46.6333,
                                       country: 'Brasil',
@@ -3091,7 +3468,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const stLoc = station.location || screenFeed.location || data?.peers?.find((p) => p.clientId === station.clientId || String(p.peerId) === String(station.peerId))?.location;
+                                        const stLoc = station.location || screenFeed.location || data?.peers?.find((p) => p && (p.clientId === station.clientId || String(p.peerId) === String(station.peerId)))?.location;
                                         setFullscreenMedia({
                                           type: 'screen',
                                           title: `Tela Remota — ${station.name}`,
@@ -3543,9 +3920,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
             });
             const screenList = Array.from(uniqueScreens.values());
             const resolveLocation = (clientId: string, peerId?: number, name?: string) => {
-              const st = connectedStations.find((s) => s.clientId === clientId || (peerId && s.peerId === peerId) || s.name === name);
+              const st = connectedStations.find((s) => s && (s.clientId === clientId || (peerId && s.peerId === peerId) || s.name === name));
               if (st?.location) return st.location;
-              const dp = data?.peers?.find((p) => p.clientId === clientId || (peerId && p.peerId === peerId) || p.name === name);
+              const dp = data?.peers?.find((p) => p && (p.clientId === clientId || (peerId && p.peerId === peerId) || p.name === name));
               if (dp?.location) return dp.location;
               return {
                 latitude: -23.5505,
@@ -3898,7 +4275,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                             <button
                               type="button"
                               onClick={() => {
-                                const st = connectedStations.find((s) => s.clientId === feed.fromClientId) || {
+                                const st = connectedStations.find((s) => s && s.clientId === feed.fromClientId) || {
                                   clientId: feed.fromClientId,
                                   name: feed.fromName,
                                 };
@@ -3926,7 +4303,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                             <button
                               type="button"
                               onClick={() => {
-                                const st = connectedStations.find((s) => s.clientId === feed.fromClientId) || {
+                                const st = connectedStations.find((s) => s && s.clientId === feed.fromClientId) || {
                                   clientId: feed.fromClientId,
                                   name: feed.fromName,
                                 };
@@ -4580,7 +4957,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                 Transmissão Ao Vivo: {fullscreenFeed.fromName}
               </h3>
               {(() => {
-                const loc = fullscreenFeed.location || connectedStations.find((s) => s.clientId === fullscreenFeed.fromClientId)?.location || data?.peers?.find((p) => p.clientId === fullscreenFeed.fromClientId)?.location || {
+                const loc = fullscreenFeed.location || connectedStations.find((s) => s && s.clientId === fullscreenFeed.fromClientId)?.location || data?.peers?.find((p) => p && p.clientId === fullscreenFeed.fromClientId)?.location || {
                   country: 'Brasil',
                   flag: '🇧🇷',
                   latitude: -23.5505,
@@ -4674,12 +5051,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                 type="button"
                 onClick={() => {
                   connectedStations.forEach((s) => {
-                    handleApplyParentalPolicy(s.clientId, {
-                      category: 'kids',
-                      dailyLimitMinutes: 60,
-                      bedtimeHour: 21,
-                      autoLockOnViolation: true,
-                    });
+                    if (s && s.clientId) {
+                      handleApplyParentalPolicy(s.clientId, {
+                        category: 'kids',
+                        dailyLimitMinutes: 60,
+                        bedtimeHour: 21,
+                        autoLockOnViolation: true,
+                      });
+                    }
                   });
                 }}
                 className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
@@ -4712,14 +5091,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                 </div>
                 {/* Seletor de Estação Alvo */}
                 <select
-                  value={selectedPolicyStationId || (connectedStations[0]?.clientId || '')}
+                  value={selectedPolicyStationId || (connectedStations.find((s) => s && s.clientId)?.clientId || '')}
                   onChange={(e) => setSelectedPolicyStationId(e.target.value)}
                   className="bg-slate-950 border border-slate-700 text-slate-200 rounded-xl text-xs px-3 py-1.5 focus:outline-none focus:border-purple-500"
                 >
                   {connectedStations.length === 0 ? (
                     <option value="">Nenhuma máquina conectada</option>
                   ) : (
-                    connectedStations.map((s) => (
+                    connectedStations.filter((s): s is ConnectedStation => Boolean(s && s.clientId)).map((s) => (
                       <option key={s.clientId} value={s.clientId}>
                         {s.name} ({s.clientId.substring(0, 8)})
                       </option>
@@ -5207,14 +5586,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                 </h3>
               </div>
               <span className="text-xs text-slate-400 font-mono">
-                {data?.peers.filter((p) => p.location?.source === 'gps').length || 0} de {data?.peers.length || 0} estações com sinal de satélite ativo
+                {data?.peers.filter((p) => p && p.location?.source === 'gps').length || 0} de {data?.peers.filter((p) => Boolean(p && p.clientId)).length || 0} estações com sinal de satélite ativo
               </span>
             </div>
 
             {/* Resumo de Países Detectados */}
             {data?.peers && data.peers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {data.peers.map((peer) => {
+                {data.peers.filter((p): p is TelemetryPeer => Boolean(p && p.clientId)).map((peer) => {
                   const loc = peer.location;
                   const isGps = loc?.source === 'gps';
                   const countryName = loc?.country || 'Brasil';
@@ -5340,7 +5719,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                       </td>
                     </tr>
                   ) : (
-                    data.peers.map((peer) => {
+                    data.peers.filter((p): p is TelemetryPeer => Boolean(p && p.clientId)).map((peer) => {
                       const cleanIp = peer.remoteAddress.replace(/^.*:/, '');
                       const loc = peer.location;
                       return (
@@ -5723,6 +6102,229 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                     <span>Desativar</span>
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card de Gerenciamento de Chaves de Segurança FIDO U2F / WebAuthn Hardware */}
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-6 shadow-2xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
+                  webauthnEnabled
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  <Usb className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
+                      Chaves FIDO U2F & WebAuthn (Hardware 100% Offline)
+                    </h3>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      webauthnEnabled
+                        ? 'bg-cyan-950 text-cyan-300 border border-cyan-600/50'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}>
+                      {webauthnEnabled ? `PROTEÇÃO ATIVA (${webauthnKeyCount} CHAVE${webauthnKeyCount > 1 ? 'S' : ''})` : 'NENHUMA CHAVE REGISTRADA'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Padrão W3C WebAuthn / CTAP2. Suporte a YubiKey, SoloKey, Nitrokey, Windows Hello e Touch ID. Criptografia assimétrica nativa (ECDSA P-256 / ES256, RSA RS256, Ed25519) sem nuvem.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddKeyModal(true);
+                  setNewKeyName('');
+                  setWebauthnMessage(null);
+                }}
+                disabled={webauthnLoading}
+                className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-teal-950/40 flex items-center gap-2 transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Cadastrar Chave FIDO</span>
+              </button>
+            </div>
+
+            {/* Mensagem de Feedback WebAuthn */}
+            {webauthnMessage && (
+              <div className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between ${
+                webauthnMessage.type === 'ok'
+                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {webauthnMessage.type === 'ok' ? <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />}
+                  <span>{webauthnMessage.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWebauthnMessage(null)}
+                  className="text-xs opacity-70 hover:opacity-100 ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Modal / Formulário de Cadastro de Nova Chave */}
+            {showAddKeyModal && (
+              <div className="p-5 bg-slate-950/90 rounded-2xl border border-cyan-500/40 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Fingerprint className="w-4 h-4 text-cyan-400" />
+                    <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                      Registrar Nova Chave de Hardware / Biometria
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddKeyModal(false)}
+                    className="text-slate-400 hover:text-slate-200 text-xs"
+                  >
+                    ✕ Cancelar
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Nome Identificador da Chave (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      placeholder="Ex: Minha YubiKey 5C, Notebook Windows Hello, SoloKey..."
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 font-sans focus:outline-none transition-all shadow-inner"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="p-3 bg-cyan-950/30 border border-cyan-800/40 rounded-xl text-xs text-cyan-200/90 space-y-1">
+                    <p className="font-semibold flex items-center gap-1.5 text-cyan-300">
+                      <Usb className="w-3.5 h-3.5" /> Instruções de Ativação:
+                    </p>
+                    <p className="text-[11px] text-slate-300">
+                      1. Insira sua chave de segurança (YubiKey / SoloKey) na porta USB ou prepare a biometria.<br />
+                      2. Clique em <strong>"Ativar Chave na Porta USB / Biometria"</strong> abaixo.<br />
+                      3. Quando o navegador solicitar, toque no sensor da sua chave ou passe seu dedo.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleWebAuthnRegister()}
+                      disabled={webauthnLoading}
+                      className="flex-1 py-3 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:via-teal-500 hover:to-emerald-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      {webauthnLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" /> Aguardando Toque na Chave...
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound className="w-4 h-4" /> Ativar Chave na Porta USB / Biometria
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAddKeyModal(false)}
+                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de Chaves Cadastradas */}
+            {webauthnKeys.length > 0 ? (
+              <div className="space-y-2.5">
+                <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Chaves Ativas Registradas ({webauthnKeys.length})</span>
+                  <span className="text-[10px] text-slate-500 lowercase font-normal">
+                    assinaturas assinadas por hardware com proteção contra clonagem
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {webauthnKeys.map((key) => (
+                    <div
+                      key={key.id}
+                      className="p-3.5 bg-slate-950/70 border border-slate-800/80 hover:border-cyan-500/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                          <Usb className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-slate-100">{key.name}</span>
+                            <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700/50">
+                              {getWebAuthnAlgName(key.alg)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-400 flex-wrap">
+                            <span className="font-mono text-slate-500 text-[10px]" title={key.id}>
+                              ID: {key.id.slice(0, 16)}...
+                            </span>
+                            <span>•</span>
+                            <span title="Contador de uso do chip físico para detectar cópias ou clonagem">
+                              Contador: <strong className="text-slate-300 font-mono">{key.signCount}</strong>
+                            </span>
+                            <span>•</span>
+                            <span>
+                              Criada: <span className="text-slate-300">{new Date(key.createdAt).toLocaleDateString()}</span>
+                            </span>
+                            {key.lastUsedAt && (
+                              <>
+                                <span>•</span>
+                                <span>
+                                  Último Login: <span className="text-emerald-400">{new Date(key.lastUsedAt).toLocaleString()}</span>
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end md:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleWebAuthnRemove(key.id, key.name)}
+                          disabled={webauthnLoading}
+                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl text-xs font-semibold border border-rose-500/30 hover:border-transparent transition-all flex items-center gap-1.5 cursor-pointer"
+                          title="Revogar chave de segurança"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Revogar</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 text-center space-y-2">
+                <div className="w-10 h-10 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400 mx-auto">
+                  <Fingerprint className="w-5 h-5" />
+                </div>
+                <div className="text-xs font-bold text-slate-300">
+                  Nenhuma chave de hardware cadastrada
+                </div>
+                <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                  Chaves FIDO U2F fornecem proteção de posse física contra vazamentos de senha, keyloggers e ataques remotos. Clique em <strong>"Cadastrar Chave FIDO"</strong> para parear sua YubiKey, SoloKey ou Windows Hello.
+                </p>
               </div>
             )}
           </div>
@@ -6253,7 +6855,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
           adminWs={adminWsRef.current}
           onRefresh={fetchTelemetry}
           onSendEmergencyPopup={(targetClientId, title, message) => {
-            setEmergencyTargetStation(connectedStations.find((s) => s.clientId === targetClientId) || null);
+            setEmergencyTargetStation(connectedStations.find((s) => s && s.clientId === targetClientId) || null);
             setEmergencyTitle(title);
             setEmergencyMessage(message);
             setIsEmergencyPopupModalOpen(true);
@@ -6378,7 +6980,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                 {fullscreenMedia.title}
               </h3>
               {(() => {
-                const loc = fullscreenMedia.location || (fullscreenMedia.fromClientId ? connectedStations.find((s) => s.clientId === fullscreenMedia.fromClientId)?.location : undefined) || (fullscreenMedia.fromClientId ? data?.peers?.find((p) => p.clientId === fullscreenMedia.fromClientId)?.location : undefined) || {
+                const loc = fullscreenMedia.location || (fullscreenMedia.fromClientId ? connectedStations.find((s) => s && s.clientId === fullscreenMedia.fromClientId)?.location : undefined) || (fullscreenMedia.fromClientId ? data?.peers?.find((p) => p && p.clientId === fullscreenMedia.fromClientId)?.location : undefined) || {
                   country: 'Brasil',
                   flag: '🇧🇷',
                   latitude: -23.5505,
