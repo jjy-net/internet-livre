@@ -113,7 +113,9 @@ try {
   console.log('');
   console.log('  🛡️  Segurança & Blue Team Defensivo:');
   const pw = server.getAdminPassword();
-  console.log(`     Senha de Administrador: ${pw}  (defina DATALINK_ADMIN_PASSWORD para personalizar)`);
+  const isCustom = !!process.env.DATALINK_ADMIN_PASSWORD;
+  const masked = pw.length > 6 ? pw.slice(0, 6) + '•'.repeat(pw.length - 6) : pw;
+  console.log(`     Senha de Administrador: ${isCustom ? masked : pw}  ${isCustom ? '(personalizada via env)' : '⚠️  GERADA AUTOMATICAMENTE — salve ou defina DATALINK_ADMIN_PASSWORD'}`);
   console.log('     Proteções Ativas: Rate Limiting, Fail2Ban, Anti-DDoS, Tarpit, Blacklist, HTTPS LAN');
   console.log(`  ${line}`);
   console.log('  Pressione Ctrl+C para encerrar.\n');

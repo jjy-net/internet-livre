@@ -175,8 +175,6 @@ interface SecurityData {
 }
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#ef4444'];
-const DEFAULT_SYSTEM_PASSWORD = 'admin';
-
 function generateRandomSecurePassword(length = 24): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lower = 'abcdefghijkmnopqrstuvwxyz';
@@ -2404,17 +2402,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPasswordInput(DEFAULT_SYSTEM_PASSWORD);
-                    setLoginError(null);
-                  }}
-                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5"
-                  title="Preencher com a senha mestra gerada pelo servidor"
-                >
-                  <Key className="w-3.5 h-3.5 text-amber-400" /> Preencher Senha Padrão
-                </button>
               </div>
 
               {/* Botão de Login por Hardware FIDO U2F / WebAuthn */}
@@ -2451,31 +2438,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
               )}
             </form>
 
-            {/* Aviso da Senha Inicial do Servidor */}
+            {/* Aviso sobre senha do servidor */}
             <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-amber-400" /> Senha Inicial Segura Gerada pelo Servidor:
-                </span>
-                <span className="text-[10px] text-emerald-400 font-mono font-semibold">256-BIT ENTROPIA</span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 font-mono text-amber-300 text-xs">
-                <code>{DEFAULT_SYSTEM_PASSWORD}</code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(DEFAULT_SYSTEM_PASSWORD);
-                    alert('Senha copiada para a área de transferência!');
-                  }}
-                  className="text-slate-400 hover:text-slate-200 transition-colors ml-2"
-                  title="Copiar senha"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Você também pode definir uma senha personalizada ao iniciar o servidor via variável de ambiente{' '}
-                <code>DATALINK_ADMIN_PASSWORD</code>.
+              <p className="text-[11px] text-slate-400">
+                A senha de administrador é exibida no terminal do servidor ao iniciar.
+                Para personalizar, defina a variável de ambiente <code className="text-amber-300">DATALINK_ADMIN_PASSWORD</code> antes de iniciar.
               </p>
             </div>
           </div>

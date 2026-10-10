@@ -56,9 +56,11 @@ export const DEFAULT_PORT = 4870;
 export const DEFAULT_HTTPS_PORT = 4873;
 export const DISCOVERY_PORT = 48777;
 
-// SEGURANÇA: Senha de administrador via variável de ambiente (obrigatória em produção)
-const FALLBACK_ADMIN_PASSWORD = 'admin';
-export const DEFAULT_ADMIN_PASSWORD = process.env.DATALINK_ADMIN_PASSWORD || FALLBACK_ADMIN_PASSWORD;
+// SEGURANÇA: Senha de administrador via variável de ambiente ou gerada automaticamente
+function generateSecurePassword() {
+  return 'DL-' + crypto.randomBytes(12).toString('base64url');
+}
+export const DEFAULT_ADMIN_PASSWORD = process.env.DATALINK_ADMIN_PASSWORD || generateSecurePassword();
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
@@ -764,11 +766,6 @@ export function createDataLinkServer(options = {}) {
     let token = '';
     if (auth.startsWith('Bearer ')) {
       token = auth.slice(7).trim();
-    } else {
-      try {
-        const u = new URL(req.url, 'http://localhost');
-        token = u.searchParams.get('token') || '';
-      } catch {}
     }
     return validateAdminToken(token);
   }
@@ -2030,6 +2027,11 @@ export function createDataLinkServer(options = {}) {
           }
 
           if ((pathname.startsWith('/api/jjy/inbox') || pathname.startsWith('/api/ngl/inbox')) && req.method === 'GET') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação necessária' }));
+              return;
+            }
             const parsedUrl = new URL(req.url, 'http://localhost');
             const target = (parsedUrl.searchParams.get('u') || parsedUrl.searchParams.get('user') || '').trim().toLowerCase();
             const list = nglStore.get(target) || [];
@@ -2039,6 +2041,11 @@ export function createDataLinkServer(options = {}) {
           }
 
           if ((pathname === '/api/jjy/delete' || pathname === '/api/ngl/delete') && req.method === 'POST') {
+            if (!checkAdminAuth(req)) {
+              res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: false, error: 'Autenticação necessária' }));
+              return;
+            }
             let body = '';
             let bodyLen = 0;
             req.on('data', (c) => { bodyLen += c.length; if (bodyLen > MAX_POST_BODY) { req.destroy(); return; } body += c; });
