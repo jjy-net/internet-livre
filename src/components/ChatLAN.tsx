@@ -12,7 +12,11 @@ import {
   Trash2,
   Settings,
   Wifi,
-  Sparkles
+  Sparkles,
+  UserPlus,
+  Globe,
+  Cpu,
+  ExternalLink
 } from 'lucide-react';
 import { encryptAESGCM, decryptAESGCM } from '../utils/crypto';
 import { captureGpsLocation } from '../utils/geo';
@@ -60,11 +64,18 @@ export const ChatLAN: React.FC = () => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const [userName, setUserName] = useState(() => {
-    return localStorage.getItem('dl_chat_name') || `Usuário-${Math.floor(1000 + Math.random() * 9000)}`;
+    return localStorage.getItem('jjy_chat_username') || localStorage.getItem('dl_chat_name') || `Soberano-${Math.floor(1000 + Math.random() * 9000)}`;
+  });
+  const [userAvatar, setUserAvatar] = useState(() => {
+    return localStorage.getItem('jjy_chat_avatar') || '🛡️';
   });
   const [userColor, setUserColor] = useState(() => {
     return localStorage.getItem('dl_chat_color') || '#6366f1';
   });
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [tempUserName, setTempUserName] = useState(userName);
+  const [tempAvatar, setTempAvatar] = useState(userAvatar);
+
   const [clientId] = useState(() => {
     let id = localStorage.getItem('dl_chat_client_id');
     if (!id) {
@@ -279,6 +290,7 @@ export const ChatLAN: React.FC = () => {
   const handleUpdateProfile = (newName: string, newColor: string) => {
     setUserName(newName);
     setUserColor(newColor);
+    localStorage.setItem('jjy_chat_username', newName);
     localStorage.setItem('dl_chat_name', newName);
     localStorage.setItem('dl_chat_color', newColor);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -286,8 +298,174 @@ export const ChatLAN: React.FC = () => {
     }
   };
 
+  const handleSaveUserModal = () => {
+    const finalName = tempUserName.trim() || 'Soberano';
+    setUserName(finalName);
+    setUserAvatar(tempAvatar);
+    localStorage.setItem('jjy_chat_username', finalName);
+    localStorage.setItem('dl_chat_name', finalName);
+    localStorage.setItem('jjy_chat_avatar', tempAvatar);
+    localStorage.setItem('jjy_chat_user_created', 'true');
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ t: 'name', name: finalName, color: userColor }));
+    }
+    setShowUserModal(false);
+  };
+
+  const randomizeName = () => {
+    const prefixes = ['Soberano', 'Guardião', 'Operador', 'Sentinela', 'Nó', 'Cifra', 'Vanguarda'];
+    const suffixes = ['Alpha', 'Beta', 'Mesh', 'RNS', 'LXMF', 'Prime', '7a'];
+    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+    const num = Math.floor(100 + Math.random() * 900);
+    setTempUserName(`${p}_${s}_${num}`);
+  };
+
   return (
     <div className="space-y-6">
+      {/* BANNER CHAMATIVO: CRIAR NOVO USUÁRIO & HUB DE PROTOCOLOS SOBERANOS */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-950/80 via-slate-900/90 to-sky-950/80 backdrop-blur-md rounded-2xl border-2 border-indigo-500/40 p-5 shadow-2xl shadow-indigo-950/40">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                IDENTIDADE CRIPTOGRÁFICA
+              </span>
+              <span className="text-[11px] text-slate-400">Zero Cadastro • Zero Telefone</span>
+            </div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span>{userAvatar} Chat Soberano &amp; Malha P2P</span>
+            </h2>
+            <p className="text-xs text-slate-300 max-w-xl mt-0.5">
+              Identidade ativa: <strong className="text-indigo-300">{userName}</strong>. Conecte-se localmente ou abra o ecossistema com Reticulum RNS, SimpleX, LoRa Mesh e Nostr.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setTempUserName(userName);
+                setTempAvatar(userAvatar);
+                setShowUserModal(true);
+              }}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Criar / Editar Usuário</span>
+            </button>
+
+            <a
+              href="chat.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-sky-300 text-xs font-semibold rounded-xl border border-sky-500/30 transition-all hover:border-sky-400"
+              title="Abrir Chat Soberano em tela cheia com SimpleX, Reticulum, WhatsApp, Nostr e Meshtastic"
+            >
+              <Globe className="w-4 h-4" />
+              <span>Chat Soberano Completo ↗</span>
+            </a>
+
+            <a
+              href="reticulum.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 bg-sky-950/40 hover:bg-sky-900/40 text-cyan-300 text-xs font-semibold rounded-xl border border-cyan-500/30 transition-all"
+              title="Abrir Suite Reticulum Network (RNS & LXMF)"
+            >
+              <Cpu className="w-4 h-4" />
+              <span>Suite Reticulum ↗</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL PARA CRIAÇÃO / EDIÇÃO DE USUÁRIO */}
+      {showUserModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-indigo-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚡</span>
+                <h3 className="text-base font-bold text-white">Criar Identidade Soberana</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUserModal(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Crie seu perfil instantâneo sem cadastro nem telefone. Seu apelido e chaves valem para este chat e para o Chat Soberano Reticulum/SimpleX.
+            </p>
+
+            <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-300">SEU APELIDO / NOME:</label>
+                  <button
+                    type="button"
+                    onClick={randomizeName}
+                    className="text-[11px] text-cyan-400 hover:underline"
+                  >
+                    🎲 Aleatório
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={tempUserName}
+                  onChange={(e) => setTempUserName(e.target.value)}
+                  placeholder="Ex: Soberano Alpha"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-semibold outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1.5">ESCOLHA SEU AVATAR:</label>
+                <div className="flex gap-2">
+                  {['🛡️', '🛰️', '⚡', '🦅', '🐺', '🌐', '📻'].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setTempAvatar(emoji)}
+                      className={`text-lg p-2 rounded-xl border transition-all ${
+                        tempAvatar === emoji
+                          ? 'bg-indigo-600/30 border-indigo-400 scale-110 shadow-sm'
+                          : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowUserModal(false)}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUserModal}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-xs font-bold text-white rounded-xl shadow-md transition-all"
+              >
+                Salvar &amp; Ativar Identidade
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Banner de Conexão */}
       <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
